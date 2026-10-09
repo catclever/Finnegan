@@ -1,0 +1,2947 @@
+targets:
+  - id: linuxfr_org
+    type: site
+    value: "site:linuxfr.org"
+    languages: ["fr"]
+    tags: ["技术", "开源", "Linux", "极客"]
+    preferred_engines: [duckduckgo, google]
+  - id: developpez_com
+    type: site
+    value: "site:developpez.com"
+    languages: ["fr"]
+    tags: ["技术", "编程", "开发"]
+    preferred_engines: [duckduckgo, google]
+  - id: root_me_org
+    type: site
+    value: "site:root-me.org"
+    languages: ["fr"]
+    tags: ["黑客", "网络安全", "CTF"]
+    preferred_engines: [duckduckgo, google]
+  - id: philomag_fr
+    type: site
+    value: "site:philomag.com"
+    languages: ["fr"]
+    tags: ["哲学", "人文", "杂志"]
+    preferred_engines: [google]
+  - id: mediapart_fr
+    type: site
+    value: "site:mediapart.fr"
+    languages: ["fr"]
+    tags: ["政治", "新闻", "调查"]
+    preferred_engines: [google]
+  - id: jeuxvideo_com_forums
+    type: site
+    value: "site:jeuxvideo.com/forums"
+    languages: ["fr"]
+    tags: ["游戏", "论坛", "社区"]
+    preferred_engines: [google]
+  - id: heise_de
+    type: site
+    value: "site:heise.de"
+    languages: ["de"]
+    tags: ["技术", "IT", "新闻"]
+    preferred_engines: [duckduckgo, google]
+  - id: ccc_de
+    type: site
+    value: "site:ccc.de"
+    languages: ["de"]
+    tags: ["黑客", "技术", "网络安全"]
+    preferred_engines: [duckduckgo, google]
+  - id: perlentaucher_de
+    type: site
+    value: "site:perlentaucher.de"
+    languages: ["de"]
+    tags: ["文化", "文学", "评论"]
+    preferred_engines: [google]
+  - id: blaetter_de
+    type: site
+    value: "site:blaetter.de"
+    languages: ["de"]
+    tags: ["政治", "哲学", "社会科学"]
+    preferred_engines: [google]
+  - id: elhacker_net
+    type: site
+    value: "site:elhacker.net"
+    languages: ["es"]
+    tags: ["黑客", "网络安全", "论坛"]
+    preferred_engines: [duckduckgo, google]
+  - id: xataka_com
+    type: site
+    value: "site:xataka.com"
+    languages: ["es"]
+    tags: ["科技", "数码", "新闻"]
+    preferred_engines: [google]
+  - id: ctxt_es
+    type: site
+    value: "site:ctxt.es"
+    languages: ["es"]
+    tags: ["政治", "新闻", "独立媒体"]
+    preferred_engines: [google]
+  - id: revistadeletras_net
+    type: site
+    value: "site:revistadeletras.net"
+    languages: ["es"]
+    tags: ["文学", "评论", "文化"]
+    preferred_engines: [google]
+  - id: habr_com
+    type: site
+    value: "site:habr.com"
+    languages: ["ru"]
+    tags: ["技术", "极客", "底层"]
+    preferred_engines: [yandex, google]
+  - id: xakep_ru
+    type: site
+    value: "site:xakep.ru"
+    languages: ["ru"]
+    tags: ["黑客", "网络安全", "信息安全"]
+    preferred_engines: [yandex, google]
+  - id: meduza_io
+    type: site
+    value: "site:meduza.io"
+    languages: ["ru"]
+    tags: ["政治", "独立媒体", "新闻"]
+    preferred_engines: [yandex, google]
+  - id: gorky_media
+    type: site
+    value: "site:gorky.media"
+    languages: ["ru"]
+    tags: ["文学", "评论", "文化"]
+    preferred_engines: [yandex, google]
+  - id: dtf_ru
+    type: site
+    value: "site:dtf.ru"
+    languages: ["ru"]
+    tags: ["游戏", "极客", "文化"]
+    preferred_engines: [yandex, google]
+  # Japanese (ja) - Tech & Dev
+  - id: qiita_ja
+    type: site
+    value: "site:qiita.com"
+    languages: ["ja"]
+    tags: ["技术", "编程", "开发者", "社区"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: zenn_ja
+    type: site
+    value: "site:zenn.dev"
+    languages: ["ja"]
+    tags: ["技术", "文章", "开发者"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: teratail_ja
+    type: site
+    value: "site:teratail.com"
+    languages: ["ja"]
+    tags: ["技术", "问答", "编程"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: connpass_ja
+    type: site
+    value: "site:connpass.com"
+    languages: ["ja"]
+    tags: ["技术", "活动", "聚会"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: hatenablog_ja
+    type: site
+    value: "site:hatenablog.com"
+    languages: ["ja"]
+    tags: ["博客", "技术", "生活"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: note_ja
+    type: site
+    value: "site:note.com"
+    languages: ["ja"]
+    tags: ["博客", "文章", "独立创作", "生活"]
+    preferred_engines: ["google", "duckduckgo"]
+
+  # Japanese (ja) - ACG & Otaku
+  - id: pixiv_ja
+    type: site
+    value: "site:pixiv.net"
+    languages: ["ja"]
+    tags: ["插画", "ACG", "同人", "艺术"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: nicovideo_ja
+    type: site
+    value: "site:nicovideo.jp"
+    languages: ["ja"]
+    tags: ["视频", "ACG", "弹幕", "御宅族"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: syosetu_ja
+    type: site
+    value: "site:syosetu.com"
+    languages: ["ja"]
+    tags: ["文学", "轻小说", "网文", "ACG"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: kakuyomu_ja
+    type: site
+    value: "site:kakuyomu.jp"
+    languages: ["ja"]
+    tags: ["文学", "小说", "ACG"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: dlsite_ja
+    type: site
+    value: "site:dlsite.com"
+    languages: ["ja"]
+    tags: ["同人", "ACG", "游戏", "音频"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: surugaya_ja
+    type: site
+    value: "site:suruga-ya.jp"
+    languages: ["ja"]
+    tags: ["购物", "ACG", "二手", "周边"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: mandarake_ja
+    type: site
+    value: "site:mandarake.co.jp"
+    languages: ["ja"]
+    tags: ["购物", "ACG", "二手", "收藏"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: anikore_ja
+    type: site
+    value: "site:anikore.jp"
+    languages: ["ja"]
+    tags: ["动画", "评价", "ACG", "数据库"]
+    preferred_engines: ["google", "duckduckgo"]
+
+  # Japanese (ja) - Daily Life & Forums
+  - id: 5ch_ja
+    type: site
+    value: "site:5ch.net"
+    languages: ["ja"]
+    tags: ["论坛", "匿名", "综合", "杂谈"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: girlschannel_ja
+    type: site
+    value: "site:girlschannel.net"
+    languages: ["ja"]
+    tags: ["论坛", "女性", "生活", "八卦"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: chiebukuro_ja
+    type: site
+    value: "site:chiebukuro.yahoo.co.jp"
+    languages: ["ja"]
+    tags: ["问答", "生活", "综合"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: tabelog_ja
+    type: site
+    value: "site:tabelog.com"
+    languages: ["ja"]
+    tags: ["美食", "评价", "生活"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: cookpad_ja
+    type: site
+    value: "site:cookpad.com"
+    languages: ["ja"]
+    tags: ["美食", "菜谱", "生活"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: ameblo_ja
+    type: site
+    value: "site:ameblo.jp"
+    languages: ["ja"]
+    tags: ["博客", "艺人", "生活", "日记"]
+    preferred_engines: ["google", "duckduckgo"]
+
+  # Japanese (ja) - News & Literature
+  - id: aozora_ja
+    type: site
+    value: "site:aozora.gr.jp"
+    languages: ["ja"]
+    tags: ["文学", "公共领域", "经典", "阅读"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: asahi_ja
+    type: site
+    value: "site:asahi.com"
+    languages: ["ja"]
+    tags: ["新闻", "时政", "社会"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: nikkei_ja
+    type: site
+    value: "site:nikkei.com"
+    languages: ["ja"]
+    tags: ["新闻", "经济", "商业"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: yomiuri_ja
+    type: site
+    value: "site:yomiuri.co.jp"
+    languages: ["ja"]
+    tags: ["新闻", "综合", "时政"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: mainichi_ja
+    type: site
+    value: "site:mainichi.jp"
+    languages: ["ja"]
+    tags: ["新闻", "时政", "社会"]
+    preferred_engines: ["google", "duckduckgo"]
+
+  # Korean (ko) - Tech & Dev
+  - id: okky_ko
+    type: site
+    value: "site:okky.kr"
+    languages: ["ko"]
+    tags: ["技术", "社区", "开发者", "问答"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: velog_ko
+    type: site
+    value: "site:velog.io"
+    languages: ["ko"]
+    tags: ["技术", "博客", "开发者"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: tistory_ko
+    type: site
+    value: "site:tistory.com"
+    languages: ["ko"]
+    tags: ["博客", "技术", "生活", "综合"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: brunch_ko
+    type: site
+    value: "site:brunch.co.kr"
+    languages: ["ko"]
+    tags: ["博客", "写作", "散文", "独立创作"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: kldp_ko
+    type: site
+    value: "site:kldp.org"
+    languages: ["ko"]
+    tags: ["技术", "开源", "Linux", "社区"]
+    preferred_engines: ["google", "duckduckgo"]
+
+  # Korean (ko) - Forums & Communities
+  - id: dcinside_ko
+    type: site
+    value: "site:dcinside.com"
+    languages: ["ko"]
+    tags: ["论坛", "综合", "次文化", "匿名"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: ruliweb_ko
+    type: site
+    value: "site:ruliweb.com"
+    languages: ["ko"]
+    tags: ["游戏", "论坛", "ACG", "主机"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: theqoo_ko
+    type: site
+    value: "site:theqoo.net"
+    languages: ["ko"]
+    tags: ["论坛", "娱乐", "偶像", "生活"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: fmkorea_ko
+    type: site
+    value: "site:fmkorea.com"
+    languages: ["ko"]
+    tags: ["论坛", "体育", "游戏", "综合"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: clien_ko
+    type: site
+    value: "site:clien.net"
+    languages: ["ko"]
+    tags: ["论坛", "数码", "技术", "生活"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: instiz_ko
+    type: site
+    value: "site:instiz.net"
+    languages: ["ko"]
+    tags: ["论坛", "娱乐", "音乐", "八卦"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: ppomppu_ko
+    type: site
+    value: "site:ppomppu.co.kr"
+    languages: ["ko"]
+    tags: ["购物", "论坛", "数码", "生活"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: inven_ko
+    type: site
+    value: "site:inven.co.kr"
+    languages: ["ko"]
+    tags: ["游戏", "电竞", "论坛", "新闻"]
+    preferred_engines: ["google", "duckduckgo"]
+
+  # Korean (ko) - Daily Life, Wiki & Content
+  - id: namuwiki_ko
+    type: site
+    value: "site:namu.wiki"
+    languages: ["ko"]
+    tags: ["百科", "ACG", "综合", "文化"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: kin_naver_ko
+    type: site
+    value: "site:kin.naver.com"
+    languages: ["ko"]
+    tags: ["问答", "生活", "综合"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: comic_naver_ko
+    type: site
+    value: "site:comic.naver.com"
+    languages: ["ko"]
+    tags: ["漫画", "网漫", "娱乐", "连载"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: page_kakao_ko
+    type: site
+    value: "site:page.kakao.com"
+    languages: ["ko"]
+    tags: ["文学", "漫画", "轻小说", "娱乐"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: munpia_ko
+    type: site
+    value: "site:munpia.com"
+    languages: ["ko"]
+    tags: ["文学", "网文", "小说"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: ridibooks_ko
+    type: site
+    value: "site:ridibooks.com"
+    languages: ["ko"]
+    tags: ["电子书", "文学", "漫画", "小说"]
+    preferred_engines: ["google", "duckduckgo"]
+
+  # Traditional Chinese (zh-TW) - Tech & Dev
+  - id: ithome_tw
+    type: site
+    value: "site:ithome.com.tw"
+    languages: ["zh-TW"]
+    tags: ["技术", "新闻", "开发者", "IT"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: techbang_tw
+    type: site
+    value: "site:techbang.com"
+    languages: ["zh-TW"]
+    tags: ["科技", "数码", "评测", "新闻"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: inside_tw
+    type: site
+    value: "site:inside.com.tw"
+    languages: ["zh-TW"]
+    tags: ["科技", "商业", "创业", "新闻"]
+    preferred_engines: ["google", "duckduckgo"]
+
+  # Traditional Chinese (zh-TW) - Forums & Communities
+  - id: ptt_tw
+    type: site
+    value: "site:ptt.cc"
+    languages: ["zh-TW"]
+    tags: ["论坛", "综合", "生活", "讨论"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: dcard_tw
+    type: site
+    value: "site:dcard.tw"
+    languages: ["zh-TW"]
+    tags: ["论坛", "校园", "生活", "年轻态"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: mobile01_tw
+    type: site
+    value: "site:mobile01.com"
+    languages: ["zh-TW"]
+    tags: ["论坛", "数码", "生活", "汽车"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: gamer_tw
+    type: site
+    value: "site:gamer.com.tw"
+    languages: ["zh-TW"]
+    tags: ["游戏", "ACG", "论坛", "动漫"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: komica_tw
+    type: site
+    value: "site:komica.org"
+    languages: ["zh-TW"]
+    tags: ["匿名版", "ACG", "二次元", "迷因"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: disp_tw
+    type: site
+    value: "site:disp.cc"
+    languages: ["zh-TW"]
+    tags: ["论坛", "聚合", "综合", "新闻"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: meteor_tw
+    type: site
+    value: "site:meteor.today"
+    languages: ["zh-TW"]
+    tags: ["论坛", "校园", "高中生", "生活"]
+    preferred_engines: ["google", "duckduckgo"]
+
+  # Traditional Chinese (zh-TW) - Daily Life, Wiki & Literature
+  - id: pixnet_tw
+    type: site
+    value: "site:pixnet.net"
+    languages: ["zh-TW"]
+    tags: ["博客", "美食", "旅游", "生活"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: vocus_tw
+    type: site
+    value: "site:vocus.cc"
+    languages: ["zh-TW"]
+    tags: ["平台", "创作", "文章", "独立思考"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: penana_tw
+    type: site
+    value: "site:penana.com"
+    languages: ["zh-TW"]
+    tags: ["文学", "小说", "创作", "网文"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: mirrorfiction_tw
+    type: site
+    value: "site:mirrorfiction.com"
+    languages: ["zh-TW"]
+    tags: ["文学", "小说", "原创", "影视化"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: thenewslens_tw
+    type: site
+    value: "site:thenewslens.com"
+    languages: ["zh-TW"]
+    tags: ["新闻", "独立媒体", "时政", "社会"]
+    preferred_engines: ["google", "duckduckgo"]
+  - id: engine_marginalia
+    type: engine
+    value: marginalia
+    languages: ["global"]
+    tags: ["独立网页", "纯文本", "去中心化"]
+  - id: engine_wiby
+    type: engine
+    value: wiby
+    languages: ["global"]
+    tags: ["复古", "小众", "早期互联网"]
+  - id: engine_mojeek
+    type: engine
+    value: mojeek
+    languages: ["global"]
+    tags: ["独立索引", "隐私", "无追踪"]
+  - id: engine_millionshort
+    type: engine
+    value: millionshort
+    languages: ["global"]
+    tags: ["过滤大站", "长尾挖掘", "深网搜索"]
+  - id: engine_kagi
+    type: engine
+    value: kagi
+    languages: ["global"]
+    tags: ["高质量", "付费搜索", "去SEO"]
+  - id: engine_brave
+    type: engine
+    value: brave
+    languages: ["global"]
+    tags: ["隐私保护", "独立索引", "开发者友好"]
+  - id: engine_searxng
+    type: engine
+    value: searxng
+    languages: ["global"]
+    tags: ["元搜索", "开源", "隐私"]
+  - id: engine_searchmysite
+    type: engine
+    value: searchmysite
+    languages: ["global"]
+    tags: ["个人博客", "独立网站", "纯人工"]
+  - id: engine_ahmia
+    type: engine
+    value: ahmia
+    languages: ["global"]
+    tags: ["暗网", "洋葱网络", "深网"]
+  - id: engine_indieweb
+    type: engine
+    value: indieweb
+    languages: ["global"]
+    tags: ["去中心化", "微型博客", "独立站点"]
+  - id: fp_discourse
+    type: footprint
+    value: "\"powered by discourse\""
+    languages: ["global"]
+    tags: ["现代论坛", "社区", "开源"]
+    preferred_engines: [google, bing]
+  - id: fp_phpbb
+    type: footprint
+    value: "\"powered by phpbb\""
+    languages: ["global"]
+    tags: ["传统论坛", "极客社区", "老派网络"]
+    preferred_engines: [google, bing]
+  - id: fp_xenforo
+    type: footprint
+    value: "\"powered by xenforo\""
+    languages: ["global"]
+    tags: ["商业论坛", "中大型社区"]
+    preferred_engines: [google, bing]
+  - id: fp_vbulletin
+    type: footprint
+    value: "\"powered by vbulletin\""
+    languages: ["global"]
+    tags: ["老牌论坛", "传统社区", "信息存档"]
+    preferred_engines: [google, bing]
+  - id: fp_flarum
+    type: footprint
+    value: "\"powered by flarum\""
+    languages: ["global"]
+    tags: ["轻量论坛", "现代UI", "新社区"]
+    preferred_engines: [google, bing]
+  - id: fp_mybb
+    type: footprint
+    value: "\"powered by mybb\""
+    languages: ["global"]
+    tags: ["开源论坛", "中小社区"]
+    preferred_engines: [google, bing]
+  - id: fp_smf
+    type: footprint
+    value: "\"powered by smf\""
+    languages: ["global"]
+    tags: ["复古论坛", "传统社区", "老派"]
+    preferred_engines: [google, bing]
+  - id: fp_ghost
+    type: footprint
+    value: "\"powered by ghost\""
+    languages: ["global"]
+    tags: ["独立博客", "创作者", "内容平台"]
+    preferred_engines: [google, duckduckgo]
+  - id: fp_hexo
+    type: footprint
+    value: "\"powered by hexo\""
+    languages: ["global"]
+    tags: ["静态博客", "技术博客", "极客"]
+    preferred_engines: [google, duckduckgo]
+  - id: fp_hugo
+    type: footprint
+    value: "\"powered by hugo\""
+    languages: ["global"]
+    tags: ["静态网站", "技术文章", "高性能"]
+    preferred_engines: [google, duckduckgo]
+  - id: fp_mastodon
+    type: footprint
+    value: "inurl:\"/about/more\" \"mastodon\""
+    languages: ["global"]
+    tags: ["联邦宇宙", "去中心化", "微客"]
+    preferred_engines: [google, brave]
+  - id: fp_mediawiki
+    type: footprint
+    value: "\"powered by mediawiki\""
+    languages: ["global"]
+    tags: ["知识库", "维基", "文档"]
+    preferred_engines: [google, bing]
+  - id: site_lobsters
+    type: site
+    value: "site:lobste.rs"
+    languages: ["en"]
+    tags: ["硬核技术", "系统编程", "开发者"]
+    preferred_engines: [google, brave]
+  - id: site_hn
+    type: site
+    value: "site:news.ycombinator.com"
+    languages: ["en"]
+    tags: ["创业", "前沿技术", "硅谷"]
+    preferred_engines: [google, bing]
+  - id: site_tildes
+    type: site
+    value: "site:tildes.net"
+    languages: ["en"]
+    tags: ["高质量讨论", "去中心化", "极客"]
+    preferred_engines: [google, duckduckgo]
+  - id: site_metafilter
+    type: site
+    value: "site:metafilter.com"
+    languages: ["en"]
+    tags: ["网络老炮", "深度讨论", "文化"]
+    preferred_engines: [google, bing]
+  - id: site_slashdot
+    type: site
+    value: "site:slashdot.org"
+    languages: ["en"]
+    tags: ["IT新闻", "极客文化", "老牌站点"]
+    preferred_engines: [google, bing]
+  - id: site_devto
+    type: site
+    value: "site:dev.to"
+    languages: ["en"]
+    tags: ["前端开发", "初学者友好", "技术社区"]
+    preferred_engines: [google, brave]
+  - id: site_lesswrong
+    type: site
+    value: "site:lesswrong.com"
+    languages: ["en"]
+    tags: ["理性主义", "人工智能", "认知科学"]
+    preferred_engines: [google, brave]
+  - id: site_gwern
+    type: site
+    value: "site:gwern.net"
+    languages: ["en"]
+    tags: ["独立研究", "暗网分析", "数据科学"]
+    preferred_engines: [google, duckduckgo]
+  - id: site_astralcodexten
+    type: site
+    value: "site:astralcodexten.com"
+    languages: ["en"]
+    tags: ["理性派", "时政", "科学哲学"]
+    preferred_engines: [google, brave]
+  - id: site_spacebattles
+    type: site
+    value: "site:forums.spacebattles.com"
+    languages: ["en"]
+    tags: ["科幻小说", "网络文学", "同人"]
+    preferred_engines: [google, bing]
+  - id: site_royalroad
+    type: site
+    value: "site:royalroad.com"
+    languages: ["en"]
+    tags: ["网络文学", "奇幻奇幻", "连载小说"]
+    preferred_engines: [google, bing]
+  - id: site_ao3
+    type: site
+    value: "site:archiveofourown.org"
+    languages: ["en"]
+    tags: ["同人小说", "流行文化", "女性向"]
+    preferred_engines: [google, duckduckgo]
+  - id: site_goodreads
+    type: site
+    value: "site:goodreads.com"
+    languages: ["en"]
+    tags: ["书籍评论", "阅读推荐", "文学"]
+    preferred_engines: [google, bing]
+  - id: site_neocities
+    type: site
+    value: "site:neocities.org"
+    languages: ["en"]
+    tags: ["复古网页", "独立艺术", "网络怀旧"]
+    preferred_engines: [google, duckduckgo]
+  - id: site_bearblog
+    type: site
+    value: "site:bearblog.dev"
+    languages: ["en"]
+    tags: ["极简博客", "纯文本", "独立写作"]
+    preferred_engines: [google, brave]
+  - id: site_dribbble
+    type: site
+    value: "site:dribbble.com"
+    languages: ["en"]
+    tags: ["UI设计", "视觉艺术", "灵感"]
+    preferred_engines: [google, bing]
+  - id: site_artstation
+    type: site
+    value: "site:artstation.com"
+    languages: ["en"]
+    tags: ["概念艺术", "CG建模", "插画"]
+    preferred_engines: [google, bing]
+  - id: site_rateyourmusic
+    type: site
+    value: "site:rateyourmusic.com"
+    languages: ["en"]
+    tags: ["音乐评论", "深度乐迷", "小众音乐"]
+    preferred_engines: [google, brave]
+  - id: site_headfi
+    type: site
+    value: "site:head-fi.org"
+    languages: ["en"]
+    tags: ["耳机音频", "发烧友", "硬核评测"]
+    preferred_engines: [google, bing]
+  - id: site_modwiggler
+    type: site
+    value: "site:modwiggler.com"
+    languages: ["en"]
+    tags: ["合成器", "电子音乐", "乐器设备"]
+    preferred_engines: [google, duckduckgo]
+  - id: site_myanimelist
+    type: site
+    value: "site:myanimelist.net"
+    languages: ["en"]
+    tags: ["日本动画", "宅文化", "评分社区"]
+    preferred_engines: [google, bing]
+  - id: site_vndb
+    type: site
+    value: "site:vndb.org"
+    languages: ["en"]
+    tags: ["视觉小说", "二次元", "游戏数据"]
+    preferred_engines: [google, brave]
+  - id: site_gbatemp
+    type: site
+    value: "site:gbatemp.net"
+    languages: ["en"]
+    tags: ["掌机破解", "游戏硬件", "极客"]
+    preferred_engines: [google, bing]
+  - id: site_igdb
+    type: site
+    value: "site:igdb.com"
+    languages: ["en"]
+    tags: ["游戏资料", "独立游戏", "元数据"]
+    preferred_engines: [google, duckduckgo]
+  - id: site_backloggd
+    type: site
+    value: "site:backloggd.com"
+    languages: ["en"]
+    tags: ["游戏日志", "玩家评论", "流行文化"]
+    preferred_engines: [google, brave]
+  - id: site_letterboxd
+    type: site
+    value: "site:letterboxd.com"
+    languages: ["en"]
+    tags: ["电影迷", "影评", "独立电影"]
+    preferred_engines: [google, bing]
+  - id: site_boardgamegeek
+    type: site
+    value: "site:boardgamegeek.com"
+    languages: ["en"]
+    tags: ["桌游", "极客社区", "策略游戏"]
+    preferred_engines: [google, duckduckgo]
+  - id: site_arstechnica
+    type: site
+    value: "site:arstechnica.com"
+    languages: ["en"]
+    tags: ["硬核科技", "IT分析", "深度报道"]
+    preferred_engines: [google, bing]
+  - id: site_xda
+    type: site
+    value: "site:xda-developers.com"
+    languages: ["en"]
+    tags: ["安卓破解", "手机刷机", "移动开发"]
+    preferred_engines: [google, brave]
+  - id: site_overclock
+    type: site
+    value: "site:overclock.net"
+    languages: ["en"]
+    tags: ["电脑超频", "PC硬件", "DIY发烧友"]
+    preferred_engines: [google, duckduckgo]
+  - id: uol_com_br_pt
+    type: site
+    value: "site:uol.com.br"
+    languages: ["pt"]
+    tags: ["新闻", "门户", "综合"]
+  - id: globo_com_pt
+    type: site
+    value: "site:globo.com"
+    languages: ["pt"]
+    tags: ["新闻", "媒体", "综合"]
+  - id: sapo_pt_pt
+    type: site
+    value: "site:sapo.pt"
+    languages: ["pt"]
+    tags: ["新闻", "葡萄牙", "门户"]
+  - id: tecmundo_com_br_pt
+    type: site
+    value: "site:tecmundo.com.br"
+    languages: ["pt"]
+    tags: ["技术", "数码", "资讯"]
+  - id: olhardigital_com_br_pt
+    type: site
+    value: "site:olhardigital.com.br"
+    languages: ["pt"]
+    tags: ["技术", "科学", "互联网"]
+  - id: omelete_com_br_pt
+    type: site
+    value: "site:omelete.com.br"
+    languages: ["pt"]
+    tags: ["流行文化", "影视", "极客"]
+  - id: adorocinema_com_pt
+    type: site
+    value: "site:adorocinema.com"
+    languages: ["pt"]
+    tags: ["电影", "评论", "娱乐"]
+  - id: techtudo_com_br_pt
+    type: site
+    value: "site:techtudo.com.br"
+    languages: ["pt"]
+    tags: ["技术", "软硬件", "教程"]
+  - id: estadao_com_br_pt
+    type: site
+    value: "site:estadao.com.br"
+    languages: ["pt"]
+    tags: ["新闻", "时政", "社会"]
+  - id: folha_uol_com_br_pt
+    type: site
+    value: "site:folha.uol.com.br"
+    languages: ["pt"]
+    tags: ["新闻", "深度", "时政"]
+  - id: publico_pt_pt
+    type: site
+    value: "site:publico.pt"
+    languages: ["pt"]
+    tags: ["新闻", "葡萄牙", "时政"]
+  - id: jn_pt_pt
+    type: site
+    value: "site:jn.pt"
+    languages: ["pt"]
+    tags: ["新闻", "葡萄牙", "社会"]
+  - id: observador_pt_pt
+    type: site
+    value: "site:observador.pt"
+    languages: ["pt"]
+    tags: ["新闻", "深度报道", "葡萄牙"]
+  - id: adrenaline_com_br_pt
+    type: site
+    value: "site:adrenaline.com.br"
+    languages: ["pt"]
+    tags: ["游戏", "硬件", "技术"]
+  - id: canaltech_com_br_pt
+    type: site
+    value: "site:canaltech.com.br"
+    languages: ["pt"]
+    tags: ["技术", "数码", "极客"]
+  - id: kompas_com_id
+    type: site
+    value: "site:kompas.com"
+    languages: ["id"]
+    tags: ["新闻", "门户", "综合"]
+  - id: detik_com_id
+    type: site
+    value: "site:detik.com"
+    languages: ["id"]
+    tags: ["新闻", "突发", "社会"]
+  - id: tribunnews_com_id
+    type: site
+    value: "site:tribunnews.com"
+    languages: ["id"]
+    tags: ["新闻", "本地", "综合"]
+  - id: liputan6_com_id
+    type: site
+    value: "site:liputan6.com"
+    languages: ["id"]
+    tags: ["新闻", "生活", "娱乐"]
+  - id: kaskus_co_id_id
+    type: site
+    value: "site:kaskus.co.id"
+    languages: ["id"]
+    tags: ["论坛", "综合", "社区"]
+  - id: idntimes_com_id
+    type: site
+    value: "site:idntimes.com"
+    languages: ["id"]
+    tags: ["新闻", "生活方式", "青年"]
+  - id: hipwee_com_id
+    type: site
+    value: "site:hipwee.com"
+    languages: ["id"]
+    tags: ["青年", "生活方式", "文化"]
+  - id: jalantikus_com_id
+    type: site
+    value: "site:jalantikus.com"
+    languages: ["id"]
+    tags: ["技术", "应用", "教程"]
+  - id: dailysocial_id_id
+    type: site
+    value: "site:dailysocial.id"
+    languages: ["id"]
+    tags: ["技术", "创投", "商业"]
+  - id: id_techinasia_com_id
+    type: site
+    value: "site:id.techinasia.com"
+    languages: ["id"]
+    tags: ["技术", "创业", "亚洲"]
+  - id: mojok_co_id
+    type: site
+    value: "site:mojok.co"
+    languages: ["id"]
+    tags: ["评论", "幽默", "文化"]
+  - id: kompasiana_com_id
+    type: site
+    value: "site:kompasiana.com"
+    languages: ["id"]
+    tags: ["博客", "观点", "创作者"]
+  - id: tekno_kompas_com_id
+    type: site
+    value: "site:tekno.kompas.com"
+    languages: ["id"]
+    tags: ["技术", "数码", "资讯"]
+  - id: suara_com_id
+    type: site
+    value: "site:suara.com"
+    languages: ["id"]
+    tags: ["新闻", "社会", "娱乐"]
+  - id: merdeka_com_id
+    type: site
+    value: "site:merdeka.com"
+    languages: ["id"]
+    tags: ["新闻", "时政", "综合"]
+  - id: vnexpress_net_vi
+    type: site
+    value: "site:vnexpress.net"
+    languages: ["vi"]
+    tags: ["新闻", "权威", "综合"]
+  - id: tuoitre_vn_vi
+    type: site
+    value: "site:tuoitre.vn"
+    languages: ["vi"]
+    tags: ["新闻", "时政", "社会"]
+  - id: thanhnien_vn_vi
+    type: site
+    value: "site:thanhnien.vn"
+    languages: ["vi"]
+    tags: ["新闻", "青年", "生活"]
+  - id: znews_vn_vi
+    type: site
+    value: "site:znews.vn"
+    languages: ["vi"]
+    tags: ["新闻", "生活方式", "娱乐"]
+  - id: tinhte_vn_vi
+    type: site
+    value: "site:tinhte.vn"
+    languages: ["vi"]
+    tags: ["技术", "论坛", "极客"]
+  - id: voz_vn_vi
+    type: site
+    value: "site:voz.vn"
+    languages: ["vi"]
+    tags: ["论坛", "综合", "社区"]
+  - id: spiderum_com_vi
+    type: site
+    value: "site:spiderum.com"
+    languages: ["vi"]
+    tags: ["博客", "观点", "深度探讨"]
+  - id: kenh14_vn_vi
+    type: site
+    value: "site:kenh14.vn"
+    languages: ["vi"]
+    tags: ["青年", "娱乐", "流行文化"]
+  - id: genk_vn_vi
+    type: site
+    value: "site:genk.vn"
+    languages: ["vi"]
+    tags: ["技术", "极客", "互联网"]
+  - id: ictnews_vietnamnet_vn_vi
+    type: site
+    value: "site:ictnews.vietnamnet.vn"
+    languages: ["vi"]
+    tags: ["技术", "通信", "商业"]
+  - id: viettimes_vn_vi
+    type: site
+    value: "site:viettimes.vn"
+    languages: ["vi"]
+    tags: ["技术", "新闻", "综合"]
+  - id: thethao247_vn_vi
+    type: site
+    value: "site:thethao247.vn"
+    languages: ["vi"]
+    tags: ["体育", "足球", "资讯"]
+  - id: webtretho_com_vi
+    type: site
+    value: "site:webtretho.com"
+    languages: ["vi"]
+    tags: ["论坛", "女性", "家庭"]
+  - id: otofun_net_vi
+    type: site
+    value: "site:otofun.net"
+    languages: ["vi"]
+    tags: ["汽车", "论坛", "生活"]
+  - id: gamek_vn_vi
+    type: site
+    value: "site:gamek.vn"
+    languages: ["vi"]
+    tags: ["游戏", "电竞", "娱乐"]
+  - id: pantip_com_th
+    type: site
+    value: "site:pantip.com"
+    languages: ["th"]
+    tags: ["论坛", "社区", "问答"]
+  - id: sanook_com_th
+    type: site
+    value: "site:sanook.com"
+    languages: ["th"]
+    tags: ["门户", "新闻", "娱乐"]
+  - id: thairath_co_th_th
+    type: site
+    value: "site:thairath.co.th"
+    languages: ["th"]
+    tags: ["新闻", "大众", "社会"]
+  - id: matichon_co_th_th
+    type: site
+    value: "site:matichon.co.th"
+    languages: ["th"]
+    tags: ["新闻", "时政", "深度"]
+  - id: blognone_com_th
+    type: site
+    value: "site:blognone.com"
+    languages: ["th"]
+    tags: ["技术", "极客", "IT"]
+  - id: dek_d_com_th
+    type: site
+    value: "site:dek-d.com"
+    languages: ["th"]
+    tags: ["青年", "教育", "文学"]
+  - id: kapook_com_th
+    type: site
+    value: "site:kapook.com"
+    languages: ["th"]
+    tags: ["门户", "生活", "娱乐"]
+  - id: khaosod_co_th_th
+    type: site
+    value: "site:khaosod.co.th"
+    languages: ["th"]
+    tags: ["新闻", "本地", "突发"]
+  - id: thestandard_co_th
+    type: site
+    value: "site:thestandard.co"
+    languages: ["th"]
+    tags: ["新闻", "深度", "播客"]
+  - id: droidsans_com_th
+    type: site
+    value: "site:droidsans.com"
+    languages: ["th"]
+    tags: ["技术", "数码", "移动端"]
+  - id: readawrite_com_th
+    type: site
+    value: "site:readawrite.com"
+    languages: ["th"]
+    tags: ["文学", "小说", "创作"]
+  - id: joylada_com_th
+    type: site
+    value: "site:joylada.com"
+    languages: ["th"]
+    tags: ["文学", "聊天体小说", "青年"]
+  - id: wongnai_com_th
+    type: site
+    value: "site:wongnai.com"
+    languages: ["th"]
+    tags: ["美食", "评论", "生活方式"]
+  - id: beartai_com_th
+    type: site
+    value: "site:beartai.com"
+    languages: ["th"]
+    tags: ["技术", "生活方式", "数码"]
+  - id: bhaskar_com_hi
+    type: site
+    value: "site:bhaskar.com"
+    languages: ["hi"]
+    tags: ["新闻", "印地语", "综合"]
+  - id: jagran_com_hi
+    type: site
+    value: "site:jagran.com"
+    languages: ["hi"]
+    tags: ["新闻", "时政", "社会"]
+  - id: amarujala_com_hi
+    type: site
+    value: "site:amarujala.com"
+    languages: ["hi"]
+    tags: ["新闻", "本地", "综合"]
+  - id: navbharattimes_indiatimes_com_hi
+    type: site
+    value: "site:navbharattimes.indiatimes.com"
+    languages: ["hi"]
+    tags: ["新闻", "商业", "生活"]
+  - id: aajtak_in_hi
+    type: site
+    value: "site:aajtak.in"
+    languages: ["hi"]
+    tags: ["新闻", "突发", "视频"]
+  - id: livehindustan_com_hi
+    type: site
+    value: "site:livehindustan.com"
+    languages: ["hi"]
+    tags: ["新闻", "社会", "时政"]
+  - id: hindi_news18_com_hi
+    type: site
+    value: "site:hindi.news18.com"
+    languages: ["hi"]
+    tags: ["新闻", "综合", "媒体"]
+  - id: zeenews_india_com_hindi_hi
+    type: site
+    value: "site:zeenews.india.com/hindi"
+    languages: ["hi"]
+    tags: ["新闻", "国际", "国内"]
+  - id: pratilipi_com_hi
+    type: site
+    value: "site:pratilipi.com"
+    languages: ["hi"]
+    tags: ["文学", "小说", "创作者"]
+  - id: hindi_webdunia_com_hi
+    type: site
+    value: "site:hindi.webdunia.com"
+    languages: ["hi"]
+    tags: ["门户", "宗教", "生活"]
+  - id: hindi_gizbot_com_hi
+    type: site
+    value: "site:hindi.gizbot.com"
+    languages: ["hi"]
+    tags: ["技术", "数码", "硬件"]
+  - id: digit_in_hi_hi
+    type: site
+    value: "site:digit.in/hi"
+    languages: ["hi"]
+    tags: ["技术", "评测", "极客"]
+  - id: patrika_com_hi
+    type: site
+    value: "site:patrika.com"
+    languages: ["hi"]
+    tags: ["新闻", "时政", "社会"]
+  - id: punjabkesari_in_hi
+    type: site
+    value: "site:punjabkesari.in"
+    languages: ["hi"]
+    tags: ["新闻", "本地", "旁遮普"]
+  - id: jansatta_com_hi
+    type: site
+    value: "site:jansatta.com"
+    languages: ["hi"]
+    tags: ["新闻", "观点", "深度"]
+  - id: hurriyet_com_tr_tr
+    type: site
+    value: "site:hurriyet.com.tr"
+    languages: ["tr"]
+    tags: ["新闻", "大众", "综合"]
+  - id: milliyet_com_tr_tr
+    type: site
+    value: "site:milliyet.com.tr"
+    languages: ["tr"]
+    tags: ["新闻", "社会", "体育"]
+  - id: sozcu_com_tr_tr
+    type: site
+    value: "site:sozcu.com.tr"
+    languages: ["tr"]
+    tags: ["新闻", "独立", "时政"]
+  - id: haberturk_com_tr
+    type: site
+    value: "site:haberturk.com"
+    languages: ["tr"]
+    tags: ["新闻", "深度", "经济"]
+  - id: sabah_com_tr_tr
+    type: site
+    value: "site:sabah.com.tr"
+    languages: ["tr"]
+    tags: ["新闻", "综合", "生活"]
+  - id: eksisozluk_com_tr
+    type: site
+    value: "site:eksisozluk.com"
+    languages: ["tr"]
+    tags: ["论坛", "词典", "社区"]
+  - id: donanimhaber_com_tr
+    type: site
+    value: "site:donanimhaber.com"
+    languages: ["tr"]
+    tags: ["技术", "硬件", "论坛"]
+  - id: shiftdelete_net_tr
+    type: site
+    value: "site:shiftdelete.net"
+    languages: ["tr"]
+    tags: ["技术", "互联网", "数码"]
+  - id: webtekno_com_tr
+    type: site
+    value: "site:webtekno.com"
+    languages: ["tr"]
+    tags: ["技术", "极客", "娱乐"]
+  - id: onedio_com_tr
+    type: site
+    value: "site:onedio.com"
+    languages: ["tr"]
+    tags: ["娱乐", "流行文化", "社交"]
+  - id: r10_net_tr
+    type: site
+    value: "site:r10.net"
+    languages: ["tr"]
+    tags: ["论坛", "站长", "技术"]
+  - id: technopat_net_tr
+    type: site
+    value: "site:technopat.net"
+    languages: ["tr"]
+    tags: ["技术", "硬件", "教程"]
+  - id: chip_com_tr_tr
+    type: site
+    value: "site:chip.com.tr"
+    languages: ["tr"]
+    tags: ["技术", "软件", "数码"]
+  - id: 1000kitap_com_tr
+    type: site
+    value: "site:1000kitap.com"
+    languages: ["tr"]
+    tags: ["文学", "书评", "社交"]
+  - id: kizlarsoruyor_com_tr
+    type: site
+    value: "site:kizlarsoruyor.com"
+    languages: ["tr"]
+    tags: ["问答", "社区", "生活"]
+  - id: aljazeera_net_ar
+    type: site
+    value: "site:aljazeera.net"
+    languages: ["ar"]
+    tags: ["新闻", "国际", "深度"]
+  - id: alarabiya_net_ar
+    type: site
+    value: "site:alarabiya.net"
+    languages: ["ar"]
+    tags: ["新闻", "中东", "视频"]
+  - id: kooora_com_ar
+    type: site
+    value: "site:kooora.com"
+    languages: ["ar"]
+    tags: ["体育", "足球", "资讯"]
+  - id: youm7_com_ar
+    type: site
+    value: "site:youm7.com"
+    languages: ["ar"]
+    tags: ["新闻", "埃及", "大众"]
+  - id: alriyadh_com_ar
+    type: site
+    value: "site:alriyadh.com"
+    languages: ["ar"]
+    tags: ["新闻", "沙特", "综合"]
+  - id: mawdoo3_com_ar
+    type: site
+    value: "site:mawdoo3.com"
+    languages: ["ar"]
+    tags: ["知识", "百科", "生活"]
+  - id: aitnews_com_ar
+    type: site
+    value: "site:aitnews.com"
+    languages: ["ar"]
+    tags: ["技术", "IT", "互联网"]
+  - id: tech_wd_com_ar
+    type: site
+    value: "site:tech-wd.com"
+    languages: ["ar"]
+    tags: ["技术", "商业", "创投"]
+  - id: arabhardware_net_ar
+    type: site
+    value: "site:arabhardware.net"
+    languages: ["ar"]
+    tags: ["技术", "硬件", "极客"]
+  - id: arageek_com_ar
+    type: site
+    value: "site:arageek.com"
+    languages: ["ar"]
+    tags: ["技术", "极客", "文化"]
+  - id: sasapost_com_ar
+    type: site
+    value: "site:sasapost.com"
+    languages: ["ar"]
+    tags: ["新闻", "观点", "深度"]
+  - id: raseef22_net_ar
+    type: site
+    value: "site:raseef22.net"
+    languages: ["ar"]
+    tags: ["文化", "社会", "深度"]
+  - id: almrsal_com_ar
+    type: site
+    value: "site:almrsal.com"
+    languages: ["ar"]
+    tags: ["综合", "百科", "生活"]
+  - id: thaqafnafsak_com_ar
+    type: site
+    value: "site:thaqafnafsak.com"
+    languages: ["ar"]
+    tags: ["健康", "生活方式", "知识"]
+  - id: abjjad_com_ar
+    type: site
+    value: "site:abjjad.com"
+    languages: ["ar"]
+    tags: ["文学", "书评", "阅读"]
+  - id: hindawi_org_ar
+    type: site
+    value: "site:hindawi.org"
+    languages: ["ar"]
+    tags: ["文学", "免费书籍", "教育"]
+  - id: onet_pl_pl
+    type: site
+    value: "site:onet.pl"
+    languages: ["pl"]
+    tags: ["门户", "新闻", "综合"]
+  - id: wp_pl_pl
+    type: site
+    value: "site:wp.pl"
+    languages: ["pl"]
+    tags: ["门户", "新闻", "生活"]
+  - id: interia_pl_pl
+    type: site
+    value: "site:interia.pl"
+    languages: ["pl"]
+    tags: ["门户", "娱乐", "新闻"]
+  - id: gazeta_pl_pl
+    type: site
+    value: "site:gazeta.pl"
+    languages: ["pl"]
+    tags: ["门户", "时政", "社会"]
+  - id: wykop_pl_pl
+    type: site
+    value: "site:wykop.pl"
+    languages: ["pl"]
+    tags: ["社区", "社交新闻", "讨论"]
+  - id: elektroda_pl_pl
+    type: site
+    value: "site:elektroda.pl"
+    languages: ["pl"]
+    tags: ["技术", "电子", "论坛"]
+  - id: spidersweb_pl_pl
+    type: site
+    value: "site:spidersweb.pl"
+    languages: ["pl"]
+    tags: ["技术", "极客", "商业"]
+  - id: antyweb_pl_pl
+    type: site
+    value: "site:antyweb.pl"
+    languages: ["pl"]
+    tags: ["技术", "初创", "互联网"]
+  - id: purepc_pl_pl
+    type: site
+    value: "site:purepc.pl"
+    languages: ["pl"]
+    tags: ["技术", "硬件", "评测"]
+  - id: benchmark_pl_pl
+    type: site
+    value: "site:benchmark.pl"
+    languages: ["pl"]
+    tags: ["技术", "数码", "硬件"]
+  - id: gry_online_pl_pl
+    type: site
+    value: "site:gry-online.pl"
+    languages: ["pl"]
+    tags: ["游戏", "资讯", "社区"]
+  - id: lubimyczytac_pl_pl
+    type: site
+    value: "site:lubimyczytac.pl"
+    languages: ["pl"]
+    tags: ["文学", "书评", "社区"]
+  - id: filmweb_pl_pl
+    type: site
+    value: "site:filmweb.pl"
+    languages: ["pl"]
+    tags: ["影视", "评论", "娱乐"]
+  - id: naekranie_pl_pl
+    type: site
+    value: "site:naekranie.pl"
+    languages: ["pl"]
+    tags: ["流行文化", "影视", "极客"]
+  - id: dobreprogramy_pl_pl
+    type: site
+    value: "site:dobreprogramy.pl"
+    languages: ["pl"]
+    tags: ["技术", "软件", "IT"]
+  - id: nu_nl_nl
+    type: site
+    value: "site:nu.nl"
+    languages: ["nl"]
+    tags: ["新闻", "突发", "综合"]
+  - id: ad_nl_nl
+    type: site
+    value: "site:ad.nl"
+    languages: ["nl"]
+    tags: ["新闻", "社会", "体育"]
+  - id: telegraaf_nl_nl
+    type: site
+    value: "site:telegraaf.nl"
+    languages: ["nl"]
+    tags: ["新闻", "大众", "金融"]
+  - id: nos_nl_nl
+    type: site
+    value: "site:nos.nl"
+    languages: ["nl"]
+    tags: ["新闻", "公共广播", "权威"]
+  - id: volkskrant_nl_nl
+    type: site
+    value: "site:volkskrant.nl"
+    languages: ["nl"]
+    tags: ["新闻", "深度", "文化"]
+  - id: tweakers_net_nl
+    type: site
+    value: "site:tweakers.net"
+    languages: ["nl"]
+    tags: ["技术", "社区", "极客"]
+  - id: fok_nl_nl
+    type: site
+    value: "site:fok.nl"
+    languages: ["nl"]
+    tags: ["论坛", "新闻", "社区"]
+  - id: dumpert_nl_nl
+    type: site
+    value: "site:dumpert.nl"
+    languages: ["nl"]
+    tags: ["娱乐", "视频", "流行文化"]
+  - id: hardware_info_nl
+    type: site
+    value: "site:hardware.info"
+    languages: ["nl"]
+    tags: ["技术", "硬件", "评测"]
+  - id: bright_nl_nl
+    type: site
+    value: "site:bright.nl"
+    languages: ["nl"]
+    tags: ["技术", "生活方式", "数码"]
+  - id: frankwatching_com_nl
+    type: site
+    value: "site:frankwatching.com"
+    languages: ["nl"]
+    tags: ["营销", "数字媒体", "商业"]
+  - id: scholieren_com_nl
+    type: site
+    value: "site:scholieren.com"
+    languages: ["nl"]
+    tags: ["教育", "青年", "社区"]
+  - id: hebban_nl_nl
+    type: site
+    value: "site:hebban.nl"
+    languages: ["nl"]
+    tags: ["文学", "读者社区", "书评"]
+  - id: moviemeter_nl_nl
+    type: site
+    value: "site:moviemeter.nl"
+    languages: ["nl"]
+    tags: ["影视", "评论", "社区"]
+  - id: gamer_nl_nl
+    type: site
+    value: "site:gamer.nl"
+    languages: ["nl"]
+    tags: ["游戏", "资讯", "评测"]
+  - id: aftonbladet_se_sv
+    type: site
+    value: "site:aftonbladet.se"
+    languages: ["sv"]
+    tags: ["新闻", "大众", "突发"]
+  - id: expressen_se_sv
+    type: site
+    value: "site:expressen.se"
+    languages: ["sv"]
+    tags: ["新闻", "娱乐", "社会"]
+  - id: dn_se_sv
+    type: site
+    value: "site:dn.se"
+    languages: ["sv"]
+    tags: ["新闻", "深度", "文化"]
+  - id: svd_se_sv
+    type: site
+    value: "site:svd.se"
+    languages: ["sv"]
+    tags: ["新闻", "商业", "时政"]
+  - id: svt_se_sv
+    type: site
+    value: "site:svt.se"
+    languages: ["sv"]
+    tags: ["新闻", "公共广播", "权威"]
+  - id: flashback_org_sv
+    type: site
+    value: "site:flashback.org"
+    languages: ["sv"]
+    tags: ["论坛", "自由言论", "社区"]
+  - id: sweclockers_com_sv
+    type: site
+    value: "site:sweclockers.com"
+    languages: ["sv"]
+    tags: ["技术", "硬件", "论坛"]
+  - id: fz_se_sv
+    type: site
+    value: "site:fz.se"
+    languages: ["sv"]
+    tags: ["游戏", "极客", "资讯"]
+  - id: feber_se_sv
+    type: site
+    value: "site:feber.se"
+    languages: ["sv"]
+    tags: ["技术", "生活方式", "极客"]
+  - id: swedroid_se_sv
+    type: site
+    value: "site:swedroid.se"
+    languages: ["sv"]
+    tags: ["技术", "移动端", "安卓"]
+  - id: nyteknik_se_sv
+    type: site
+    value: "site:nyteknik.se"
+    languages: ["sv"]
+    tags: ["技术", "工程", "科学"]
+  - id: familjeliv_se_sv
+    type: site
+    value: "site:familjeliv.se"
+    languages: ["sv"]
+    tags: ["论坛", "家庭", "生活"]
+  - id: boktugg_se_sv
+    type: site
+    value: "site:boktugg.se"
+    languages: ["sv"]
+    tags: ["文学", "出版", "新闻"]
+  - id: minhembio_com_sv
+    type: site
+    value: "site:minhembio.com"
+    languages: ["sv"]
+    tags: ["技术", "影音", "论坛"]
+  - id: teknikveckan_se_sv
+    type: site
+    value: "site:teknikveckan.se"
+    languages: ["sv"]
+    tags: ["技术", "苹果", "数码"]
+  # Simplified Chinese (zh-CN)
+  - id: v2ex_cn
+    type: site
+    value: "site:v2ex.com"
+    languages: ["zh-CN"]
+    tags: ["技术", "程序员", "极客社区", "生活"]
+    preferred_engines: ["bing", "google"]
+  - id: juejin_cn
+    type: site
+    value: "site:juejin.cn"
+    languages: ["zh-CN"]
+    tags: ["技术", "前端", "开发者", "教程"]
+    preferred_engines: ["bing", "google"]
+  - id: zhihu_cn
+    type: site
+    value: "site:zhihu.com"
+    languages: ["zh-CN"]
+    tags: ["问答", "深度", "综合", "观点"]
+    preferred_engines: ["bing", "google"]
+  - id: douban_cn
+    type: site
+    value: "site:douban.com"
+    languages: ["zh-CN"]
+    tags: ["书评", "影评", "文化", "小众"]
+    preferred_engines: ["bing", "google"]
+  - id: nga_cn
+    type: site
+    value: "site:nga.cn"
+    languages: ["zh-CN"]
+    tags: ["游戏", "硬核", "综合论坛", "电竞"]
+    preferred_engines: ["bing", "google"]
+  - id: bilibili_cn
+    type: site
+    value: "site:bilibili.com"
+    languages: ["zh-CN"]
+    tags: ["视频", "ACG", "二次元", "弹幕"]
+    preferred_engines: ["bing", "google"]
+  - id: sspai_cn
+    type: site
+    value: "site:sspai.com"
+    languages: ["zh-CN"]
+    tags: ["数码", "生产力", "独立软件", "极客"]
+    preferred_engines: ["bing", "google"]
+  - id: hupu_cn
+    type: site
+    value: "site:hupu.com"
+    languages: ["zh-CN"]
+    tags: ["体育", "篮球", "直男社区", "综合"]
+    preferred_engines: ["bing", "google"]
+  - id: cnblogs_cn
+    type: site
+    value: "site:cnblogs.com"
+    languages: ["zh-CN"]
+    tags: ["技术", "博客", "开发者"]
+    preferred_engines: ["bing", "google"]
+  - id: oschina_cn
+    type: site
+    value: "site:oschina.net"
+    languages: ["zh-CN"]
+    tags: ["技术", "开源软件", "社区"]
+    preferred_engines: ["bing", "google"]
+  - id: coolapk_cn
+    type: site
+    value: "site:coolapk.com"
+    languages: ["zh-CN"]
+    tags: ["安卓", "数码", "极客", "应用"]
+    preferred_engines: ["bing", "google"]
+  - id: gcores_cn
+    type: site
+    value: "site:gcores.com"
+    languages: ["zh-CN"]
+    tags: ["游戏文化", "播客", "深度", "极客"]
+    preferred_engines: ["bing", "google"]
+  - id: yystv_cn
+    type: site
+    value: "site:yystv.cn"
+    languages: ["zh-CN"]
+    tags: ["游戏历史", "游戏研究", "流行文化"]
+    preferred_engines: ["bing", "google"]
+  - id: tieba_cn
+    type: site
+    value: "site:tieba.baidu.com"
+    languages: ["zh-CN"]
+    tags: ["社区", "亚文化", "综合", "下沉市场"]
+    preferred_engines: ["baidu", "bing"]
+  - id: xueqiu_cn
+    type: site
+    value: "site:xueqiu.com"
+    languages: ["zh-CN"]
+    tags: ["金融", "投资", "商业分析"]
+    preferred_engines: ["bing", "google"]
+
+  # Russian (ru) Supplements
+  - id: 4pda_ru
+    type: site
+    value: "site:4pda.to"
+    languages: ["ru"]
+    tags: ["数码", "极客", "破解", "安卓"]
+    preferred_engines: ["yandex"]
+  - id: pikabu_ru
+    type: site
+    value: "site:pikabu.ru"
+    languages: ["ru"]
+    tags: ["综合", "社区", "泛娱乐", "社会"]
+    preferred_engines: ["yandex"]
+  - id: vk_ru
+    type: site
+    value: "site:vk.com"
+    languages: ["ru"]
+    tags: ["社交", "综合", "群组", "本地"]
+    preferred_engines: ["yandex"]
+  - id: livelib_ru
+    type: site
+    value: "site:livelib.ru"
+    languages: ["ru"]
+    tags: ["文学", "书评", "阅读社区"]
+    preferred_engines: ["yandex"]
+  - id: vc_ru
+    type: site
+    value: "site:vc.ru"
+    languages: ["ru"]
+    tags: ["创投", "商业", "科技", "互联网"]
+    preferred_engines: ["yandex"]
+  - id: ixbt_ru
+    type: site
+    value: "site:ixbt.com"
+    languages: ["ru"]
+    tags: ["硬件", "数码", "评测", "极客"]
+    preferred_engines: ["yandex"]
+  - id: 3dnews_ru
+    type: site
+    value: "site:3dnews.ru"
+    languages: ["ru"]
+    tags: ["科技新闻", "硬件", "IT"]
+    preferred_engines: ["yandex"]
+  - id: cyber_sports_ru
+    type: site
+    value: "site:cyber.sports.ru"
+    languages: ["ru"]
+    tags: ["电竞", "游戏", "体育"]
+    preferred_engines: ["yandex"]
+  - id: stopgame_ru
+    type: site
+    value: "site:stopgame.ru"
+    languages: ["ru"]
+    tags: ["游戏", "评测", "娱乐"]
+    preferred_engines: ["yandex"]
+  - id: kanobu_ru
+    type: site
+    value: "site:kanobu.ru"
+    languages: ["ru"]
+    tags: ["极客文化", "影视", "游戏"]
+    preferred_engines: ["yandex"]
+  - id: drom_ru
+    type: site
+    value: "site:drom.ru"
+    languages: ["ru"]
+    tags: ["汽车", "车友社区", "生活"]
+    preferred_engines: ["yandex"]
+  - id: rutracker_ru
+    type: site
+    value: "site:rutracker.org"
+    languages: ["ru"]
+    tags: ["资源", "开源", "极客", "分享"]
+    preferred_engines: ["yandex"]
+  - id: yaplakal_ru
+    type: site
+    value: "site:yaplakal.com"
+    languages: ["ru"]
+    tags: ["幽默", "社区", "综合", "娱乐"]
+    preferred_engines: ["yandex"]
+  - id: livejournal_ru
+    type: site
+    value: "site:livejournal.com"
+    languages: ["ru"]
+    tags: ["博客", "深度长文", "时政", "文化"]
+    preferred_engines: ["yandex", "google"]
+  - id: drive2_ru
+    type: site
+    value: "site:drive2.ru"
+    languages: ["ru"]
+    tags: ["汽车改装", "车友", "硬核"]
+    preferred_engines: ["yandex"]
+  # Tech & IT
+  - id: ru_habr
+    type: site
+    value: "site:habr.com"
+    languages: ["ru"]
+    tags: ["技术", "极客", "开发"]
+    preferred_engines: [yandex, google]
+  - id: ru_4pda
+    type: site
+    value: "site:4pda.to"
+    languages: ["ru"]
+    tags: ["移动设备", "刷机", "极客"]
+    preferred_engines: [yandex, google]
+  - id: ru_dtf
+    type: site
+    value: "site:dtf.ru"
+    languages: ["ru"]
+    tags: ["游戏", "开发", "极客文化"]
+    preferred_engines: [yandex, google]
+  - id: ru_rsdn
+    type: site
+    value: "site:rsdn.org"
+    languages: ["ru"]
+    tags: ["编程", "开发", "老牌论坛"]
+    preferred_engines: [yandex, google]
+  - id: ru_tproger
+    type: site
+    value: "site:tproger.ru"
+    languages: ["ru"]
+    tags: ["编程", "教程", "IT社区"]
+    preferred_engines: [yandex, google]
+  - id: ru_linux_org
+    type: site
+    value: "site:linux.org.ru"
+    languages: ["ru"]
+    tags: ["开源", "Linux", "极客"]
+    preferred_engines: [yandex, google]
+  - id: ru_overclockers
+    type: site
+    value: "site:overclockers.ru"
+    languages: ["ru"]
+    tags: ["硬件", "超频", "极客"]
+    preferred_engines: [yandex, google]
+  - id: ru_ixbt
+    type: site
+    value: "site:ixbt.com"
+    languages: ["ru"]
+    tags: ["硬件评测", "电子产品", "IT新闻"]
+    preferred_engines: [yandex, google]
+  - id: ru_cyberforum
+    type: site
+    value: "site:cyberforum.ru"
+    languages: ["ru"]
+    tags: ["编程", "问答", "IT社区"]
+    preferred_engines: [yandex, google]
+  - id: ru_vc
+    type: site
+    value: "site:vc.ru"
+    languages: ["ru"]
+    tags: ["商业", "创业", "科技"]
+    preferred_engines: [yandex, google]
+  - id: ru_xakep
+    type: site
+    value: "site:xakep.ru"
+    languages: ["ru"]
+    tags: ["信息安全", "黑客", "技术"]
+    preferred_engines: [yandex, google]
+  - id: ru_it_footprint
+    type: footprint
+    value: 'inurl:forum AND (программирование OR разработчик)'
+    languages: ["ru"]
+    tags: ["IT", "编程", "论坛"]
+
+  # Literature & Reading
+  - id: ru_author_today
+    type: site
+    value: "site:author.today"
+    languages: ["ru"]
+    tags: ["网文", "独立作者", "文学"]
+    preferred_engines: [yandex]
+  - id: ru_litnet
+    type: site
+    value: "site:litnet.com"
+    languages: ["ru"]
+    tags: ["网文", "言情", "文学"]
+    preferred_engines: [yandex]
+  - id: ru_proza
+    type: site
+    value: "site:proza.ru"
+    languages: ["ru"]
+    tags: ["散文", "独立作者", "文学"]
+    preferred_engines: [yandex]
+  - id: ru_stihi
+    type: site
+    value: "site:stihi.ru"
+    languages: ["ru"]
+    tags: ["诗歌", "独立作者", "文学"]
+    preferred_engines: [yandex]
+  - id: ru_livelib
+    type: site
+    value: "site:livelib.ru"
+    languages: ["ru"]
+    tags: ["读书", "书评", "文学"]
+    preferred_engines: [yandex, google]
+  - id: ru_fantlab
+    type: site
+    value: "site:fantlab.ru"
+    languages: ["ru"]
+    tags: ["科幻", "奇幻", "文学"]
+    preferred_engines: [yandex]
+  - id: ru_samlib
+    type: site
+    value: "site:samlib.ru"
+    languages: ["ru"]
+    tags: ["独立出版", "网文", "同人"]
+    preferred_engines: [yandex]
+  - id: ru_feb_web
+    type: site
+    value: "site:feb-web.ru"
+    languages: ["ru"]
+    tags: ["古典文学", "学术", "历史"]
+    preferred_engines: [yandex, google]
+  - id: ru_arzamas
+    type: site
+    value: "site:arzamas.academy"
+    languages: ["ru"]
+    tags: ["历史", "文化", "人文"]
+    preferred_engines: [yandex, google]
+  - id: ru_gorky_media
+    type: site
+    value: "site:gorky.media"
+    languages: ["ru"]
+    tags: ["文学评论", "读书", "文化"]
+    preferred_engines: [yandex, google]
+  - id: ru_zh_zal
+    type: site
+    value: "site:zh-zal.ru"
+    languages: ["ru"]
+    tags: ["纯文学", "期刊", "人文"]
+    preferred_engines: [yandex]
+
+  # Philosophy, Humanities & Indie Media
+  - id: ru_knife_media
+    type: site
+    value: "site:knife.media"
+    languages: ["ru"]
+    tags: ["青年文化", "先锋", "心理学"]
+    preferred_engines: [yandex, google]
+  - id: ru_nplus1
+    type: site
+    value: "site:nplus1.ru"
+    languages: ["ru"]
+    tags: ["科学", "人文", "科普"]
+    preferred_engines: [yandex, google]
+  - id: ru_postnauka
+    type: site
+    value: "site:postnauka.ru"
+    languages: ["ru"]
+    tags: ["学术", "科学", "人文"]
+    preferred_engines: [yandex, google]
+  - id: ru_colta
+    type: site
+    value: "site:colta.ru"
+    languages: ["ru"]
+    tags: ["文化", "艺术", "独立媒体"]
+    preferred_engines: [yandex]
+  - id: ru_syg_ma
+    type: site
+    value: "site:syg.ma"
+    languages: ["ru"]
+    tags: ["人文", "哲学", "独立博客"]
+    preferred_engines: [yandex, google]
+  - id: ru_theblueprint
+    type: site
+    value: "site:theblueprint.ru"
+    languages: ["ru"]
+    tags: ["时尚", "文化", "生活方式"]
+    preferred_engines: [yandex]
+  - id: ru_batenka
+    type: site
+    value: "site:batenka.ru"
+    languages: ["ru"]
+    tags: ["非虚构", "地下文化", "独立媒体"]
+    preferred_engines: [yandex]
+  - id: ru_klerk
+    type: site
+    value: "site:klerk.ru"
+    languages: ["ru"]
+    tags: ["财务", "法律", "商业"]
+    preferred_engines: [yandex]
+  - id: ru_dxdy
+    type: site
+    value: "site:dxdy.ru"
+    languages: ["ru"]
+    tags: ["数学", "物理", "科学论坛"]
+    preferred_engines: [yandex, google]
+  - id: ru_phil_footprint
+    type: footprint
+    value: 'inurl:forum AND (философия OR литература)'
+    languages: ["ru"]
+    tags: ["哲学", "文学", "论坛"]
+
+  # Daily Life, Hobbies & Forums
+  - id: ru_pikabu
+    type: site
+    value: "site:pikabu.ru"
+    languages: ["ru"]
+    tags: ["综合", "生活", "搞笑"]
+    preferred_engines: [yandex, google]
+  - id: ru_yaplakal
+    type: site
+    value: "site:yaplakal.com"
+    languages: ["ru"]
+    tags: ["娱乐", "论坛", "综合"]
+    preferred_engines: [yandex]
+  - id: ru_drom
+    type: site
+    value: "site:drom.ru"
+    languages: ["ru"]
+    tags: ["汽车", "生活", "论坛"]
+    preferred_engines: [yandex, google]
+  - id: ru_drive2
+    type: site
+    value: "site:drive2.ru"
+    languages: ["ru"]
+    tags: ["汽车", "生活博客", "社区"]
+    preferred_engines: [yandex, google]
+  - id: ru_woman_ru
+    type: site
+    value: "site:woman.ru"
+    languages: ["ru"]
+    tags: ["女性", "情感", "生活论坛"]
+    preferred_engines: [yandex, google]
+  - id: ru_babyblog
+    type: site
+    value: "site:babyblog.ru"
+    languages: ["ru"]
+    tags: ["育儿", "母婴", "生活"]
+    preferred_engines: [yandex]
+  - id: ru_otzovik
+    type: site
+    value: "site:otzovik.com"
+    languages: ["ru"]
+    tags: ["测评", "消费者", "生活"]
+    preferred_engines: [yandex, google]
+  - id: ru_irecommend
+    type: site
+    value: "site:irecommend.ru"
+    languages: ["ru"]
+    tags: ["测评", "生活", "经验"]
+    preferred_engines: [yandex]
+  - id: ru_forumhouse
+    type: site
+    value: "site:forumhouse.ru"
+    languages: ["ru"]
+    tags: ["建筑", "家居", "生活论坛"]
+    preferred_engines: [yandex, google]
+  - id: ru_guns
+    type: site
+    value: "site:guns.ru"
+    languages: ["ru"]
+    tags: ["武器", "户外", "军事论坛"]
+    preferred_engines: [yandex]
+  - id: ru_mysku
+    type: site
+    value: "site:mysku.club"
+    languages: ["ru"]
+    tags: ["购物", "海淘评测", "生活"]
+    preferred_engines: [yandex, google]
+  - id: ru_povarenok
+    type: site
+    value: "site:povarenok.ru"
+    languages: ["ru"]
+    tags: ["美食", "菜谱", "生活"]
+    preferred_engines: [yandex, google]
+  - id: ru_life_footprint
+    type: footprint
+    value: 'inurl:blog AND (дневник OR размышления)'
+    languages: ["ru"]
+    tags: ["独立博客", "日记", "生活"]
+
+  # Underground & Subcultures
+  - id: ru_2ch_hk
+    type: site
+    value: "site:2ch.hk"
+    languages: ["ru"]
+    tags: ["匿名版", "亚文化", "地下"]
+    preferred_engines: [yandex, google]
+  - id: ru_joyreactor
+    type: site
+    value: "site:joyreactor.cc"
+    languages: ["ru"]
+    tags: ["搞笑", "宅文化", "社区"]
+    preferred_engines: [yandex, google]
+  - id: ru_lurkmore
+    type: site
+    value: "site:lurkmore.to"
+    languages: ["ru"]
+    tags: ["维基", "网络迷因", "亚文化"]
+    preferred_engines: [yandex, google]
+  - id: ru_kinopoisk
+    type: site
+    value: "site:kinopoisk.ru"
+    languages: ["ru"]
+    tags: ["电影", "评论", "娱乐"]
+    preferred_engines: [yandex, google]
+  - id: ru_musicforums
+    type: site
+    value: "site:musicforums.ru"
+    languages: ["ru"]
+    tags: ["音乐", "乐队", "论坛"]
+    preferred_engines: [yandex]
+  - id: ru_zvuki
+    type: site
+    value: "site:zvuki.ru"
+    languages: ["ru"]
+    tags: ["音乐", "新闻", "独立文化"]
+    preferred_engines: [yandex, google]
+  # French (30 sites)
+  - id: fr_hardware_fr
+    type: site
+    value: site:hardware.fr
+    languages: [fr]
+    tags: [硬件, 论坛, 极客]
+  - id: fr_jeuxvideo
+    type: site
+    value: site:jeuxvideo.com
+    languages: [fr]
+    tags: [游戏, 论坛, 流行文化]
+  - id: fr_webrankinfo
+    type: site
+    value: site:webrankinfo.com
+    languages: [fr]
+    tags: [SEO, Web开发, 论坛]
+  - id: fr_tech2tech
+    type: site
+    value: site:tech2tech.fr
+    languages: [fr]
+    tags: [IT技术, 极客, 论坛]
+  - id: fr_journaldugeek
+    type: site
+    value: site:journaldugeek.com
+    languages: [fr]
+    tags: [极客, 消费电子, 资讯]
+  - id: fr_nextinpact
+    type: site
+    value: site:nextinpact.com
+    languages: [fr]
+    tags: [数字权利, 硬件, 深度分析]
+  - id: fr_maddyness
+    type: site
+    value: site:maddyness.com
+    languages: [fr]
+    tags: [初创公司, 创业, 资讯]
+  - id: fr_frenchweb
+    type: site
+    value: site:frenchweb.fr
+    languages: [fr]
+    tags: [互联网生态, 创投, 职场]
+  - id: fr_framboise314
+    type: site
+    value: site:framboise314.fr
+    languages: [fr]
+    tags: [树莓派, DIY, 创客]
+  - id: fr_lire_magazine
+    type: site
+    value: site:lire.fr
+    languages: [fr]
+    tags: [文学, 杂志, 评论]
+  - id: fr_en_attendant_nadeau
+    type: site
+    value: site:en-attendant-nadeau.fr
+    languages: [fr]
+    tags: [文学, 独立书评, 文化]
+  - id: fr_diacritik
+    type: site
+    value: site:diacritik.com
+    languages: [fr]
+    tags: [文学批评, 当代艺术, 文化]
+  - id: fr_matricule_des_anges
+    type: site
+    value: site:matricule-des-anges.com
+    languages: [fr]
+    tags: [现代文学, 独立杂志, 书评]
+  - id: fr_booknode
+    type: site
+    value: site:booknode.com
+    languages: [fr]
+    tags: [读书社区, 图书推荐, 书单]
+  - id: fr_zone_critique
+    type: site
+    value: site:zone-critique.com
+    languages: [fr]
+    tags: [文学批评, 思想, 文化]
+  - id: fr_developpez
+    type: site
+    value: site:developpez.com
+    languages: [fr]
+    tags: [编程, 开发者, 社区]
+  - id: fr_linuxfr
+    type: site
+    value: site:linuxfr.org
+    languages: [fr]
+    tags: [Linux, 开源, 极客社区]
+  - id: fr_zeste_de_savoir
+    type: site
+    value: site:zestedesavoir.com
+    languages: [fr]
+    tags: [知识分享, 开源社区, 教程]
+  - id: fr_korben
+    type: site
+    value: site:korben.info
+    languages: [fr]
+    tags: [独立博客, 极客, 信息安全]
+  - id: fr_sebsauvage
+    type: site
+    value: site:sebsauvage.net
+    languages: [fr]
+    tags: [独立博客, 开源, 极客]
+  - id: fr_numerama
+    type: site
+    value: site:numerama.com
+    languages: [fr]
+    tags: [数字文化, 科技资讯, 流行]
+  - id: fr_canardpc
+    type: site
+    value: site:canardpc.com
+    languages: [fr]
+    tags: [PC游戏, 硬件, 独立媒体]
+  - id: fr_macg
+    type: site
+    value: site:macg.co
+    languages: [fr]
+    tags: [苹果生态, 科技, 社区]
+  - id: fr_blogdumoderateur
+    type: site
+    value: site:blogdumoderateur.com
+    languages: [fr]
+    tags: [职场, 数字营销, 工具]
+  - id: fr_lesnumeriques
+    type: site
+    value: site:lesnumeriques.com
+    languages: [fr]
+    tags: [数码评测, 消费电子, 科技]
+  - id: fr_phonandroid
+    type: site
+    value: site:phonandroid.com
+    languages: [fr]
+    tags: [安卓, 手机资讯, 社区]
+  - id: fr_frandroid
+    type: site
+    value: site:frandroid.com
+    languages: [fr]
+    tags: [智能手机, 数码, 科技]
+  - id: fr_pressecitron
+    type: site
+    value: site:presse-citron.net
+    languages: [fr]
+    tags: [科技博客, 新闻, 互联网]
+  - id: fr_usine_digitale
+    type: site
+    value: site:usine-digitale.fr
+    languages: [fr]
+    tags: [数字化, 工业, 科技]
+  - id: fr_zdnet_fr
+    type: site
+    value: site:zdnet.fr
+    languages: [fr]
+    tags: [企业IT, 技术, 资讯]
+
+  # German (30 sites)
+  - id: de_heise
+    type: site
+    value: site:heise.de
+    languages: [de]
+    tags: [IT技术, 新闻, 论坛]
+  - id: de_computerbase
+    type: site
+    value: site:computerbase.de
+    languages: [de]
+    tags: [PC硬件, 极客, 论坛]
+  - id: de_hardwareluxx
+    type: site
+    value: site:hardwareluxx.de
+    languages: [de]
+    tags: [硬件发烧友, 深度评测, 社区]
+  - id: de_golem
+    type: site
+    value: site:golem.de
+    languages: [de]
+    tags: [IT新闻, 技术, 专业媒体]
+  - id: de_t3n
+    type: site
+    value: site:t3n.de
+    languages: [de]
+    tags: [数字经济, 开发, 初创]
+  - id: de_gruenderszene
+    type: site
+    value: site:gruenderszene.de
+    languages: [de]
+    tags: [初创公司, 风投, 商业]
+  - id: de_ccc_media
+    type: site
+    value: site:media.ccc.de
+    languages: [de]
+    tags: [黑客文化, 数字权利, 会议视频]
+  - id: de_netzpolitik
+    type: site
+    value: site:netzpolitik.org
+    languages: [de]
+    tags: [数字权利, 隐私, 独立媒体]
+  - id: de_literaturkritik
+    type: site
+    value: site:literaturkritik.de
+    languages: [de]
+    tags: [文学批评, 书评, 学术]
+  - id: de_lovelybooks
+    type: site
+    value: site:lovelybooks.de
+    languages: [de]
+    tags: [读者社区, 推书, 读书俱乐部]
+  - id: de_poetenladen
+    type: site
+    value: site:poetenladen.de
+    languages: [de]
+    tags: [诗歌, 现代文学, 独立文学]
+  - id: de_lyrikline
+    type: site
+    value: site:lyrikline.org
+    languages: [de]
+    tags: [诗歌, 现代文学, 文化档案]
+  - id: de_sandjournal
+    type: site
+    value: site:sandjournal.com
+    languages: [de, en]
+    tags: [文学杂志, 柏林文化, 散文]
+  - id: de_giga
+    type: site
+    value: site:giga.de
+    languages: [de]
+    tags: [游戏, 消费电子, 科技]
+  - id: de_chip
+    type: site
+    value: site:chip.de
+    languages: [de]
+    tags: [软件下载, PC, 大众科技]
+  - id: de_pcwelt
+    type: site
+    value: site:pcwelt.de
+    languages: [de]
+    tags: [PC资讯, IT, 评测]
+  - id: de_pcgameshardware
+    type: site
+    value: site:pcgameshardware.de
+    languages: [de]
+    tags: [PC游戏, 硬件发烧友, 论坛]
+  - id: de_gamestar
+    type: site
+    value: site:gamestar.de
+    languages: [de]
+    tags: [PC游戏, 社区, 新闻]
+  - id: de_winfuture
+    type: site
+    value: site:winfuture.de
+    languages: [de]
+    tags: [Windows生态, 科技资讯, 社区]
+  - id: de_mobiflip
+    type: site
+    value: site:mobiflip.de
+    languages: [de]
+    tags: [移动科技, 智能硬件, 独立博客]
+  - id: de_caschys_blog
+    type: site
+    value: site:stadt-bremerhaven.de
+    languages: [de]
+    tags: [独立科技博客, 数码, 软件]
+  - id: de_deskmodder
+    type: site
+    value: site:deskmodder.de
+    languages: [de]
+    tags: [Windows社区, 系统修改, 论坛]
+  - id: de_borncity
+    type: site
+    value: site:borncity.com
+    languages: [de]
+    tags: [IT管理员, 系统安全, 技术博客]
+  - id: de_administrator_de
+    type: site
+    value: site:administrator.de
+    languages: [de]
+    tags: [系统管理员, 技术问答, 社区]
+  - id: de_linuxmagazin
+    type: site
+    value: site:linux-magazin.de
+    languages: [de]
+    tags: [Linux, 开源, 企业级技术]
+  - id: de_ubuntuusers
+    type: site
+    value: site:ubuntuusers.de
+    languages: [de]
+    tags: [Ubuntu, Linux社区, Wiki]
+  - id: de_mikrocontroller
+    type: site
+    value: site:mikrocontroller.net
+    languages: [de]
+    tags: [微控制器, 电子工程, 创客论坛]
+  - id: de_perl_community
+    type: site
+    value: site:perl-community.de
+    languages: [de]
+    tags: [编程, Perl社区, 技术论坛]
+  - id: de_entwickler_de
+    type: site
+    value: site:entwickler.de
+    languages: [de]
+    tags: [软件开发, 编程资源, 架构]
+  - id: de_java_forum
+    type: site
+    value: site:java-forum.org
+    languages: [de]
+    tags: [Java, 开发者论坛, 编程学习]
+
+  # Spanish (30 sites)
+  - id: es_elotrolado
+    type: site
+    value: site:elotrolado.net
+    languages: [es]
+    tags: [硬件, 游戏, 论坛]
+  - id: es_mediavida
+    type: site
+    value: site:mediavida.com
+    languages: [es]
+    tags: [游戏, 泛科技, 社区]
+  - id: es_forocoches
+    type: site
+    value: site:forocoches.com
+    languages: [es]
+    tags: [流行文化, 科技讨论, 巨型论坛]
+  - id: es_hard2mano
+    type: site
+    value: site:hard2mano.com
+    languages: [es]
+    tags: [硬件交易, 发烧友, 论坛]
+  - id: es_hispasonic
+    type: site
+    value: site:hispasonic.com
+    languages: [es]
+    tags: [音乐制作, 音频技术, 社区]
+  - id: es_lawebdelprogramador
+    type: site
+    value: site:lawebdelprogramador.com
+    languages: [es]
+    tags: [编程, 开发者, 论坛]
+  - id: es_xataka
+    type: site
+    value: site:xataka.com
+    languages: [es]
+    tags: [消费电子, 科技新闻, 深度评测]
+  - id: es_hipertextual
+    type: site
+    value: site:hipertextual.com
+    languages: [es]
+    tags: [数字文化, 科学, 科技]
+  - id: es_genbeta
+    type: site
+    value: site:genbeta.com
+    languages: [es]
+    tags: [软件, 互联网, 工具]
+  - id: es_fayerwayer
+    type: site
+    value: site:fayerwayer.com
+    languages: [es]
+    tags: [科技资讯, 拉美视角, 极客]
+  - id: es_revistadelibros
+    type: site
+    value: site:revistadelibros.com
+    languages: [es]
+    tags: [文学评论, 学术, 书籍]
+  - id: es_letraslibres
+    type: site
+    value: site:letraslibres.com
+    languages: [es]
+    tags: [文化评论, 文学, 观点]
+  - id: es_librotea
+    type: site
+    value: site:librotea.com
+    languages: [es]
+    tags: [书籍推荐, 读者社区, 文化]
+  - id: es_zendalibros
+    type: site
+    value: site:zendalibros.com
+    languages: [es]
+    tags: [文学动态, 书评, 作家专栏]
+  - id: es_actualidadliteratura
+    type: site
+    value: site:actualidadliteratura.com
+    languages: [es]
+    tags: [新书速递, 写作, 博客]
+  - id: es_insula
+    type: site
+    value: site:insula.es
+    languages: [es]
+    tags: [文学批评, 研究, 杂志]
+  - id: es_bandaancha
+    type: site
+    value: site:bandaancha.eu
+    languages: [es]
+    tags: [宽带网络, 通信技术, 极客论坛]
+  - id: es_adslzone
+    type: site
+    value: site:adslzone.net
+    languages: [es]
+    tags: [网络技术, 科技新闻, 论坛]
+  - id: es_profesionalreview
+    type: site
+    value: site:profesionalreview.com
+    languages: [es]
+    tags: [PC硬件, 深度评测, 技术]
+  - id: es_elchapuzasinformatico
+    type: site
+    value: site:elchapuzasinformatico.com
+    languages: [es]
+    tags: [硬件新闻, PC, 极客社区]
+  - id: es_microsiervos
+    type: site
+    value: site:microsiervos.com
+    languages: [es]
+    tags: [独立科技博客, 科学, 极客文化]
+  - id: es_applesfera
+    type: site
+    value: site:applesfera.com
+    languages: [es]
+    tags: [苹果生态, 科技博客, 新闻]
+  - id: es_xatakandroid
+    type: site
+    value: site:xatakandroid.com
+    languages: [es]
+    tags: [安卓, 智能手机, 技术]
+  - id: es_wwhatsnew
+    type: site
+    value: site:wwwhatsnew.com
+    languages: [es]
+    tags: [网络工具, 应用发现, 科技博客]
+  - id: es_muycomputer
+    type: site
+    value: site:muycomputer.com
+    languages: [es]
+    tags: [计算机新闻, 数码, 硬件]
+  - id: es_geeknetic
+    type: site
+    value: site:geeknetic.es
+    languages: [es]
+    tags: [硬件社区, 超频, 极客]
+  - id: es_linuxadictos
+    type: site
+    value: site:linuxadictos.com
+    languages: [es]
+    tags: [Linux, 开源生态, 新闻]
+  - id: es_desdelinux
+    type: site
+    value: site:blog.desdelinux.net
+    languages: [es]
+    tags: [Linux社区, 开源软件, 博客]
+  - id: es_meneame
+    type: site
+    value: site:meneame.net
+    languages: [es]
+    tags: [新闻聚合, 社会讨论, 社区]
+  - id: es_teknautas
+    type: site
+    value: site:elconfidencial.com/tecnologia
+    languages: [es]
+    tags: [科技视角, 深度报道, 商业]
+
+  # Italian (30 sites)
+  - id: it_hwupgrade
+    type: site
+    value: site:hwupgrade.it
+    languages: [it]
+    tags: [硬件, 资讯, 大型论坛]
+  - id: it_tomshw
+    type: site
+    value: site:tomshw.it
+    languages: [it]
+    tags: [PC硬件, 超频, 评测]
+  - id: it_italyinformatica
+    type: site
+    value: site:reddit.com/r/ItalyInformatica
+    languages: [it]
+    tags: [IT从业者, 极客, Reddit社区]
+  - id: it_iprogrammatori
+    type: site
+    value: site:iprogrammatori.it
+    languages: [it]
+    tags: [软件开发, 编程社区, 求职]
+  - id: it_punto_informatico
+    type: site
+    value: site:punto-informatico.it
+    languages: [it]
+    tags: [数字文化, 科技新闻, IT]
+  - id: it_hdblog
+    type: site
+    value: site:hdblog.it
+    languages: [it]
+    tags: [消费数码, 智能手机, 评测]
+  - id: it_wired_it
+    type: site
+    value: site:wired.it
+    languages: [it]
+    tags: [社会技术, 数字文化, 深度报道]
+  - id: it_navigaweb
+    type: site
+    value: site:navigaweb.net
+    languages: [it]
+    tags: [实用工具, 教程, DIY软件]
+  - id: it_technologyreview_it
+    type: site
+    value: site:technologyreview.it
+    languages: [it]
+    tags: [前沿科技, AI, 创新]
+  - id: it_illibraio
+    type: site
+    value: site:illibraio.it
+    languages: [it]
+    tags: [出版业, 书评, 文学门户]
+  - id: it_sololibri
+    type: site
+    value: site:sololibri.net
+    languages: [it]
+    tags: [读者书评, 文化, 阅读推荐]
+  - id: it_qlibri
+    type: site
+    value: site:qlibri.it
+    languages: [it]
+    tags: [文学社区, 图书排行, 读者互动]
+  - id: it_ilclubdellibro
+    type: site
+    value: site:ilclubdellibro.it
+    languages: [it]
+    tags: [读书俱乐部, 在线论坛, 文学]
+  - id: it_lalettricecontrocorrente
+    type: site
+    value: site:lalettricecontrocorrente.it
+    languages: [it]
+    tags: [独立书评, 文学博客, 访谈]
+  - id: it_letture_org
+    type: site
+    value: site:letture.org
+    languages: [it]
+    tags: [深度书评, 文学分析, 散文]
+  - id: it_html_it
+    type: site
+    value: site:html.it
+    languages: [it]
+    tags: [Web开发, 教程, 技术门户]
+  - id: it_dday_it
+    type: site
+    value: site:dday.it
+    languages: [it]
+    tags: [数码生活, 高科技, 消费电子]
+  - id: it_telefonino_net
+    type: site
+    value: site:telefonino.net
+    languages: [it]
+    tags: [手机评测, 移动通信, 论坛]
+  - id: it_tuttandroid
+    type: site
+    value: site:tuttoandroid.net
+    languages: [it]
+    tags: [安卓, 应用评测, 社区]
+  - id: it_ispazio
+    type: site
+    value: site:ispazio.net
+    languages: [it]
+    tags: [苹果生态, iOS应用, 科技博客]
+  - id: it_macitynet
+    type: site
+    value: site:macitynet.it
+    languages: [it]
+    tags: [Mac新闻, 数码配件, 博客]
+  - id: it_webnews
+    type: site
+    value: site:webnews.it
+    languages: [it]
+    tags: [IT新闻, 互联网趋势, 科技]
+  - id: it_repubblica_tecnologia
+    type: site
+    value: site:repubblica.it/tecnologia
+    languages: [it]
+    tags: [主流媒体科技版, 新闻报道, 社会]
+  - id: it_corriere_tecnologia
+    type: site
+    value: site:corriere.it/tecnologia
+    languages: [it]
+    tags: [主流科技版, 社会影响, 消费科技]
+  - id: it_lffl_org
+    type: site
+    value: site:lffl.org
+    languages: [it]
+    tags: [Linux, 开源新闻, 独立博客]
+  - id: it_marcosbox
+    type: site
+    value: site:marcosbox.org
+    languages: [it]
+    tags: [Linux社区, 开源, 独立博客]
+  - id: it_arduino_forum
+    type: site
+    value: site:forum.arduino.cc
+    languages: [it]
+    tags: [创客, 硬件开发, Arduino社区]
+  - id: it_zeusnews
+    type: site
+    value: site:zeusnews.it
+    languages: [it]
+    tags: [IT资讯, 极客文化, 历史悠久]
+  - id: it_cybersecurity360
+    type: site
+    value: site:cybersecurity360.it
+    languages: [it]
+    tags: [网络安全, IT合规, 深度技术]
+  - id: it_andreaminini
+    type: site
+    value: site:andreaminini.com
+    languages: [it]
+    tags: [独立个人网站, IT教程, SEO与编程]
+  # English (en) - Tech, Hacker & Dev
+  - id: en_hackernews
+    type: site
+    value: "site:news.ycombinator.com"
+    languages: ["en"]
+    tags: ["极客", "创业", "硅谷", "深度"]
+    preferred_engines: [google, duckduckgo]
+  - id: en_lobsters
+    type: site
+    value: "site:lobste.rs"
+    languages: ["en"]
+    tags: ["极客", "硬核编程", "小众"]
+    preferred_engines: [google, marginalia]
+  - id: en_devto
+    type: site
+    value: "site:dev.to"
+    languages: ["en"]
+    tags: ["开发者", "技术博客", "社区"]
+    preferred_engines: [google]
+  - id: en_slashdot
+    type: site
+    value: "site:slashdot.org"
+    languages: ["en"]
+    tags: ["开源", "极客", "老牌新闻"]
+    preferred_engines: [google, duckduckgo]
+  - id: en_arstechnica
+    type: site
+    value: "site:arstechnica.com"
+    languages: ["en"]
+    tags: ["科技深度", "IT新闻", "硬件"]
+    preferred_engines: [google]
+  - id: en_theverge
+    type: site
+    value: "site:theverge.com"
+    languages: ["en"]
+    tags: ["消费电子", "科技文化", "流行"]
+    preferred_engines: [google]
+  - id: en_wired
+    type: site
+    value: "site:wired.com"
+    languages: ["en"]
+    tags: ["科技前沿", "数字文化", "深度报道"]
+    preferred_engines: [google]
+  - id: en_xda
+    type: site
+    value: "site:xda-developers.com"
+    languages: ["en"]
+    tags: ["安卓", "刷机", "硬核数码"]
+    preferred_engines: [google, duckduckgo]
+  - id: en_indiehackers
+    type: site
+    value: "site:indiehackers.com"
+    languages: ["en"]
+    tags: ["独立开发", "创业", "商业"]
+    preferred_engines: [google]
+  - id: en_producthunt
+    type: site
+    value: "site:producthunt.com"
+    languages: ["en"]
+    tags: ["新产品", "极客", "创投"]
+    preferred_engines: [google]
+
+  # English (en) - Rationality, Philosophy & Deep Blogs
+  - id: en_lesswrong
+    type: site
+    value: "site:lesswrong.com"
+    languages: ["en"]
+    tags: ["理性主义", "认知科学", "硬核长文"]
+    preferred_engines: [google, duckduckgo]
+  - id: en_astralcodexten
+    type: site
+    value: "site:astralcodexten.com"
+    languages: ["en"]
+    tags: ["理性主义", "心理学", "社科"]
+    preferred_engines: [google]
+  - id: en_gwern
+    type: site
+    value: "site:gwern.net"
+    languages: ["en"]
+    tags: ["数据科学", "深度研究", "极客博客"]
+    preferred_engines: [google, marginalia]
+  - id: en_ribbonfarm
+    type: site
+    value: "site:ribbonfarm.com"
+    languages: ["en"]
+    tags: ["独立思想", "哲学", "非虚构"]
+    preferred_engines: [google]
+  - id: en_waitbutwhy
+    type: site
+    value: "site:waitbutwhy.com"
+    languages: ["en"]
+    tags: ["长篇科普", "幽默", "思想实验"]
+    preferred_engines: [google]
+  - id: en_aeon
+    type: site
+    value: "site:aeon.co"
+    languages: ["en"]
+    tags: ["哲学", "思想", "深度文章"]
+    preferred_engines: [google]
+  - id: en_nautilus
+    type: site
+    value: "site:nautil.us"
+    languages: ["en"]
+    tags: ["科学", "思想", "深度阅读"]
+    preferred_engines: [google]
+  - id: en_quantamagazine
+    type: site
+    value: "site:quantamagazine.org"
+    languages: ["en"]
+    tags: ["数学", "前沿物理", "科普"]
+    preferred_engines: [google]
+  - id: en_longreads
+    type: site
+    value: "site:longreads.com"
+    languages: ["en"]
+    tags: ["非虚构", "长文", "深度阅读"]
+    preferred_engines: [google]
+
+  # English (en) - Forums & Mega-Communities
+  - id: en_reddit
+    type: site
+    value: "site:reddit.com"
+    languages: ["en"]
+    tags: ["巨型社区", "综合讨论", "亚文化"]
+    preferred_engines: [google, duckduckgo]
+  - id: en_4chan
+    type: site
+    value: "site:4chan.org"
+    languages: ["en"]
+    tags: ["匿名版", "网络迷因", "地下文化"]
+    preferred_engines: [google, duckduckgo]
+  - id: en_somethingawful
+    type: site
+    value: "site:somethingawful.com"
+    languages: ["en"]
+    tags: ["古典论坛", "幽默", "网络历史"]
+    preferred_engines: [google]
+  - id: en_metafilter
+    type: site
+    value: "site:metafilter.com"
+    languages: ["en"]
+    tags: ["精英社区", "高质量讨论", "博客聚合"]
+    preferred_engines: [google, duckduckgo]
+  - id: en_resetera
+    type: site
+    value: "site:resetera.com"
+    languages: ["en"]
+    tags: ["游戏论坛", "主机文化", "讨论"]
+    preferred_engines: [google]
+  - id: en_neogaf
+    type: site
+    value: "site:neogaf.com"
+    languages: ["en"]
+    tags: ["游戏", "老牌社区", "讨论"]
+    preferred_engines: [google]
+  - id: en_macrumors
+    type: site
+    value: "site:macrumors.com"
+    languages: ["en"]
+    tags: ["苹果生态", "爆料", "数码论坛"]
+    preferred_engines: [google]
+
+  # English (en) - Literature & Books
+  - id: en_goodreads
+    type: site
+    value: "site:goodreads.com"
+    languages: ["en"]
+    tags: ["书评", "读书记录", "社区"]
+    preferred_engines: [google]
+  - id: en_lithub
+    type: site
+    value: "site:lithub.com"
+    languages: ["en"]
+    tags: ["文学圈", "作家访谈", "书评"]
+    preferred_engines: [google]
+  - id: en_theparisreview
+    type: site
+    value: "site:theparisreview.org"
+    languages: ["en"]
+    tags: ["文学访谈", "纯文学", "老牌杂志"]
+    preferred_engines: [google]
+  - id: en_bookriot
+    type: site
+    value: "site:bookriot.com"
+    languages: ["en"]
+    tags: ["读书生活", "推荐", "独立播客"]
+    preferred_engines: [google]
+  - id: en_tor
+    type: site
+    value: "site:tor.com"
+    languages: ["en"]
+    tags: ["科幻", "奇幻", "小说出版"]
+    preferred_engines: [google]
+  - id: en_royalroad
+    type: site
+    value: "site:royalroad.com"
+    languages: ["en"]
+    tags: ["网文", "奇幻独立作者", "文学"]
+    preferred_engines: [google, duckduckgo]
+  - id: en_archiveofourown
+    type: site
+    value: "site:archiveofourown.org"
+    languages: ["en"]
+    tags: ["同人文", "粉丝创作", "巨型档案库"]
+    preferred_engines: [google, duckduckgo]
+
+  # English (en) - Tools, Info & Open Source
+  - id: en_github
+    type: site
+    value: "site:github.com"
+    languages: ["en"]
+    tags: ["开源代码", "协作", "开发者"]
+    preferred_engines: [google]
+  - id: en_stackoverflow
+    type: site
+    value: "site:stackoverflow.com"
+    languages: ["en"]
+    tags: ["技术问答", "编程", "社区"]
+    preferred_engines: [google]
+  - id: en_wikipedia_en
+    type: site
+    value: "site:en.wikipedia.org"
+    languages: ["en"]
+    tags: ["百科全书", "中立", "知识库"]
+    preferred_engines: [google, duckduckgo]
+  - id: en_wikihow
+    type: site
+    value: "site:wikihow.com"
+    languages: ["en"]
+    tags: ["指南", "教程", "生活经验"]
+    preferred_engines: [google]
+  - id: en_instructables
+    type: site
+    value: "site:instructables.com"
+    languages: ["en"]
+    tags: ["DIY", "创客", "硬核手工"]
+    preferred_engines: [google]
+
+  # English (en) - Science, Health & Lifestyle
+  - id: en_nature
+    type: site
+    value: "site:nature.com"
+    languages: ["en"]
+    tags: ["顶级科研", "学术", "新闻"]
+    preferred_engines: [google]
+  - id: en_science_org
+    type: site
+    value: "site:science.org"
+    languages: ["en"]
+    tags: ["顶级科研", "学术期刊"]
+    preferred_engines: [google]
+  - id: en_arxiv
+    type: site
+    value: "site:arxiv.org"
+    languages: ["en"]
+    tags: ["预印本", "物理", "计算机科学"]
+    preferred_engines: [google, duckduckgo]
+  - id: en_medlineplus
+    type: site
+    value: "site:medlineplus.gov"
+    languages: ["en"]
+    tags: ["医疗健康", "权威信息", "科普"]
+    preferred_engines: [google]
+  - id: en_webmd
+    type: site
+    value: "site:webmd.com"
+    languages: ["en"]
+    tags: ["健康资讯", "症状查询", "大众科普"]
+    preferred_engines: [google]
+  - id: en_theatlantic
+    type: site
+    value: "site:theatlantic.com"
+    languages: ["en"]
+    tags: ["深度时政", "文化", "长文"]
+    preferred_engines: [google]
+  - id: en_newyorker
+    type: site
+    value: "site:newyorker.com"
+    languages: ["en"]
+    tags: ["特稿", "文学", "都市文化"]
+    preferred_engines: [google]
+  - id: en_nytimes
+    type: site
+    value: "site:nytimes.com"
+    languages: ["en"]
+    tags: ["权威新闻", "时事", "深度"]
+    preferred_engines: [google]
+  - id: en_theguardian
+    type: site
+    value: "site:theguardian.com"
+    languages: ["en"]
+    tags: ["时事", "独立调查", "左翼"]
+    preferred_engines: [google]
+  - id: en_economist
+    type: site
+    value: "site:economist.com"
+    languages: ["en"]
+    tags: ["经济", "全球政治", "分析"]
+    preferred_engines: [google]

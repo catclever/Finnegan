@@ -1,0 +1,14 @@
+build/bin/
+bin/
+wails_temp
+Finnegan
+bugu/bugu*
+*.log
+tmp/
+temp/
+.DS_Store
+
+node_modules/
+frontend/node_modules/
+frontend/dist/
+

@@ -1,0 +1,29 @@
+# Generated automatically by setup-mutagen skill (Updated for Go)
+sync:
+  defaults:
+    mode: "two-way-resolved"
+    ignore:
+      vcs: true
+      paths:
+        - ".DS_Store"
+        - ".AppleDouble"
+        - ".LSOverride"
+        - "Thumbs.db"
+        - ".idea/"
+        - ".vscode/"
+        - "*.swp"
+        - "*.swo"
+        - "*~"
+        - ".agent/"
+        - ".gemini/"
+        - "*.log"
+        - "tmp/"
+        - "temp/"
+        - "bin/"
+        - "bugu/bugu*"
+    symlink:
+      mode: "posix-raw"
+
+  Finnegan:
+    alpha: "."
+    beta: "Antigravity:/root/Projects/Finnegan"
