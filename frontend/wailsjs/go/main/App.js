@@ -6,10 +6,26 @@ export function GetRadarTargets() {
   return window['go']['main']['App']['GetRadarTargets']();
 }
 
+export function GetTempCards() {
+  return window['go']['main']['App']['GetTempCards']();
+}
+
 export function Greet(arg1) {
   return window['go']['main']['App']['Greet'](arg1);
 }
 
+export function PromoteTempCard(arg1) {
+  return window['go']['main']['App']['PromoteTempCard'](arg1);
+}
+
 export function RunRadar(arg1) {
   return window['go']['main']['App']['RunRadar'](arg1);
+}
+
+export function TestInjectBuguCard(arg1, arg2, arg3) {
+  return window['go']['main']['App']['TestInjectBuguCard'](arg1, arg2, arg3);
+}
+
+export function CaptureThought(arg1) {
+  return window['go']['main']['App']['CaptureThought'](arg1);
 }

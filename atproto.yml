@@ -1,0 +1,8 @@
+# AT Protocol Bridge Configuration
+# used for both Inflow (fetching) and Outflow (publishing)
+
+did: "did:plc:your-did-here"
+password: "your-app-password"
+pds_url: "https://bsky.social"
+inbox_dir: "./Inbox"
+notes_dir: "./"

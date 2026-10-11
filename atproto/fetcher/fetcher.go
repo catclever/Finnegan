@@ -1,0 +1,140 @@
+package fetcher
+
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"time"
+
+	"Finnegan/atproto/models"
+)
+
+const PublicAPIEndpoint = "https://public.api.bsky.app/xrpc"
+
+// BSkySearchResponse represents the minimal JSON response from app.bsky.feed.searchPosts
+type BSkySearchResponse struct {
+	Posts []struct {
+		URI    string `json:"uri"`
+		CID    string `json:"cid"`
+		Author struct {
+			Handle string `json:"handle"`
+			DID    string `json:"did"`
+		} `json:"author"`
+		Record struct {
+			Text      string `json:"text"`
+			CreatedAt string `json:"createdAt"`
+		} `json:"record"`
+	} `json:"posts"`
+}
+
+// BSkyThreadResponse represents the minimal JSON response from app.bsky.feed.getPostThread
+type BSkyThreadResponse struct {
+	Thread struct {
+		Type   string `json:"$type"`
+		Post   struct {
+			URI    string `json:"uri"`
+			Author struct {
+				Handle string `json:"handle"`
+			} `json:"author"`
+			Record struct {
+				Text string `json:"text"`
+			} `json:"record"`
+		} `json:"post"`
+		Replies []struct {
+			Type string `json:"$type"`
+			Post struct {
+				URI    string `json:"uri"`
+				Author struct {
+					Handle string `json:"handle"`
+				} `json:"author"`
+				Record struct {
+					Text string `json:"text"`
+				} `json:"record"`
+			} `json:"post"`
+		} `json:"replies"`
+	} `json:"thread"`
+}
+
+// Fetcher handles read-only (Discovery) requests to the AT Protocol
+type Fetcher struct {
+	HTTPClient *http.Client
+}
+
+func NewFetcher() *Fetcher {
+	return &Fetcher{
+		HTTPClient: &http.Client{Timeout: 10 * time.Second},
+	}
+}
+
+// SearchSimilar fetches posts matching a semantic keyword query
+// Returns them mapped to Finnegan's internal Post model for saving to Inbox
+func (f *Fetcher) SearchSimilar(query string, limit int) ([]*models.Post, error) {
+	reqURL := fmt.Sprintf("%s/app.bsky.feed.searchPosts?q=%s&limit=%d", PublicAPIEndpoint, url.QueryEscape(query), limit)
+	
+	resp, err := f.HTTPClient.Get(reqURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch search results: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	var searchResp BSkySearchResponse
+	if err := json.Unmarshal(body, &searchResp); err != nil {
+		return nil, fmt.Errorf("failed to parse search results: %v", err)
+	}
+
+	var results []*models.Post
+	for _, p := range searchResp.Posts {
+		// Convert external post to our local model
+		post := &models.Post{
+			Metadata: models.PostMetadata{
+				URI:  p.URI,
+				CID:  p.CID,
+				Tags: []string{"#External", "#Discovery"},
+			},
+			Content: fmt.Sprintf("> [@%s](https://bsky.app/profile/%s)\n\n%s", p.Author.Handle, p.Author.Handle, p.Record.Text),
+			// FilePath will be determined by the caller (Inbox logic)
+		}
+		results = append(results, post)
+	}
+
+	return results, nil
+}
+
+// FetchComments retrieves the thread of replies for a given Post URI
+func (f *Fetcher) FetchComments(postURI string) ([]*models.Post, error) {
+	reqURL := fmt.Sprintf("%s/app.bsky.feed.getPostThread?uri=%s", PublicAPIEndpoint, url.QueryEscape(postURI))
+	
+	resp, err := f.HTTPClient.Get(reqURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch thread: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	var threadResp BSkyThreadResponse
+	if err := json.Unmarshal(body, &threadResp); err != nil {
+		return nil, fmt.Errorf("failed to parse thread: %v", err)
+	}
+
+	var comments []*models.Post
+	for _, reply := range threadResp.Thread.Replies {
+		// Only parse valid post nodes
+		if reply.Type != "app.bsky.feed.defs#threadViewPost" {
+			continue
+		}
+		
+		comment := &models.Post{
+			Metadata: models.PostMetadata{
+				URI:  reply.Post.URI,
+				Tags: []string{"#Comment", "#Interaction"},
+			},
+			Content: fmt.Sprintf("> Reply from @%s\n\n%s", reply.Post.Author.Handle, reply.Post.Record.Text),
+		}
+		comments = append(comments, comment)
+	}
+
+	return comments, nil
+}

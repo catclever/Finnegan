@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -28,8 +29,14 @@ func (j *JinaClient) Extract(targetURL string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	// Adding specific headers if needed by Jina
+	
+	// Adding specific headers for Jina API
 	req.Header.Set("Accept", "text/event-stream")
+	
+	jinaKey := os.Getenv("JINA_API_KEY")
+	if jinaKey != "" {
+		req.Header.Set("Authorization", "Bearer "+jinaKey)
+	}
 
 	resp, err := j.Client.Do(req)
 	if err != nil {
