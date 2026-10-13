@@ -149,6 +149,7 @@ import UICard from './UICard.svelte';
       focusedCardId = null;
     } else {
       focusedCardId = id;
+      globalTilt.set({ rx: 0, ry: 0 }, { hard: true });
     }
   }
 
@@ -186,7 +187,7 @@ import UICard from './UICard.svelte';
   </div>
 
   <!-- Cards container -->
-  <div class="cards-wrapper" on:click={handleBgClick}>
+  <div class="cards-wrapper" class:elevated={hoveredCardId !== null || focusedCardId !== null} on:click={handleBgClick}>
     <!-- svelte-ignore a11y-click-events-have-key-events -->
     <!-- svelte-ignore a11y-no-static-element-interactions -->
     <div class="scene" style="transform: rotateX({$globalTilt.rx}deg) rotateY({$globalTilt.ry}deg); transform-style: preserve-3d;">
@@ -231,7 +232,7 @@ import UICard from './UICard.svelte';
 
   .omnibar-container {
     position: absolute;
-    z-index: 9999;
+    z-index: 10;
     transition: opacity 0.5s ease, filter 0.5s ease;
   }
 
@@ -293,13 +294,15 @@ import UICard from './UICard.svelte';
     overflow: hidden;
     perspective: 1000px;
     pointer-events: none; /* Let clicks pass through empty space */
+    z-index: 5; /* Background cards sit behind omnibar */
+  }
+
+  .cards-wrapper.elevated {
+    z-index: 20; /* Hovered or focused cards jump above omnibar */
   }
 
   .scene {
-    pointer-events: auto; /* Catch clicks on cards */
-  }
-
-  .scene {
+    pointer-events: none; /* Pass through empty space to background */
     width: 100%;
     height: 100%;
     position: relative;

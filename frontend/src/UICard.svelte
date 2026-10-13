@@ -23,11 +23,12 @@
     rotX: 0,
     rotY: 0,
     z3d: 0
-  }, { stiffness: 0.05, damping: 0.3 });
+  }, { stiffness: 0.06, damping: 0.35 });
 
   $: {
     const hashId = card.id.length > 0 ? card.id.charCodeAt(0) : 0;
-    const pulse = Math.sin(time * 1.2 + hashId * 2.1) * 8;
+    // Breathing pulse along Z-axis in pixels
+    const pulseZ = Math.sin(time * 1.2 + hashId * 2.1) * 8;
     
     if (isFocused) {
       animSpring.set({
@@ -35,24 +36,24 @@
         y: 0,
         rotation: 0,
         opacity: 1,
-        scale: 1.5,
+        scale: 1,
         blur: 0,
         saturation: 1,
         textOpacity: 1,
         rotX: 0,
         rotY: 0,
-        z3d: 200
+        z3d: 160
       });
     } else if (isHovered) {
-      // Pull heavily towards center to avoid clipping at edges
-      const pullX = card.x > 300 ? 300 : (card.x < -300 ? -300 : card.x);
-      const pullY = card.y > 200 ? 200 : (card.y < -200 ? -200 : card.y);
+      // Pull towards center to stay in viewport
+      const pullX = card.x > 260 ? 260 : (card.x < -260 ? -260 : card.x);
+      const pullY = card.y > 170 ? 170 : (card.y < -170 ? -170 : card.y);
       animSpring.set({
         x: pullX,
         y: pullY,
         rotation: 0,
         opacity: 1,
-        scale: 1.1,
+        scale: 1.05,
         blur: 0,
         saturation: 1,
         textOpacity: 1,
@@ -61,22 +62,20 @@
         z3d: 120
       });
     } else {
-      // Background state
-      const effectiveZ = Math.max(0, Math.min(100, card.z + pulse));
-      // Calculate distance from center to fade out edges
+      // Background space: keep z3d >= 0 so WebKit hit-testing works flawlessly
+      const effectiveZ = Math.max(0, Math.min(100, card.z + pulseZ));
       const dist = Math.sqrt(card.x * card.x + card.y * card.y);
-      const edgeFade = Math.max(0, Math.min(1, 1 - (dist - 400) / 250));
+      const edgeFade = Math.max(0, Math.min(1, 1 - (dist - 420) / 250));
       
-      // Determine if another card is focused
       const anotherFocused = !isFocused && document.querySelector('.card.focused');
       
       if (anotherFocused) {
         animSpring.set({
-          x: card.x * 1.5,
-          y: card.y * 1.5,
+          x: card.x * 1.4,
+          y: card.y * 1.4,
           rotation: card.rotation,
-          opacity: 0.1,
-          scale: 0.8,
+          opacity: 0.08,
+          scale: 0.7,
           blur: 10,
           saturation: 0.1,
           textOpacity: 0.1,
@@ -85,18 +84,20 @@
           z3d: 0
         });
       } else {
+        // At the exact same depth/distance, card size is strictly uniform
+        const uniformScale = Math.max(0.55, 1 - (card.z * 0.0045));
         animSpring.set({
           x: card.x,
           y: card.y,
-          rotation: card.rotation + (Math.sin(time * 0.8 + hashId) * 2),
-          opacity: (0.95 - (effectiveZ * 0.0055)) * edgeFade,
-          scale: 1 - (effectiveZ * 0.005),
-          blur: 0,
-          saturation: 1 - (effectiveZ * 0.007),
-          textOpacity: 1 - (effectiveZ * 0.008),
-          rotX: globalTilt.rx * 0.3,
-          rotY: globalTilt.ry * 0.3,
-          z3d: effectiveZ
+          rotation: card.rotation + (Math.sin(time * 0.8 + hashId) * 1.5),
+          opacity: (0.95 - (card.z * 0.005)) * edgeFade,
+          scale: uniformScale,
+          blur: card.z > 70 ? (card.z - 70) * 0.04 : 0,
+          saturation: 1 - (card.z * 0.006),
+          textOpacity: 1 - (card.z * 0.006),
+          rotX: globalTilt.rx * 0.25,
+          rotY: globalTilt.ry * 0.25,
+          z3d: (100 - card.z) * 0.4
         });
       }
     }
@@ -117,13 +118,13 @@
   style="
     transform: translate(calc(-50% + {$animSpring.x}px), calc(-50% + {$animSpring.y}px)) 
                translateZ({$animSpring.z3d}px)
-               rotate({$animSpring.rotation}deg) 
-               rotateX({$animSpring.rotX}deg)
-               rotateY({$animSpring.rotY}deg)
+               rotate({isFocused ? 0 : $animSpring.rotation}deg) 
+               rotateX({isFocused ? 0 : $animSpring.rotX}deg) 
+               rotateY({isFocused ? 0 : $animSpring.rotY}deg) 
                scale({$animSpring.scale});
     opacity: {$animSpring.opacity};
     filter: blur({$animSpring.blur}px) saturate({$animSpring.saturation});
-    z-index: {isFocused ? 100 : (isHovered ? 99 : Math.round(100 - card.z))};
+    z-index: {isFocused ? 1000 : (isHovered ? 999 : Math.round(100 - card.z))};
     --text-opacity: {$animSpring.textOpacity};
   "
 >
@@ -155,12 +156,13 @@
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 260px;
-    height: 180px;
-    padding: 24px;
+    width: 200px;
+    height: 190px;
+    padding: 18px 20px;
+    pointer-events: auto; /* Catch clicks and mouse events reliably */
     background: rgba(255, 255, 255, 0.7);
     border-radius: 16px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
     color: rgba(51, 51, 51, var(--text-opacity, 1));
     cursor: pointer;
     transform-origin: center center;
@@ -175,18 +177,18 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
   }
   
   .source-link {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     color: rgba(0, 0, 0, 0.5);
     text-decoration: none;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
     background: rgba(255, 255, 255, 0.6);
-    padding: 4px 10px;
+    padding: 3px 8px;
     border-radius: 20px;
     transition: all 0.2s;
   }
@@ -200,7 +202,7 @@
   .twinkle-container {
     position: relative;
     width: 100%;
-    height: 100px;
+    height: 95px;
   }
   
   .twinkle-text {
@@ -210,6 +212,9 @@
     width: 100%;
     height: 100%;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
   
   .lang-trans {
@@ -229,6 +234,7 @@
     filter: none;
     height: auto;
     margin-bottom: 10px;
+    display: block;
   }
   
   .twinkle-container.focused {
@@ -260,48 +266,86 @@
   }
 
   .card.focused {
-    width: 500px;
-    height: auto;
-    max-height: 600px;
-    background: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 1);
+    width: 420px;
+    height: 420px;
+    max-width: 88vw;
+    max-height: 88vh;
+    padding: 36px;
+    border-radius: 28px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.9);
     cursor: default;
     overflow-y: auto;
   }
 
-  .thought-content {
-    display: flex;
-    align-items: center;
+  .card.focused .thought-content {
     justify-content: center;
     height: 100%;
+    overflow-y: auto;
+  }
+
+  .card.focused .thought-content p {
+    font-size: 1.15rem;
+    line-height: 1.75;
+    display: block;
+    -webkit-line-clamp: unset;
+    overflow: visible;
+  }
+
+  .thought-content {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center; /* 垂直居中 */
+    height: 100%;
     width: 100%;
+    overflow: hidden;
   }
 
   .thought-content p {
     margin: 0;
-    font-size: 1.15rem;
-    line-height: 1.6;
-    white-space: pre-wrap;
-    color: rgba(0, 0, 0, 0.85);
-    font-weight: 500;
+    font-size: 0.825rem;
+    line-height: 1.55;
+    color: rgba(40, 40, 40, var(--text-opacity, 0.95));
+    font-weight: 450;
+    letter-spacing: 0.01em;
+    display: -webkit-box;
+    -webkit-line-clamp: 5; /* 适度增加到5行以适应正方形高度 */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: break-word;
+    width: 100%;
   }
 
   p {
     margin: 0;
-    font-size: 0.95rem;
+    font-size: 0.825rem;
     line-height: 1.5;
     white-space: pre-wrap;
   }
   
   .original {
-    font-size: 0.85rem;
+    font-size: 0.775rem;
     color: rgba(0,0,0,0.6);
     font-style: italic;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   
   .translated {
-    font-size: 0.95rem;
+    font-size: 0.825rem;
     font-weight: 500;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   
   /* Global sleek scrollbar for cards and other elements */
