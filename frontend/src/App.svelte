@@ -77,6 +77,7 @@
       const current = $scrollExpansion;
       scrollExpansion.set(Math.min(1.0, current + e.deltaY * 0.0012));
       resetTideTimer();
+      replenishStage(); // Promptly populate newly revealed space with 80/20 rule
     } else if (e.deltaY < 0) {
       // Scroll up -> retract
       const current = $scrollExpansion;
@@ -110,22 +111,38 @@
     return Math.round(typeBase * depthFactor * pressureFactor * jitter);
   }
 
-  function getNextCandidate(): CosmicCard | null {
+  function getUnstagedMemoryCards(): CosmicCard[] {
     const activeIds = new Set(cards.map(c => c.id));
     const now = Date.now();
+    return memoryPool.filter(c => !activeIds.has(c.id) && (!c.macroExpiresAt || c.macroExpiresAt > now));
+  }
 
-    // Priority 1: In-memory temporary cards (Bugu) within 24h TTL
-    const validMemory = memoryPool.filter(c => !activeIds.has(c.id) && (!c.macroExpiresAt || c.macroExpiresAt > now));
-    if (validMemory.length > 0) {
-      const idx = Math.floor(Math.random() * validMemory.length);
-      return validMemory[idx];
+  function fetchNewCardIntoMemory(): CosmicCard | null {
+    const memoryIds = new Set(memoryPool.map(c => c.id));
+    const activeIds = new Set(cards.map(c => c.id));
+
+    // Find candidate from localVaultPool that is not yet in memory and not on stage
+    let candidate = localVaultPool.find(c => !memoryIds.has(c.id) && !activeIds.has(c.id));
+    
+    // Fallback: any vault card not currently active on stage
+    if (!candidate) {
+      candidate = localVaultPool.find(c => !activeIds.has(c.id));
     }
 
-    // Priority 2: Local persistent vault cards (Scattering / Waving)
-    const validLocal = localVaultPool.filter(c => !activeIds.has(c.id));
-    if (validLocal.length > 0) {
-      const idx = Math.floor(Math.random() * validLocal.length);
-      return validLocal[idx];
+    if (candidate) {
+      const now = Date.now();
+      const freshMemoryCard: CosmicCard = {
+        ...candidate,
+        macroExpiresAt: now + MACRO_TTL_MS, // Inserted into memory with 24hr TTL
+        isFresh: true,
+        spawnTime: 0,
+        decayDuration: 0,
+        isVIP: false,
+        origin: candidate.origin || 'local'
+      };
+      // Insert into memoryPool
+      memoryPool = [freshMemoryCard, ...memoryPool.filter(m => m.id !== freshMemoryCard.id)];
+      return freshMemoryCard;
     }
 
     return null;
@@ -134,9 +151,12 @@
   function stageCandidate(candidate: CosmicCard, isNewlyCreated = false): CosmicCard {
     const z = Math.random() * 100;
     const expansion = $scrollExpansion;
-    const yRange = 600 + expansion * 800;
-    const yCenter = expansion * 300;
-    const y = (Math.random() - 0.5) * yRange + yCenter;
+    // When expanding downwards, distribute into the lower region revealed by scroll
+    const yMin = -250;
+    const yMax = 250 + expansion * 600;
+    const y = expansion > 0.05 && Math.random() < 0.65
+      ? 150 + Math.random() * (expansion * 600) // Lower expanded space
+      : yMin + Math.random() * (yMax - yMin);
     const x = (Math.random() - 0.5) * 1100;
     const rotation = (Math.random() - 0.5) * 50;
 
@@ -154,6 +174,58 @@
       isFresh: isNewlyCreated,
       isFadingOut: false
     };
+  }
+
+  function replenishStage() {
+    const activeCount = cards.filter(c => !c.isFadingOut).length;
+    const needed = targetCapacity - activeCount;
+    if (needed <= 0) return;
+
+    const unstagedMemory = getUnstagedMemoryCards();
+    let newCardsToStage: CosmicCard[] = [];
+
+    if (unstagedMemory.length > 0) {
+      // Rule: 80% from memory, 20% fetch new cards into memory and display
+      let memSlots: number;
+      if (needed === 1) {
+        memSlots = Math.random() < 0.8 ? 1 : 0;
+      } else {
+        memSlots = Math.min(unstagedMemory.length, Math.round(needed * 0.8));
+      }
+      const newSlots = needed - memSlots;
+
+      // 1. Take 80% from resting memory cards
+      const shuffledMemory = [...unstagedMemory].sort(() => Math.random() - 0.5);
+      for (let i = 0; i < memSlots && i < shuffledMemory.length; i++) {
+        const staged = stageCandidate(shuffledMemory[i], false);
+        newCardsToStage.push(staged);
+      }
+
+      // 2. Fetch remaining 20% new cards into memory and display
+      for (let i = 0; i < newSlots; i++) {
+        const fetched = fetchNewCardIntoMemory();
+        if (fetched) {
+          const staged = stageCandidate(fetched, true);
+          newCardsToStage.push(staged);
+        } else if (shuffledMemory[memSlots + i]) {
+          const staged = stageCandidate(shuffledMemory[memSlots + i], false);
+          newCardsToStage.push(staged);
+        }
+      }
+    } else {
+      // Rule: When all memory cards have been displayed, 100% fetch new cards into memory!
+      for (let i = 0; i < needed; i++) {
+        const fetched = fetchNewCardIntoMemory();
+        if (fetched) {
+          const staged = stageCandidate(fetched, true);
+          newCardsToStage.push(staged);
+        }
+      }
+    }
+
+    if (newCardsToStage.length > 0) {
+      cards = [...cards, ...newCardsToStage];
+    }
   }
 
   async function handleOmnibarKeydown(e: KeyboardEvent) {
@@ -228,15 +300,8 @@
         }));
       }
 
-      // Populate initial stage up to target capacity
-      let initialStage: CosmicCard[] = [];
-      while (initialStage.length < BASE_CAPACITY) {
-        const candidate = getNextCandidate();
-        if (!candidate) break;
-        const staged = stageCandidate(candidate, false);
-        initialStage.push(staged);
-      }
-      cards = initialStage.sort((a, b) => b.z - a.z);
+      // Populate initial stage up to target capacity using 80/20 rule
+      replenishStage();
     };
     loadCards();
 
@@ -345,20 +410,8 @@
         }
       });
 
-      // Replenish stage vacancies
-      const activeCount = cards.filter(c => !c.isFadingOut).length;
-      if (activeCount < targetCapacity) {
-        const candidate = getNextCandidate();
-        if (candidate) {
-          const staged = stageCandidate(candidate, false);
-          cards = [...cards, staged];
-          needsUpdate = true;
-        }
-      }
-
-      if (needsUpdate) {
-        cards = [...cards];
-      }
+      // Replenish stage vacancies using 80/20 memory distribution
+      replenishStage();
     }, 2000);
 
     // 5. 3D Render Animation Loop
