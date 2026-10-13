@@ -30,7 +30,21 @@
     // Breathing pulse along Z-axis in pixels
     const pulseZ = Math.sin(time * 1.2 + hashId * 2.1) * 8;
     
-    if (isFocused) {
+    if (card.isFadingOut) {
+      animSpring.set({
+        x: card.x,
+        y: card.y + 60,
+        rotation: card.rotation + 10,
+        opacity: 0,
+        scale: 0.35,
+        blur: 16,
+        saturation: 0,
+        textOpacity: 0,
+        rotX: 0,
+        rotY: 0,
+        z3d: 0
+      });
+    } else if (isFocused) {
       animSpring.set({
         x: 0,
         y: 0,
@@ -86,15 +100,22 @@
       } else {
         // At the exact same depth/distance, card size is strictly uniform
         const uniformScale = Math.max(0.55, 1 - (card.z * 0.0045));
+        
+        // Fresh cards enjoy 100% optical clarity regardless of depth
+        const baseOpacity = card.isFresh ? 1.0 : (0.95 - (card.z * 0.005)) * edgeFade;
+        const baseBlur = card.isFresh ? 0 : (card.z > 70 ? (card.z - 70) * 0.04 : 0);
+        const baseSat = card.isFresh ? 1.0 : (1 - (card.z * 0.006));
+        const baseTextOp = card.isFresh ? 1.0 : (1 - (card.z * 0.006));
+        
         animSpring.set({
           x: card.x,
           y: card.y,
           rotation: card.rotation + (Math.sin(time * 0.8 + hashId) * 1.5),
-          opacity: (0.95 - (card.z * 0.005)) * edgeFade,
+          opacity: baseOpacity,
           scale: uniformScale,
-          blur: card.z > 70 ? (card.z - 70) * 0.04 : 0,
-          saturation: 1 - (card.z * 0.006),
-          textOpacity: 1 - (card.z * 0.006),
+          blur: baseBlur,
+          saturation: baseSat,
+          textOpacity: baseTextOp,
           rotX: globalTilt.rx * 0.25,
           rotY: globalTilt.ry * 0.25,
           z3d: (100 - card.z) * 0.4

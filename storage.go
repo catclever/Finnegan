@@ -13,6 +13,8 @@ func (a *App) LoadLocalCards() []Card {
 
 	dirs := []string{
 		filepath.Join(a.Home, "Scattering"),
+		filepath.Join(a.Home, "Waving"),
+		filepath.Join(a.Home, "Weaving"),
 	}
 
 	for _, dir := range dirs {
