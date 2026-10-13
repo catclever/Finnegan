@@ -27,6 +27,9 @@ export namespace main {
 	    title: string;
 	    content: string;
 	    sourceUrl?: string;
+	    originalText?: string;
+	    translatedText?: string;
+	    echoOf?: string;
 	    // Go type: time
 	    createdAt: any;
 	
@@ -41,6 +44,9 @@ export namespace main {
 	        this.title = source["title"];
 	        this.content = source["content"];
 	        this.sourceUrl = source["sourceUrl"];
+	        this.originalText = source["originalText"];
+	        this.translatedText = source["translatedText"];
+	        this.echoOf = source["echoOf"];
 	        this.createdAt = this.convertValues(source["createdAt"], null);
 	    }
 	

@@ -5,30 +5,30 @@ import (
 	"golang.org/x/sync/semaphore"
 	"context"
 
-	"Finnegan/bugu/api"
-	"Finnegan/bugu/config"
+	"Finnegan/modules/bugu/api"
 	"Finnegan/core/bus"
 )
 
 type CaptureListener struct {
-	cfg        *config.Config
+	module     *BuguModule
 	injectFunc func(docID string, intent string, results []string)
 	sem        *semaphore.Weighted
 	ctx        context.Context
-	executeFunc func(cfg *config.Config, intent string) api.RadarResponse
+	executeFunc func(intent string) api.RadarResponse
 }
 
-func NewCaptureListener(cfg *config.Config, concurrency int, injectFunc func(docID string, intent string, results []string)) *CaptureListener {
+func NewCaptureListener(m *BuguModule, concurrency int, injectFunc func(docID string, intent string, results []string)) *CaptureListener {
 	if concurrency < 1 {
 		concurrency = 1
 	}
-	return &CaptureListener{
-		cfg:         cfg,
+	l := &CaptureListener{
+		module:      m,
 		injectFunc:  injectFunc,
 		sem:         semaphore.NewWeighted(int64(concurrency)),
 		ctx:         context.Background(),
-		executeFunc: api.ExecuteRadar,
 	}
+	l.executeFunc = m.RunRadar
+	return l
 }
 
 func (l *CaptureListener) Start() {
@@ -54,8 +54,8 @@ func (l *CaptureListener) processEvent(data bus.EventThoughtCapturedData) {
 		}
 	}()
 
-	if l.cfg == nil {
-		log.Printf("Bugu CaptureListener config is nil, skipping radar for DocID %s", data.DocID)
+	if l.module == nil {
+		log.Printf("Bugu CaptureListener module is nil, skipping radar for DocID %s", data.DocID)
 		return
 	}
 
@@ -65,7 +65,7 @@ func (l *CaptureListener) processEvent(data bus.EventThoughtCapturedData) {
 	}
 	defer l.sem.Release(1)
 
-	resp := l.executeFunc(l.cfg, data.Text)
+	resp := l.executeFunc(data.Text)
 	if resp.Status == "error" {
 		log.Printf("Bugu radar failed for DocID %s: %s", data.DocID, resp.Error)
 		return

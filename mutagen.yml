@@ -24,6 +24,8 @@ sync:
         # Platform-specific native deps (esbuild-darwin-arm64 vs esbuild-linux-64).
         # Each side must run its own `npm install`; never sync node_modules.
         - "node_modules/"
+        # Frontend build output; generated on PVE, never sync back to Mac.
+        - "frontend/dist/"
     symlink:
       mode: "posix-raw"
 

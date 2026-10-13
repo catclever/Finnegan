@@ -3,8 +3,8 @@ package publisher
 import (
 	"log"
 
-	"Finnegan/atproto/config"
-	"Finnegan/atproto/models"
+	"Finnegan/modules/atproto/config"
+	"Finnegan/modules/atproto/models"
 )
 
 type Publisher struct {

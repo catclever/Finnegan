@@ -1,22 +1,16 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
-	"os"
 	"sync"
 
-	"Finnegan/bugu/config"
-	"Finnegan/bugu/fetcher"
-	"Finnegan/bugu/llm"
-	"Finnegan/bugu/models"
+	"Finnegan/modules/bugu/config"
+	"Finnegan/modules/bugu/fetcher"
+	"Finnegan/modules/bugu/llm"
+	"Finnegan/modules/bugu/models"
+	"Finnegan/core/bus"
 )
-
-type RadarRequest struct {
-	Intent string `json:"intent"`
-}
 
 type RadarResponse struct {
 	Status  string   `json:"status"`
@@ -24,18 +18,11 @@ type RadarResponse struct {
 	Error   string   `json:"error,omitempty"`
 }
 
-// ExecuteRadar executes the full Bugu deep radar search workflow
-func ExecuteRadar(cfg *config.Config, intent string) RadarResponse {
-	router := llm.NewRouter(cfg)
+func ExecuteRadar(cfg *config.Config, router *llm.Router, searxURL, jinaKey string, maxConcurrency int, intent string, targetLanguage string) RadarResponse {
+	log.Printf("[Bugu Module] Processing intent: %s\n", intent)
 
-	searxURL := os.Getenv("SEARXNG_URL")
-	if searxURL == "" {
-		searxURL = "http://localhost:8080"
-	}
 	searxClient := fetcher.NewSearxNGClient(searxURL)
-	jinaClient := fetcher.NewJinaClient()
-
-	log.Printf("[Bugu Radar] Processing intent: %s\n", intent)
+	jinaClient := fetcher.NewJinaClient(jinaKey)
 
 	// 1. Ask LLM for the plan
 	plan, err := router.GenerateSearchPlan(intent)
@@ -56,14 +43,12 @@ func ExecuteRadar(cfg *config.Config, intent string) RadarResponse {
 			continue
 		}
 
-		// Decide language fallback
 		lang := "en"
 		if len(target.Languages) > 0 {
 			lang = target.Languages[0]
 		}
 		queries, ok := plan.SearchQueries[lang]
 		if !ok {
-			// Fallback to "en" or first available queries
 			for _, v := range plan.SearchQueries {
 				queries = v
 				break
@@ -86,18 +71,22 @@ func ExecuteRadar(cfg *config.Config, intent string) RadarResponse {
 		}
 	}
 
-	// Close urlChan when all Searx searches complete
 	go func() {
 		wgSearx.Wait()
 		close(urlChan)
 	}()
 
-	// 3. Extract Markdown concurrently via Jina Reader
+	// 3. Extract Markdown & Distill concurrently
 	var wgJina sync.WaitGroup
 	resultChan := make(chan string, 100)
 
-	// Create a worker pool of 10 workers for Jina to avoid rate limits
-	for i := 0; i < 10; i++ {
+	if maxConcurrency <= 0 {
+		maxConcurrency = 10
+	}
+
+	eventBus := bus.GetBus()
+
+	for i := 0; i < maxConcurrency; i++ {
 		wgJina.Add(1)
 		go func() {
 			defer wgJina.Done()
@@ -108,53 +97,43 @@ func ExecuteRadar(cfg *config.Config, intent string) RadarResponse {
 					log.Printf("[Jina Error] %s: %v", u, err)
 					continue
 				}
-				// Only keep substantial markdown (ignore empty/error pages)
 				if len(md) > 100 {
-					resultChan <- fmt.Sprintf("Source: %s\n\n%s", u, md)
+					// Distill the markdown into a BabelCard
+					log.Printf("[LLM Distiller] Processing -> %s", u)
+					card, err := router.DistillMarkdown(intent, md, u, targetLanguage)
+					if err != nil {
+						log.Printf("[Distiller Error] %s: %v", u, err)
+						continue
+					}
+					
+					// Broadcast the BabelCard to the frontend via Event Bus
+					eventBus.Publish(bus.Event{
+						Type: bus.EventBabelCardSpawned,
+						Data: *card,
+					})
+					
+					// Also append to standard results for legacy/sync support
+					resultChan <- fmt.Sprintf("Source: %s\n\n%s", u, card.TranslatedText)
 				}
 			}
 		}()
 	}
 
-	// Close resultChan when all Jina extractions complete
 	go func() {
 		wgJina.Wait()
 		close(resultChan)
 	}()
 
-	// 4. Collect results
+	// 4. Collect results (Sync return)
 	var finalResults []string
 	for md := range resultChan {
 		finalResults = append(finalResults, md)
 	}
 
-	log.Printf("[Bugu Radar] Completed! Scraped %d articles.\n", len(finalResults))
+	log.Printf("[Bugu Module] Completed! Scraped and distilled %d articles.\n", len(finalResults))
 
 	return RadarResponse{
 		Status:  "success",
 		Results: finalResults,
 	}
-}
-
-func StartServer(cfg *config.Config, port string) {
-	http.HandleFunc("/api/radar", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
-		if r.Method != http.MethodPost {
-			http.Error(w, `{"status":"error", "error":"Method not allowed"}`, http.StatusMethodNotAllowed)
-			return
-		}
-
-		var req RadarRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, `{"status":"error", "error":"Bad Request"}`, http.StatusBadRequest)
-			return
-		}
-
-		res := ExecuteRadar(cfg, req.Intent)
-		json.NewEncoder(w).Encode(res)
-	})
-
-	log.Printf("🚀 Bugu Drone Daemon is listening on :%s ...\n", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
 }

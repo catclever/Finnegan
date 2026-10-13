@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"Finnegan/bugu/models"
+	"Finnegan/modules/bugu/models"
 	"gopkg.in/yaml.v3"
 )
 

@@ -13,6 +13,7 @@ const (
 	EventFileModified    EventType = "FileModified"
 	EventFileDeleted     EventType = "FileDeleted"
 	EventThoughtCaptured EventType = "ThoughtCaptured"
+	EventBabelCardSpawned EventType = "BabelCardSpawned"
 )
 
 type EventFileData struct {

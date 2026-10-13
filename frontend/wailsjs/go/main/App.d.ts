@@ -4,16 +4,20 @@ import {models} from '../models';
 import {main} from '../models';
 import {api} from '../models';
 
+export function CaptureThought(arg1:string):Promise<string>;
+
+export function ClearTempCards():Promise<void>;
+
+export function GetNote(arg1:string):Promise<string>;
+
 export function GetRadarTargets():Promise<Array<models.Target>>;
 
 export function GetTempCards():Promise<Array<main.Card>>;
 
 export function Greet(arg1:string):Promise<string>;
 
+export function LoadLocalCards():Promise<Array<main.Card>>;
+
 export function PromoteTempCard(arg1:string):Promise<main.Card>;
 
 export function RunRadar(arg1:string):Promise<api.RadarResponse>;
-
-export function TestInjectBuguCard(arg1:string,arg2:string,arg3:string):Promise<main.Card>;
-
-export function CaptureThought(arg1:string):Promise<string>;

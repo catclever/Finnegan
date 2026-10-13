@@ -6,17 +6,18 @@ import (
 	"path/filepath"
 	"strings"
 
+	"Finnegan/core/module"
+
 	"gopkg.in/yaml.v3"
 )
 
-type PointerConfig struct {
-	Home string `yaml:"home"`
-}
-
 type Config struct {
-	ExternalProjects   []string `yaml:"external_projects"`
-	DebounceMs         int      `yaml:"debounce_ms"`
-	BuguMaxConcurrency int      `yaml:"bugu_max_concurrency"`
+	OverrideConfig   string                          `yaml:"override_config"`
+	DataDir          string                          `yaml:"data_dir"`
+	ExternalProjects []string                        `yaml:"external_projects"`
+	DebounceMs       int                             `yaml:"debounce_ms"`
+	LLMs             map[string]module.LLMConfig     `yaml:"llms"`
+	RawModules       map[string]yaml.Node            `yaml:",inline"`
 }
 
 func GetPointerConfigPath() string {
@@ -28,81 +29,101 @@ func GetPointerConfigPath() string {
 	return filepath.Join(home, "Library", "Application Support", "Finnegan", "finnegan.yml")
 }
 
+func resolvePath(p string) string {
+	if strings.HasPrefix(p, "~") {
+		if uHome, err := os.UserHomeDir(); err == nil {
+			p = filepath.Join(uHome, p[1:])
+		}
+	}
+	abs, err := filepath.Abs(p)
+	if err == nil {
+		return abs
+	}
+	return p
+}
+
 func LoadConfig() (*Config, string, error) {
-	pointerPath := GetPointerConfigPath()
-	pointerDir := filepath.Dir(pointerPath)
-	
+	appSupportPath := GetPointerConfigPath()
+	pointerDir := filepath.Dir(appSupportPath)
+
 	if err := os.MkdirAll(pointerDir, 0755); err != nil {
 		return nil, "", err
 	}
 
-	var pointer PointerConfig
-	data, err := os.ReadFile(pointerPath)
+	var data []byte
+	var err error
+
+	data, err = os.ReadFile(appSupportPath)
 	if err != nil {
-		pointer.Home = "~/Finnegan"
-		defaultData, _ := yaml.Marshal(pointer)
-		_ = os.WriteFile(pointerPath, defaultData, 0644)
-	} else {
-		if err := yaml.Unmarshal(data, &pointer); err != nil {
-			pointer.Home = "~/Finnegan"
+		cfg := Config{
+			DataDir:    "~/Documents/Finnegan",
+			DebounceMs: 300,
+			LLMs: map[string]module.LLMConfig{
+				"default": {
+					Provider:     "gemini",
+					APIKey:       "",
+					DefaultModel: "gemini-3.8-flash",
+				},
+			},
 		}
-		if pointer.Home == "" {
-			pointer.Home = "~/Finnegan"
+		data, _ = yaml.Marshal(cfg)
+		_ = os.WriteFile(appSupportPath, data, 0644)
+	}
+
+	// Check for override_config pointer
+	var temp struct {
+		OverrideConfig string `yaml:"override_config"`
+	}
+	_ = yaml.Unmarshal(data, &temp)
+
+	if temp.OverrideConfig != "" {
+		resolvedOverride := resolvePath(temp.OverrideConfig)
+		overrideData, err := os.ReadFile(resolvedOverride)
+		if err == nil {
+			data = overrideData // Success! Override data
+			log.Printf("Loaded config from override: %s", resolvedOverride)
+		} else {
+			log.Printf("Warning: override_config %s not found. Falling back to local.", resolvedOverride)
 		}
 	}
 
-	actualHome := pointer.Home
-	if strings.HasPrefix(actualHome, "~") {
-		if uHome, err := os.UserHomeDir(); err == nil {
-			actualHome = filepath.Join(uHome, actualHome[1:])
-		}
+	var cfg Config
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return nil, "", err
 	}
-	actualHome, _ = filepath.Abs(actualHome)
+
+	if cfg.DataDir == "" {
+		cfg.DataDir = "~/Documents/Finnegan"
+	}
+	actualDataDir := resolvePath(cfg.DataDir)
 
 	// Create skeleton
-	os.MkdirAll(filepath.Join(actualHome, "Scattering"), 0755)
-	os.MkdirAll(filepath.Join(actualHome, "Weaving"), 0755)
-	os.MkdirAll(filepath.Join(actualHome, ".finnegan", "bases"), 0755)
-
-	configPath := filepath.Join(actualHome, ".finnegan", "config.yml")
-	var cfg Config
-	cData, err := os.ReadFile(configPath)
-	if err != nil {
-		cfg = Config{
-			ExternalProjects:   []string{},
-			DebounceMs:         300,
-			BuguMaxConcurrency: 1,
-		}
-		defaultCfg, _ := yaml.Marshal(cfg)
-		_ = os.WriteFile(configPath, defaultCfg, 0644)
-	} else {
-		if err := yaml.Unmarshal(cData, &cfg); err != nil {
-			return nil, "", err
-		}
-	}
+	os.MkdirAll(filepath.Join(actualDataDir, "Scattering"), 0755)
+	os.MkdirAll(filepath.Join(actualDataDir, "Weaving"), 0755)
+	os.MkdirAll(filepath.Join(actualDataDir, ".finnegan", "bases"), 0755)
 
 	if cfg.DebounceMs == 0 {
 		cfg.DebounceMs = 300
 	}
-	if cfg.BuguMaxConcurrency < 1 {
-		cfg.BuguMaxConcurrency = 1
+
+	// Dynamic register bindings for modules
+	registry := module.GetRegistry()
+	for name, m := range registry {
+		if node, exists := cfg.RawModules[name]; exists {
+			cfgTarget := m.ConfigTarget()
+			if cfgTarget != nil {
+				_ = node.Decode(cfgTarget)
+			}
+		}
 	}
 
 	var resolvedExternal []string
 	for _, p := range cfg.ExternalProjects {
-		if strings.HasPrefix(p, "~") {
-			if uHome, err := os.UserHomeDir(); err == nil {
-				p = filepath.Join(uHome, p[1:])
-			}
-		}
-		abs, err := filepath.Abs(p)
-		if err == nil {
-			resolvedExternal = append(resolvedExternal, abs)
-		}
+		resolvedExternal = append(resolvedExternal, resolvePath(p))
 	}
 	cfg.ExternalProjects = resolvedExternal
 
-	return &cfg, actualHome, nil
+	return &cfg, actualDataDir, nil
 }
 
 func DeriveWatchDirs(home string, externalProjects []string) []string {

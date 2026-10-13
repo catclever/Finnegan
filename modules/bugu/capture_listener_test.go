@@ -1,8 +1,7 @@
 package bugu
 
 import (
-	"Finnegan/bugu/api"
-	"Finnegan/bugu/config"
+	"Finnegan/modules/bugu/api"
 	"Finnegan/core/bus"
 	"sync"
 	"testing"
@@ -24,10 +23,10 @@ func TestCaptureListener(t *testing.T) {
 		injectedResults = results
 	}
 	
-	listener := NewCaptureListener(&config.Config{}, 1, injectFunc)
+	listener := NewCaptureListener(&BuguModule{}, 1, injectFunc)
 	
 	var executedIntent string
-	listener.executeFunc = func(cfg *config.Config, intent string) api.RadarResponse {
+	listener.executeFunc = func(intent string) api.RadarResponse {
 		mu.Lock()
 		executedIntent = intent
 		mu.Unlock()

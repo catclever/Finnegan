@@ -4,18 +4,19 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"time"
 )
 
 type JinaClient struct {
 	BaseURL string
+	APIKey  string
 	Client  *http.Client
 }
 
-func NewJinaClient() *JinaClient {
+func NewJinaClient(apiKey string) *JinaClient {
 	return &JinaClient{
 		BaseURL: "https://r.jina.ai/",
+		APIKey:  apiKey,
 		Client: &http.Client{
 			Timeout: 30 * time.Second, // Jina can be slow to render JS
 		},
@@ -33,9 +34,8 @@ func (j *JinaClient) Extract(targetURL string) (string, error) {
 	// Adding specific headers for Jina API
 	req.Header.Set("Accept", "text/event-stream")
 	
-	jinaKey := os.Getenv("JINA_API_KEY")
-	if jinaKey != "" {
-		req.Header.Set("Authorization", "Bearer "+jinaKey)
+	if j.APIKey != "" {
+		req.Header.Set("Authorization", "Bearer "+j.APIKey)
 	}
 
 	resp, err := j.Client.Do(req)

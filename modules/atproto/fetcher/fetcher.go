@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"time"
 
-	"Finnegan/atproto/models"
+	"Finnegan/modules/atproto/models"
 )
 
 const PublicAPIEndpoint = "https://public.api.bsky.app/xrpc"

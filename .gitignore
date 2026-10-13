@@ -1,3 +1,6 @@
+mutagen.yml
+mutagen.yml.lock
+
 build/bin/
 bin/
 wails_temp
@@ -11,4 +14,6 @@ temp/
 node_modules/
 frontend/node_modules/
 frontend/dist/
+.gocache/
+*.db
 

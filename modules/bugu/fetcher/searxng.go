@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"time"
 
-	"Finnegan/bugu/models"
+	"Finnegan/modules/bugu/models"
 )
 
 type SearxNGClient struct {

@@ -17,41 +17,42 @@ type CardType string
 
 const (
 	CardTypeLocal CardType = "local" // Saved by user, permanent
-	CardTypeRadar CardType = "radar" // Discovered by Bugu, temporary
+	CardTypeBabel CardType = "babel" // Discovered by Bugu, temporary
+	CardTypeThought CardType = "thought"
 )
 
 // Card defines the core data model for a consciousness stream piece
 type Card struct {
-	ID        string    `json:"id"`
-	Type      CardType  `json:"type"`
-	Title     string    `json:"title"`
-	Content   string    `json:"content"`
-	SourceURL string    `json:"sourceUrl,omitempty"`
-	EchoOf    string    `json:"echoOf,omitempty"`
-	CreatedAt time.Time `json:"createdAt"`
+	ID             string    `json:"id"`
+	Type           CardType  `json:"type"`
+	Title          string    `json:"title"`
+	Content        string    `json:"content"`
+	SourceURL      string    `json:"sourceUrl,omitempty"`
+	OriginalText   string    `json:"originalText,omitempty"`
+	TranslatedText string    `json:"translatedText,omitempty"`
+	EchoOf         string    `json:"echoOf,omitempty"`
+	CreatedAt      time.Time `json:"createdAt"`
 }
 
 // CardManager handles the lifecycle of permanent and temporary cards
 type CardManager struct {
-	db        *RxDBStorage
 	tempCards map[string]Card
 	mutex     sync.RWMutex
 }
 
-func NewCardManager(db *RxDBStorage) *CardManager {
+func NewCardManager() *CardManager {
 	return &CardManager{
-		db:        db,
 		tempCards: make(map[string]Card),
 	}
 }
 
-// InjectRadarCards receives raw discovered data from Bugu and converts them to temporary cards
-func (m *CardManager) InjectRadarCards(cards []Card) {
+// InjectBabelCards receives raw discovered data from Bugu and converts them to temporary cards
+func (m *CardManager) InjectBabelCards(cards []Card) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
 	for _, c := range cards {
-		c.Type = CardTypeRadar // Force type for safety
+		c.Type = CardTypeBabel // Force type for safety
 		m.tempCards[c.ID] = c
 	}
 }
