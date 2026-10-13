@@ -1,22 +1,27 @@
-<!-- FINNEGAN COSMIC STAGE - Main App Component Draft (Task: frontend_components_split_012) -->
+<!--
+  ======================================================================================
+  FINNEGAN COSMIC STAGE - Main App Component Draft (Task: night_shift_overflow_scroll_focus_018)
+  1. Problem Fixed: Protected Bugu mother cards from eviction/fade-out; enabled multi-screen
+     overflow up to 3x capacity (30 cards) across Screens 1-3; smoothed Gravitational Tide
+     wheel scrolling using an accumulated `scrollTarget` with impulse clamping.
+  2. Resolution: Added `isProtectedCard` checks in `thought:captured`, `bugu:card_spawned`,
+     `metabolicInterval`, and `resetTideTimer`; marked `sourceCardId` as VIP (12h) in
+     `startBuguRadar`; drove `scrollExpansion` spring (`0.08/0.45`) via `computeNextScrollTarget`.
+  3. Caveats: `resetTideTimer` only fades out `origin === 'local'` deep cards (`y > 400`)
+     after 45s idle so Bugu overflow echoes in Screen 2/3 remain accessible.
+  ======================================================================================
+-->
 <script lang="ts">
   import { onMount } from 'svelte';
   import { spring } from 'svelte/motion';
   import OmniBar from './components/OmniBar.svelte';
   import CosmicStage from './components/CosmicStage.svelte';
-  import { 
-    CaptureThought, GetTempCards, LoadLocalCards, SearchLocalCards, 
-    GetRegisteredCommands, ExecuteModuleCommand 
-  } from '../wailsjs/go/main/App.js';
+  import { CaptureThought, GetTempCards, LoadLocalCards, SearchLocalCards, GetRegisteredCommands, ExecuteModuleCommand } from '../wailsjs/go/main/App.js';
   import { EventsOn } from '../wailsjs/runtime/runtime.js';
   import type { CosmicCard, SearchSession, CommandDef } from './types/card';
   import type { BuguSession, BuguBeacon } from './modules/bugu/types';
-  import { 
-    generateAuraColor, transformSearchResults, calculateSearchRepulsion, commitUnallocatedSearchResults 
-  } from './lib/auraSearch';
-  import { 
-    BASE_CAPACITY, MACRO_TTL_MS, BASE_STAGE_DECAY_MS, stageCandidate, replenishStageCandidates 
-  } from './lib/stageDecay';
+  import { generateAuraColor, transformSearchResults, calculateSearchRepulsion, commitUnallocatedSearchResults } from './lib/auraSearch';
+  import { BASE_CAPACITY, MACRO_TTL_MS, BASE_STAGE_DECAY_MS, stageCandidate, replenishStageCandidates, isProtectedCard, computeNextScrollTarget, toCosmicCard } from './lib/stageDecay';
 
   // --- Stage Pools & Selection State ---
   let memoryPool: CosmicCard[] = [], localVaultPool: CosmicCard[] = [], cards: CosmicCard[] = [];
@@ -25,20 +30,22 @@
   let omniBarRef: OmniBar, availableCommands: CommandDef[] = [];
   let searchSession: SearchSession = { isActive: false, searchId: '', stashedCards: [], rankedResults: [], color: '' };
   let searchDebounceTimer: any = null, tideTimer: any = null;
-  let activeBuguSession: BuguSession | null = null, buguFadeTimer: any = null;
+  let activeBuguSession: BuguSession | null = null;
   let activeBuguBeacon: BuguBeacon | null = null, buguBeaconTimer: any = null;
 
-  // --- Gravitational Tide (Y-Axis Expansion) ---
-  let scrollExpansion = spring(0, { stiffness: 0.05, damping: 0.3 });
+  // --- Gravitational Tide (Multi-Screen Y-Axis Expansion) ---
+  let scrollTarget = 0;
+  let scrollExpansion = spring(0, { stiffness: 0.08, damping: 0.45 });
   $: targetCapacity = Math.round(BASE_CAPACITY * (1 + $scrollExpansion * 0.6));
 
   function resetTideTimer() {
     if (tideTimer) clearTimeout(tideTimer);
     tideTimer = setTimeout(() => {
+      scrollTarget = 0;
       scrollExpansion.set(0);
       setTimeout(() => {
         cards.forEach(c => {
-          if (c.y > 400 && !c.isVIP && !c.isFadingOut) {
+          if (c.y > 400 && c.origin === 'local' && !isProtectedCard(c, cards, activeBuguBeacon?.sourceCardId) && !c.isFadingOut) {
             c.isFadingOut = true;
             setTimeout(() => { cards = cards.filter(item => item.id !== c.id); }, 2500);
           }
@@ -49,16 +56,14 @@
 
   function handleWheel(e: WheelEvent) {
     if (focusedCardId !== null) return;
-    const delta = e.deltaY * 0.0012;
-    scrollExpansion.set(delta > 0 ? Math.min(1.0, $scrollExpansion + delta) : Math.max(0, $scrollExpansion + delta));
+    scrollTarget = computeNextScrollTarget(scrollTarget, e.deltaY, e.deltaMode, cards);
+    scrollExpansion.set(scrollTarget);
     resetTideTimer();
-    if (delta > 0) replenishStage();
+    if (e.deltaY > 0) replenishStage();
   }
 
   function replenishStage() {
-    const res = replenishStageCandidates({
-      targetCapacity, cards, memoryPool, localVaultPool, searchSession, scrollExpansion: $scrollExpansion
-    });
+    const res = replenishStageCandidates({ targetCapacity, cards, memoryPool, localVaultPool, searchSession, scrollExpansion: $scrollExpansion });
     if (res.updatedMemoryPool) memoryPool = res.updatedMemoryPool;
     if (res.remainingRankedResults !== undefined) searchSession.rankedResults = res.remainingRankedResults;
     if (res.newCardsToStage.length > 0) cards = [...cards, ...res.newCardsToStage];
@@ -117,34 +122,21 @@
 
   function startBuguRadar(sourceCardId: string) {
     if (buguBeaconTimer) clearTimeout(buguBeaconTimer);
-    activeBuguBeacon = {
-      sourceCardId,
-      status: 'scanning'
-    };
-    // Radar scanning rings vanish after 15 seconds
+    cards = cards.map(c => c.id === sourceCardId ? { ...c, isVIP: true, decayDuration: Math.max(c.decayDuration, 12 * 3600 * 1000) } : c);
+    activeBuguBeacon = { sourceCardId, status: 'scanning' };
     buguBeaconTimer = setTimeout(() => {
-      if (activeBuguBeacon && activeBuguBeacon.sourceCardId === sourceCardId) {
+      if (activeBuguBeacon?.sourceCardId === sourceCardId) {
         activeBuguBeacon = { ...activeBuguBeacon, status: 'fading' };
         buguBeaconTimer = setTimeout(() => {
-          if (activeBuguBeacon && activeBuguBeacon.sourceCardId === sourceCardId) {
-            activeBuguBeacon = null;
-          }
+          if (activeBuguBeacon?.sourceCardId === sourceCardId) activeBuguBeacon = null;
         }, 2500);
       }
     }, 15000);
   }
 
-  function startBuguSession(sourceCardId: string) {
-    startBuguRadar(sourceCardId);
-  }
-
   async function handleExecuteCommand(cmd: CommandDef, card: CosmicCard) {
-    if (cmd.id.startsWith('bugu:')) {
-      startBuguRadar(card.id);
-    }
-    await ExecuteModuleCommand(cmd.id, {
-      cardId: card.id, card, content: card.content || card.title, id: card.id, text: card.content || card.title
-    });
+    if (cmd.id.startsWith('bugu:')) startBuguRadar(card.id);
+    await ExecuteModuleCommand(cmd.id, { cardId: card.id, card, content: card.content || card.title, id: card.id, text: card.content || card.title });
   }
 
   // --- Tilt, Focus, & Keydown Delegators ---
@@ -163,29 +155,18 @@
       globalTilt.set({ rx: 0, ry: 0 }, { hard: true });
       omniBarRef?.blurInput();
       omniBarRef?.closeCommandSelect();
-      if (searchSession.isActive) {
-        revertSearchView();
-        omniBarRef?.clearText();
-      }
+      if (searchSession.isActive) { revertSearchView(); omniBarRef?.clearText(); }
     }
   }
 
   function handleWindowClick(e: MouseEvent) {
     resetTideTimer();
     const target = e.target as Element | null;
-    if (target && target.closest('.omnibar-container')) {
-      return;
-    }
-    // Clicked outside Omnibar: blur input, close select, and revert uncommitted search
+    if (target?.closest('.omnibar-container')) return;
     omniBarRef?.blurInput();
     omniBarRef?.closeCommandSelect();
-    if (searchSession.isActive) {
-      revertSearchView();
-      omniBarRef?.clearText();
-    }
-    if (target && !target.closest('.card')) {
-      focusedCardId = null;
-    }
+    if (searchSession.isActive) { revertSearchView(); omniBarRef?.clearText(); }
+    if (target && !target.closest('.card')) focusedCardId = null;
   }
 
   function handleWindowKeydown(e: KeyboardEvent) {
@@ -193,74 +174,53 @@
       if (focusedCardId !== null) { focusedCardId = null; return; }
       if (omniBarRef?.handleEscape()) return;
     }
-    if (e.key === 'Enter') {
-      if (omniBarRef?.handleGlobalEnter()) return;
-    }
+    if (e.key === 'Enter') omniBarRef?.handleGlobalEnter();
   }
-
-  const toCosmic = (c: any, type: string, origin: 'manual' | 'bugu' | 'local', ttl?: number): CosmicCard => {
-    const rawContent = c.content || c.Content || c.translatedText || c.TranslatedText || c.translated_text || c.originalText || '';
-    let title = c.title || c.Title;
-    if (!title || title === 'Thought') {
-      const firstLine = rawContent.split('\n')[0].replace(/^[#\s\-*]+/, '').trim();
-      title = firstLine ? (firstLine.length > 20 ? firstLine.slice(0, 20) + '...' : firstLine) : (type === 'babel' ? 'Babel Echo' : 'Thought');
-    }
-    return {
-      id: c.id || c.ID || (type + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)),
-      type: c.type || c.Type || type,
-      title,
-      content: rawContent,
-      originalText: c.originalText || c.OriginalText || c.original_text || '',
-      translatedText: c.translatedText || c.TranslatedText || c.translated_text || '',
-      sourceUrl: c.sourceUrl || c.SourceURL || c.source_url || '',
-      publishedAt: c.publishedAt || c.PublishedAt || c.published_at || '',
-      authorName: c.authorName || c.AuthorName || c.author_name || '',
-      authorAvatar: c.authorAvatar || c.AuthorAvatar || c.author_avatar || '',
-      createdAt: c.createdAt || c.CreatedAt || c.created_at || new Date().toISOString(),
-      echoOf: c.echoOf || c.EchoOf || c.echo_of || '',
-      x: 0, y: 0, rotation: 0, z: 50,
-      spawnTime: Date.now(), decayDuration: BASE_STAGE_DECAY_MS, isFresh: true, isVIP: false, origin,
-      macroExpiresAt: ttl ? Date.now() + ttl : undefined
-    };
-  };
 
   // --- Metabolic Loop & Lifecycle ---
   onMount(() => {
     GetRegisteredCommands().then(cmds => { if (Array.isArray(cmds)) availableCommands = cmds; }).catch(console.warn);
 
     Promise.all([LoadLocalCards(), GetTempCards()]).then(([localCards, tempCards]) => {
-      if (tempCards?.length) memoryPool = tempCards.map(c => ({ ...toCosmic(c, 'babel', 'bugu', MACRO_TTL_MS), isFresh: false, spawnTime: 0, decayDuration: 0, z: 50 }));
-      if (localCards?.length) localVaultPool = localCards.map(c => ({ ...toCosmic(c, 'thought', 'local'), isFresh: false, spawnTime: 0, decayDuration: 0, z: 50 }));
+      if (tempCards?.length) memoryPool = tempCards.map(c => ({ ...toCosmicCard(c, 'babel', 'bugu', MACRO_TTL_MS), isFresh: false, spawnTime: 0, decayDuration: 0, z: 50 }));
+      if (localCards?.length) localVaultPool = localCards.map(c => ({ ...toCosmicCard(c, 'thought', 'local'), isFresh: false, spawnTime: 0, decayDuration: 0, z: 50 }));
       replenishStage();
     }).catch(err => console.error("loadCards error:", err));
 
     EventsOn("thought:captured", (data: any) => {
       const cardId = data.DocID || ('thought_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7));
-      startBuguSession(cardId);
       if (latestManualCardId) {
         const prevVIP = cards.find(c => c.id === latestManualCardId);
-        if (prevVIP) { prevVIP.isVIP = false; prevVIP.decayDuration = BASE_STAGE_DECAY_MS; }
+        if (prevVIP && !isProtectedCard({ ...prevVIP, isVIP: false }, cards, activeBuguBeacon?.sourceCardId)) {
+          prevVIP.isVIP = false;
+          prevVIP.decayDuration = BASE_STAGE_DECAY_MS;
+        }
       }
       latestManualCardId = cardId;
-      const baseCard = toCosmic({ id: cardId, content: data.Text }, 'thought', 'manual');
+      const baseCard = toCosmicCard({ id: cardId, content: data.Text }, 'thought', 'manual');
       const stagedCard = stageCandidate(baseCard, true, $scrollExpansion, cards, memoryPool);
       const newCard = { ...stagedCard, isVIP: true, decayDuration: 12 * 3600 * 1000, z: 12 };
       localVaultPool = [newCard, ...localVaultPool.filter(c => c.id !== newCard.id)];
       if (cards.filter(c => !c.isFadingOut).length >= targetCapacity) {
-        const evictable = cards.filter(c => !c.isVIP && !c.isFadingOut).sort((a, b) => (a.spawnTime + a.decayDuration) - (b.spawnTime + b.decayDuration));
+        const evictable = cards
+          .filter(c => !isProtectedCard(c, cards, activeBuguBeacon?.sourceCardId) && !c.isFadingOut)
+          .sort((a, b) => (a.spawnTime + a.decayDuration) - (b.spawnTime + b.decayDuration));
         if (evictable.length > 0) {
           evictable[0].isFadingOut = true;
           setTimeout(() => { cards = cards.filter(c => c.id !== evictable[0].id); }, 2500);
         }
       }
       cards = [...cards.filter(c => c.id !== newCard.id), newCard];
+      startBuguRadar(cardId);
     });
 
     EventsOn("bugu:card_spawned", (c: any) => {
-      const newCard = toCosmic(c, 'babel', 'bugu', MACRO_TTL_MS);
+      const newCard = toCosmicCard(c, 'babel', 'bugu', MACRO_TTL_MS);
       memoryPool = [newCard, ...memoryPool.filter(m => m.id !== newCard.id)];
-      if (cards.filter(card => !card.isFadingOut).length >= targetCapacity) {
-        const evictable = cards.filter(card => !card.isVIP && !card.isFadingOut).sort((a, b) => (a.spawnTime + a.decayDuration) - (b.spawnTime + b.decayDuration));
+      if (cards.filter(card => !card.isFadingOut).length >= BASE_CAPACITY * 3) {
+        const evictable = cards
+          .filter(card => !isProtectedCard(card, cards, activeBuguBeacon?.sourceCardId) && !card.isFadingOut)
+          .sort((a, b) => (a.spawnTime + a.decayDuration) - (b.spawnTime + b.decayDuration));
         if (evictable.length > 0) {
           evictable[0].isFadingOut = true;
           setTimeout(() => { cards = cards.filter(card => card.id !== evictable[0].id); }, 2500);
@@ -283,7 +243,7 @@
       memoryPool = memoryPool.filter(c => !c.macroExpiresAt || c.macroExpiresAt > now);
       cards.forEach(c => {
         if (c.isFresh && now - c.spawnTime > 8 * 60 * 1000) c.isFresh = false;
-        if (!c.isVIP && !c.isFadingOut && (now - c.spawnTime > c.decayDuration)) {
+        if (!isProtectedCard(c, cards, activeBuguBeacon?.sourceCardId) && !c.isFadingOut && (now - c.spawnTime > c.decayDuration)) {
           c.isFadingOut = true;
           setTimeout(() => { cards = cards.filter(card => card.id !== c.id); }, 2500);
         }
@@ -310,51 +270,27 @@
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <div class="container" on:click={handleWindowClick}>
   <OmniBar
-    bind:this={omniBarRef}
-    {availableCommands}
-    {searchSession}
-    {focusedCardId}
-    {cards}
-    {localVaultPool}
-    {capturePending}
-    bind:isOmnibarFocused
-    onCaptureThought={handleCaptureThought}
-    onFreeSearch={handleFreeSearch}
-    onRevertSearch={revertSearchView}
-    onCommitSearch={commitSearchView}
-    onExecuteCommand={handleExecuteCommand}
-    onSearchLocalCards={SearchLocalCards}
+    bind:this={omniBarRef} {availableCommands} {searchSession} {focusedCardId} {cards} {localVaultPool} {capturePending}
+    bind:isOmnibarFocused onCaptureThought={handleCaptureThought} onFreeSearch={handleFreeSearch}
+    onRevertSearch={revertSearchView} onCommitSearch={commitSearchView}
+    onExecuteCommand={handleExecuteCommand} onSearchLocalCards={SearchLocalCards}
   />
 
   <CosmicStage
-    {cards}
-    {time}
-    buguBeacon={activeBuguBeacon}
-    buguSession={activeBuguSession}
-    globalTilt={$globalTilt}
-    scrollExpansion={$scrollExpansion}
-    {focusedCardId}
-    {hoveredCardId}
-    {isOmnibarFocused}
-    onToggleFocus={toggleFocus}
-    onHoverCard={(id) => { hoveredCardId = id; resetTideTimer(); }}
-    onLeaveCard={() => hoveredCardId = null}
-    onBgClick={handleWindowClick}
+    {cards} {time} buguBeacon={activeBuguBeacon} buguSession={activeBuguSession}
+    globalTilt={$globalTilt} scrollExpansion={$scrollExpansion} {focusedCardId} {hoveredCardId} {isOmnibarFocused}
+    onToggleFocus={toggleFocus} onHoverCard={(id) => { hoveredCardId = id; resetTideTimer(); }}
+    onLeaveCard={() => hoveredCardId = null} onBgClick={handleWindowClick}
   />
 </div>
 
 <style>
   :global(body), :global(html), :global(#app) {
-    background: transparent !important;
-    background-color: transparent !important;
-    margin: 0; padding: 0;
-    width: 100vw; height: 100vh;
-    overflow: hidden;
+    background: transparent !important; background-color: transparent !important;
+    margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden;
   }
   .container {
-    width: 100vw; height: 100vh;
-    position: relative;
-    display: flex; justify-content: center; align-items: center;
-    background: transparent;
+    width: 100vw; height: 100vh; position: relative;
+    display: flex; justify-content: center; align-items: center; background: transparent;
   }
 </style>

@@ -1,28 +1,32 @@
 <!--
   ======================================================================================
   FINNEGAN COSMIC STAGE - UICard Component Draft
-  Task: omnibar_command_flow_009 & aura_search_stage_010
-  
+  Task: night_shift_overflow_scroll_focus_018
+
   [Bug Fix & Feature Documentation]
-  1. Specific Problem Fixed / Requirements:
-     - Implemented dynamic Flowing Light Aura Border for search-hit cards.
-     - Supported single-color rotating neon beam and multi-color conic-gradient spinning halo.
-     - Implemented 3-stage temporal decay:
-       * < 3 min: Bright flowing glow with dual-layer neon box-shadow.
-       * 3 ~ 30 min: Soft steady border glow with gentle rotation.
-       * > 30 min: Fine crisp 1.5px colored border, subtle and elegant until memory eviction.
-     - Handled search re-hits: refreshed hit time triggers immediate return to Stage 1.
-     - Fixed CSS color syntax: properly converted HSL to HSLA for box-shadow alpha channels,
-       preventing invalid syntax like 'hsl(...)44' in WebKit.
-     - Cleaned up unused imports and variables flagged in linter.
+  1. Specific Problems Fixed:
+     - Clicking/focusing a card when scrolled down into Deep Space (`scrollExpansion > 0`)
+       previously set `animSpring.y = 0`, which placed the focused card at the origin of
+       `.scene` (above the visible screen due to `.scene`'s `translateY(-scrollExpansion * 300px)`)
+       instead of the geometric center of the user's current viewport.
+     - Hovering a card in Screen 2 or Screen 3 (`card.y > 300`) previously clamped `pullY`
+       to `[-260, 260]`, yanking the hovered card hundreds of pixels upward out of view.
+     - Peripheral `edgeFade` and `edgeBlur` were previously calculated from absolute stage
+       origin `(0, 0)` instead of the current scrolled viewport center `(0, scrollOffsetY)`,
+       causing deep-space cards in Screen 2 and Screen 3 to remain blurry/faded even when
+       scrolled directly into the center of the screen.
   2. Resolution & Logic:
-     - Leveraged CSS conic-gradient within an absolute spinning pseudo/inner container clipped
-       by the card's rounded border radius.
-     - Created an inner translucent frosted-glass mask to let only the outer 1.8px perimeter glow.
-     - Computed reactive decay stage based on (Date.now() - latestHitTime).
+     - Added `scrollExpansion` and `hasAnyFocused` props and computed `scrollOffsetY = scrollExpansion * 300`.
+     - When `isFocused` is true, set `y: scrollOffsetY` so it exactly cancels parent `.scene`'s
+       `translateY(-scrollExpansion * 300px)`, locking the focused card to the invariant
+       geometric center of the viewport at any scroll depth and smoothly returning to
+       `(card.x, card.y)` when unfocused.
+     - Updated hover clamping to `pullY = Math.max(scrollOffsetY - 260, Math.min(scrollOffsetY + 260, card.y))`.
+     - Computed viewport-relative `viewY = card.y - scrollOffsetY` and `dist = Math.sqrt(card.x * card.x + viewY * viewY)`
+       so deep-space cards render with full optical clarity and opacity when scrolled into view.
   3. Caveats & Future Considerations:
-     - Preserved card hit-testing and 3D transform performance by keeping pointer-events: none
-       on aura decorative layers.
+     - Keep `scrollOffsetY` multiplier (`300`) synchronized with `TIDE_OFFSET_PX` in `stageDecay.ts`
+       and `.scene` transform in `CosmicStage.svelte`.
   ======================================================================================
 -->
 <script lang="ts">
@@ -32,6 +36,8 @@
   export let card: any;
   export let time: number = 0;
   export let globalTilt: { rx: number, ry: number } = { rx: 0, ry: 0 };
+  export let scrollExpansion: number = 0;
+  export let hasAnyFocused: boolean = false;
   export let isFocused: boolean = false;
   export let isHovered: boolean = false;
   export let onToggleFocus: () => void;
@@ -52,6 +58,9 @@
     rotY: 0,
     z3d: 0
   }, { stiffness: 0.06, damping: 0.35 });
+
+  // Vertical pixel offset matching parent .scene translateY(-scrollExpansion * 300px)
+  $: scrollOffsetY = scrollExpansion * 300;
 
   // --- Aura Search Flowing Light & Decay Logic ---
   $: auraTraces = card.auraTraces || [];
@@ -148,7 +157,7 @@
     } else if (isFocused) {
       animSpring.set({
         x: 0,
-        y: 0,
+        y: scrollOffsetY,
         rotation: 0,
         opacity: 1,
         scale: 1,
@@ -161,9 +170,9 @@
         z3d: 160
       });
     } else if (isHovered) {
-      // Gently keep within comfortable viewport margin on hover without shifting toward Omnibar
+      // Gently keep within comfortable viewport margin relative to current scroll depth
       const pullX = Math.max(-440, Math.min(440, card.x));
-      const pullY = Math.max(-260, Math.min(260, card.y));
+      const pullY = Math.max(scrollOffsetY - 260, Math.min(scrollOffsetY + 260, card.y));
       animSpring.set({
         x: pullX,
         y: pullY,
@@ -179,16 +188,17 @@
         z3d: 120
       });
     } else {
-      const dist = Math.sqrt(card.x * card.x + card.y * card.y);
+      const viewY = card.y - scrollOffsetY;
+      const dist = Math.sqrt(card.x * card.x + viewY * viewY);
       const edgeFade = Math.max(0, Math.min(1, 1 - (dist - 440) / 240));
       const edgeBlur = Math.max(0, Math.min(5, (dist - 400) * 0.025));
       
-      const anotherFocused = !isFocused && document.querySelector('.card.focused');
+      const anotherFocused = !isFocused && (hasAnyFocused || (typeof document !== 'undefined' && Boolean(document.querySelector('.card.focused'))));
       
       if (anotherFocused) {
         animSpring.set({
           x: card.x * 1.4,
-          y: card.y * 1.4,
+          y: scrollOffsetY + viewY * 1.4,
           rotation: card.rotation,
           opacity: 0.08,
           scale: 0.7,
@@ -257,6 +267,11 @@
     if (card.sourceUrl) {
       BrowserOpenURL(card.sourceUrl);
     }
+  }
+
+  function handleAvatarError(e: Event) {
+    const el = e.currentTarget as HTMLElement | null;
+    if (el) el.style.display = 'none';
   }
 
   function formatPublishedDate(t?: string): string {
@@ -338,21 +353,33 @@
 
   {#if card.type === 'babel'}
     <div class="babel-header">
-      {#if card.sourceUrl}
-        <a 
-          href={card.sourceUrl} 
-          target="_blank" 
-          class="source-link" 
-          on:click={handleOpenSource}
-          title={card.sourceUrl}
-        >
-          <span class="domain-icon">🌐</span> {hostname}
-        </a>
-      {:else}
-        <span></span>
-      {/if}
-      {#if cardTime}
-        <span class="card-time">{cardTime}</span>
+      <div class="header-left">
+        {#if card.sourceUrl}
+          <a 
+            href={card.sourceUrl} 
+            target="_blank" 
+            class="source-link" 
+            on:click={handleOpenSource}
+            title={card.sourceUrl}
+          >
+            <span class="domain-icon">🌐</span> {hostname}
+          </a>
+        {/if}
+
+        {#if card.authorName || card.authorAvatar}
+          <div class="author-pill" title={card.authorName || 'Author'}>
+            {#if card.authorAvatar}
+              <img src={card.authorAvatar} alt="" class="author-avatar" on:error={handleAvatarError} />
+            {/if}
+            {#if card.authorName}
+              <span class="author-name">{card.authorName}</span>
+            {/if}
+          </div>
+        {/if}
+      </div>
+
+      {#if babelTime}
+        <span class="card-time">{babelTime}</span>
       {/if}
     </div>
 
@@ -371,9 +398,9 @@
       </div>
     {/if}
   {:else}
-    {#if cardTime && isFocused}
+    {#if thoughtTime && isFocused}
       <div class="thought-header">
-        <span class="card-time">{cardTime}</span>
+        <span class="card-time">{thoughtTime}</span>
       </div>
     {/if}
     <div class="thought-content">
@@ -466,7 +493,47 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 8px;
     margin-bottom: 8px;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow: hidden;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .author-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    color: rgba(0, 0, 0, 0.65);
+    background: rgba(255, 255, 255, 0.55);
+    padding: 2px 7px;
+    border-radius: 12px;
+    max-width: 120px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+  }
+
+  .author-avatar {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+
+  .author-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   
   .source-link {
