@@ -10,7 +10,7 @@
   } from '../wailsjs/go/main/App.js';
   import { EventsOn } from '../wailsjs/runtime/runtime.js';
   import type { CosmicCard, SearchSession, CommandDef } from './types/card';
-  import type { BuguSession } from './modules/bugu/types';
+  import type { BuguSession, BuguBeacon } from './modules/bugu/types';
   import { 
     generateAuraColor, transformSearchResults, calculateSearchRepulsion, commitUnallocatedSearchResults 
   } from './lib/auraSearch';
@@ -26,6 +26,7 @@
   let searchSession: SearchSession = { isActive: false, searchId: '', stashedCards: [], rankedResults: [], color: '' };
   let searchDebounceTimer: any = null, tideTimer: any = null;
   let activeBuguSession: BuguSession | null = null, buguFadeTimer: any = null;
+  let activeBuguBeacon: BuguBeacon | null = null, buguBeaconTimer: any = null;
 
   // --- Gravitational Tide (Y-Axis Expansion) ---
   let scrollExpansion = spring(0, { stiffness: 0.05, damping: 0.3 });
@@ -114,26 +115,32 @@
     } finally { capturePending = false; }
   }
 
-  function startBuguSession(sourceCardId: string) {
-    if (buguFadeTimer) clearTimeout(buguFadeTimer);
-    activeBuguSession = {
-      id: 'session_' + Date.now(),
+  function startBuguRadar(sourceCardId: string) {
+    if (buguBeaconTimer) clearTimeout(buguBeaconTimer);
+    activeBuguBeacon = {
       sourceCardId,
-      targetCardIds: [],
-      status: 'scanning',
-      startedAt: Date.now()
+      status: 'scanning'
     };
-    buguFadeTimer = setTimeout(() => {
-      if (activeBuguSession) activeBuguSession.status = 'fading';
-      buguFadeTimer = setTimeout(() => {
-        activeBuguSession = null;
-      }, 2500);
-    }, 25000);
+    // Radar scanning rings vanish after 15 seconds
+    buguBeaconTimer = setTimeout(() => {
+      if (activeBuguBeacon && activeBuguBeacon.sourceCardId === sourceCardId) {
+        activeBuguBeacon = { ...activeBuguBeacon, status: 'fading' };
+        buguBeaconTimer = setTimeout(() => {
+          if (activeBuguBeacon && activeBuguBeacon.sourceCardId === sourceCardId) {
+            activeBuguBeacon = null;
+          }
+        }, 2500);
+      }
+    }, 15000);
+  }
+
+  function startBuguSession(sourceCardId: string) {
+    startBuguRadar(sourceCardId);
   }
 
   async function handleExecuteCommand(cmd: CommandDef, card: CosmicCard) {
     if (cmd.id.startsWith('bugu:')) {
-      startBuguSession(card.id);
+      startBuguRadar(card.id);
     }
     await ExecuteModuleCommand(cmd.id, {
       cardId: card.id, card, content: card.content || card.title, id: card.id, text: card.content || card.title
@@ -206,6 +213,9 @@
       originalText: c.originalText || c.OriginalText || c.original_text || '',
       translatedText: c.translatedText || c.TranslatedText || c.translated_text || '',
       sourceUrl: c.sourceUrl || c.SourceURL || c.source_url || '',
+      publishedAt: c.publishedAt || c.PublishedAt || c.published_at || '',
+      authorName: c.authorName || c.AuthorName || c.author_name || '',
+      authorAvatar: c.authorAvatar || c.AuthorAvatar || c.author_avatar || '',
       createdAt: c.createdAt || c.CreatedAt || c.created_at || new Date().toISOString(),
       echoOf: c.echoOf || c.EchoOf || c.echo_of || '',
       x: 0, y: 0, rotation: 0, z: 50,
@@ -319,6 +329,7 @@
   <CosmicStage
     {cards}
     {time}
+    buguBeacon={activeBuguBeacon}
     buguSession={activeBuguSession}
     globalTilt={$globalTilt}
     scrollExpansion={$scrollExpansion}

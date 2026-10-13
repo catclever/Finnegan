@@ -17,6 +17,9 @@ export interface CosmicCard {
   originalText?: string;
   translatedText?: string;
   sourceUrl?: string;
+  publishedAt?: string;
+  authorName?: string;
+  authorAvatar?: string;
   createdAt?: string | number;
   echoOf?: string;
   x: number;

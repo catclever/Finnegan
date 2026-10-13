@@ -259,6 +259,23 @@
     }
   }
 
+  function formatPublishedDate(t?: string): string {
+    if (!t || !t.trim()) return '';
+    const s = t.trim();
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const currentYear = new Date().getFullYear();
+      if (year === currentYear) {
+        return `${month}/${day}`;
+      }
+      return `${year}/${month}/${day}`;
+    }
+    return s.length > 18 ? s.slice(0, 18) : s;
+  }
+
   function formatCardTime(t?: string | number): string {
     if (!t) return '';
     const d = typeof t === 'number' ? new Date(t) : new Date(t);
@@ -275,7 +292,8 @@
     return `${m}/${day} ${h}:${min}`;
   }
 
-  $: cardTime = formatCardTime(card.createdAt || card.spawnTime);
+  $: babelTime = card.type === 'babel' ? formatPublishedDate(card.publishedAt) : '';
+  $: thoughtTime = card.type !== 'babel' ? formatCardTime(card.createdAt || card.spawnTime) : '';
 </script>
 
 <!-- svelte-ignore a11y-click-events-have-key-events -->

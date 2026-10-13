@@ -29,6 +29,9 @@ export namespace main {
 	    sourceUrl?: string;
 	    originalText?: string;
 	    translatedText?: string;
+	    publishedAt?: string;
+	    authorName?: string;
+	    authorAvatar?: string;
 	    echoOf?: string;
 	    // Go type: time
 	    createdAt: any;
@@ -46,6 +49,9 @@ export namespace main {
 	        this.sourceUrl = source["sourceUrl"];
 	        this.originalText = source["originalText"];
 	        this.translatedText = source["translatedText"];
+	        this.publishedAt = source["publishedAt"];
+	        this.authorName = source["authorName"];
+	        this.authorAvatar = source["authorAvatar"];
 	        this.echoOf = source["echoOf"];
 	        this.createdAt = this.convertValues(source["createdAt"], null);
 	    }

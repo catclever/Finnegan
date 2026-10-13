@@ -48,11 +48,18 @@ INSTRUCTIONS:
 3. Check the language of the extracted original text:
    - If it is in a foreign language (different from %s), provide a highly accurate, natural %s translation in "translated_text".
    - If it is ALREADY in %s, leave "translated_text" as an empty string (""). Absolutely do NOT translate, rephrase, or duplicate text that is already in %s.
-4. Output strict JSON matching this exact structure:
+4. Extract publication and author metadata from the webpage markdown:
+   - "published_at": The original publication date or release time of the article/post (e.g. "2024-05-12", "March 15, 2024"). If not explicitly mentioned in the markdown, leave as an empty string ("").
+   - "author_name": The author, creator, or publisher name (e.g. "John Doe", "@username"). If not found, leave as an empty string ("").
+   - "author_avatar": The URL of the author's avatar or profile image if present in markdown image tags or metadata. If not found, leave as an empty string ("").
+5. Output strict JSON matching this exact structure:
 {
   "source_url": "%s",
   "original_text": "the exact original text extracted",
-  "translated_text": "translation or empty string"
+  "translated_text": "translation or empty string",
+  "published_at": "publication date or empty string",
+  "author_name": "author name or empty string",
+  "author_avatar": "author avatar URL or empty string"
 }`, intent, url, markdown, targetLanguage, targetLanguage, targetLanguage, targetLanguage, url)
 
 	resp, err := model.GenerateContent(ctx, genai.Text(prompt))

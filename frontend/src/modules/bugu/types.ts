@@ -8,3 +8,8 @@ export interface BuguSession {
   status: 'scanning' | 'linked' | 'fading';
   startedAt: number;
 }
+
+export interface BuguBeacon {
+  sourceCardId: string;
+  status: 'scanning' | 'fading';
+}

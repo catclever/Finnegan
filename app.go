@@ -91,6 +91,7 @@ func (a *App) startup(ctx context.Context) {
 		for event := range babelCh {
 			var cardID string
 			var title, content, origText, transText, srcURL, echoOf string
+			var publishedAt, authorName, authorAvatar string
 
 			if bc, ok := event.Data.(models.BabelCard); ok {
 				cardID = fmt.Sprintf("babel_%s", ulid.Make().String())
@@ -104,6 +105,9 @@ func (a *App) startup(ctx context.Context) {
 				}
 				srcURL = bc.SourceURL
 				echoOf = bc.EchoOf
+				publishedAt = bc.PublishedAt
+				authorName = bc.AuthorName
+				authorAvatar = bc.AuthorAvatar
 			} else if bcp, ok := event.Data.(*models.BabelCard); ok && bcp != nil {
 				cardID = fmt.Sprintf("babel_%s", ulid.Make().String())
 				title = "Babel Echo"
@@ -116,6 +120,9 @@ func (a *App) startup(ctx context.Context) {
 				}
 				srcURL = bcp.SourceURL
 				echoOf = bcp.EchoOf
+				publishedAt = bcp.PublishedAt
+				authorName = bcp.AuthorName
+				authorAvatar = bcp.AuthorAvatar
 			}
 
 			if cardID != "" {
@@ -129,6 +136,9 @@ func (a *App) startup(ctx context.Context) {
 							SourceURL:      srcURL,
 							OriginalText:   origText,
 							TranslatedText: transText,
+							PublishedAt:    publishedAt,
+							AuthorName:     authorName,
+							AuthorAvatar:   authorAvatar,
 							EchoOf:         echoOf,
 							CreatedAt:      time.Now(),
 						},
@@ -145,8 +155,14 @@ func (a *App) startup(ctx context.Context) {
 					"source_url":      srcURL,
 					"original_text":   origText,
 					"translated_text": transText,
+					"publishedAt":    publishedAt,
+					"published_at":   publishedAt,
+					"authorName":     authorName,
+					"author_name":    authorName,
+					"authorAvatar":   authorAvatar,
+					"author_avatar":  authorAvatar,
 					"echoOf":         echoOf,
-					"echo_of":         echoOf,
+					"echo_of":        echoOf,
 					"createdAt":      time.Now(),
 				})
 			} else {

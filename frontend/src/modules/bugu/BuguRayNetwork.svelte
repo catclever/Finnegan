@@ -1,22 +1,47 @@
 <!--
   ======================================================================================
   BuguRayNetwork.svelte - Bugu Optical Ray Network & Dynamic Laser Fibers
-  Task: bugu_ray_network_and_beacon
+  Task: bugu_babel_meta_and_bezier_persistence
   ======================================================================================
 -->
 <script lang="ts">
   import type { CosmicCard } from '../../types/card';
-  import type { BuguSession } from './types';
+  import type { BuguBeacon } from './types';
   import BuguRadarBeacon from './BuguRadarBeacon.svelte';
 
-  export let session: BuguSession;
   export let cards: CosmicCard[] = [];
+  export let beacon: BuguBeacon | null = null;
+  // Legacy session prop fallback
+  export let session: any = null;
 
-  $: sourceCard = cards.find(c => c.id === session.sourceCardId);
+  $: activeBeacon = beacon || (session ? { sourceCardId: session.sourceCardId, status: session.status } : null);
 
-  $: targetCards = session.targetCardIds
-    .map(id => cards.find(c => c.id === id))
-    .filter((c): c is CosmicCard => Boolean(c));
+  $: beaconCard = activeBeacon 
+    ? cards.find(c => c.id === activeBeacon.sourceCardId && !c.isFadingOut) 
+    : null;
+
+  // Persistently derive all active laser rays between mother cards and their Babel echo children
+  $: activeRays = (() => {
+    const list: Array<{
+      id: string;
+      source: CosmicCard;
+      target: CosmicCard;
+    }> = [];
+
+    for (const child of cards) {
+      if (child.type === 'babel' && child.echoOf && !child.isFadingOut) {
+        const mother = cards.find(c => c.id === child.echoOf && !c.isFadingOut);
+        if (mother) {
+          list.push({
+            id: `${mother.id}->${child.id}`,
+            source: mother,
+            target: child
+          });
+        }
+      }
+    }
+    return list;
+  })();
 
   // Compute organic cubic bezier paths connecting source to each target
   function calculatePath(x0: number, y0: number, x1: number, y1: number): string {
@@ -40,15 +65,15 @@
   }
 </script>
 
-<div class="bugu-ray-network" class:fading={session.status === 'fading'}>
-  <!-- Mother Card Radar Beacon -->
-  {#if sourceCard}
-    <BuguRadarBeacon x={sourceCard.x} y={sourceCard.y} status={session.status} />
+<div class="bugu-ray-network">
+  <!-- Mother Card Radar Beacon (Vanishes after scanning) -->
+  {#if beaconCard && activeBeacon}
+    <BuguRadarBeacon x={beaconCard.x} y={beaconCard.y} status={activeBeacon.status} />
   {/if}
 
-  <!-- SVG Laser Fibers -->
-  {#if sourceCard && targetCards.length > 0}
-    <svg class="bugu-ray-svg">
+  <!-- Persistent SVG Laser Fibers -->
+  {#if activeRays.length > 0}
+    <svg class="bugu-ray-svg" viewBox="-2000 -2000 4000 4000">
       <defs>
         <!-- Amber gold neon glow filter -->
         <filter id="bugu-laser-glow" x="-20%" y="-20%" width="140%" height="140%">
@@ -61,14 +86,14 @@
 
         <!-- Gradient from mother to child -->
         <linearGradient id="bugu-ray-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#F59E0B" stop-opacity="0.9" />
-          <stop offset="70%" stop-color="#FBBF24" stop-opacity="0.75" />
+          <stop offset="0%" stop-color="#F59E0B" stop-opacity="0.95" />
+          <stop offset="70%" stop-color="#FBBF24" stop-opacity="0.85" />
           <stop offset="100%" stop-color="#FDE68A" stop-opacity="0.95" />
         </linearGradient>
       </defs>
 
-      {#each targetCards as target (target.id)}
-        {@const pathD = calculatePath(sourceCard.x, sourceCard.y, target.x, target.y)}
+      {#each activeRays as ray (ray.id)}
+        {@const pathD = calculatePath(ray.source.x, ray.source.y, ray.target.x, ray.target.y)}
         <!-- Ambient outer glow line -->
         <path
           d={pathD}
@@ -83,8 +108,8 @@
 
         <!-- Optical anchor node at child target -->
         <circle 
-          cx={target.x} 
-          cy={target.y} 
+          cx={ray.target.x} 
+          cy={ray.target.y} 
           r="4.5" 
           class="ray-node"
         />
@@ -102,19 +127,15 @@
     height: 100%;
     pointer-events: none;
     z-index: 1;
-    transition: opacity 2.5s ease-out;
-  }
-
-  .bugu-ray-network.fading {
-    opacity: 0;
   }
 
   .bugu-ray-svg {
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 0;
-    height: 0;
+    width: 4000px;
+    height: 4000px;
+    transform: translate(-50%, -50%);
     overflow: visible;
     pointer-events: none;
   }
@@ -122,21 +143,23 @@
   /* Wide ambient halo */
   .ray-glow {
     fill: none;
-    stroke: rgba(245, 158, 11, 0.28);
+    stroke: rgba(245, 158, 11, 0.32);
     stroke-width: 6px;
     stroke-linecap: round;
     filter: url(#bugu-laser-glow);
+    transition: opacity 0.5s ease-out;
   }
 
   /* Sharp golden pulsing core */
   .ray-core {
     fill: none;
     stroke: url(#bugu-ray-gradient);
-    stroke-width: 1.8px;
+    stroke-width: 2px;
     stroke-linecap: round;
     stroke-dasharray: 8, 8;
     animation: laser-flow 1.2s linear infinite;
-    filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.9));
+    filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.95));
+    transition: opacity 0.5s ease-out;
   }
 
   @keyframes laser-flow {

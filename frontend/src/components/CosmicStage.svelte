@@ -15,7 +15,7 @@
   import UICard from '../UICard.svelte';
   import type { CosmicCard } from '../types/card';
   import BuguRayNetwork from '../modules/bugu/BuguRayNetwork.svelte';
-  import type { BuguSession } from '../modules/bugu/types';
+  import type { BuguBeacon, BuguSession } from '../modules/bugu/types';
 
   // Props
   export let cards: CosmicCard[] = [];
@@ -26,6 +26,7 @@
   export let hoveredCardId: string | null = null;
   export let isOmnibarFocused: boolean = false;
   export let buguSession: BuguSession | null = null;
+  export let buguBeacon: BuguBeacon | null = null;
 
   // Callbacks
   export let onToggleFocus: ((cardId: string) => void) | undefined = undefined;
@@ -72,9 +73,7 @@
       transform-style: preserve-3d;
     "
   >
-    {#if buguSession}
-      <BuguRayNetwork session={buguSession} {cards} />
-    {/if}
+    <BuguRayNetwork {cards} beacon={buguBeacon} session={buguSession} />
 
     {#each cards as card (card.id)}
       <UICard 

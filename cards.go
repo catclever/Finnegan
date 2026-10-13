@@ -30,6 +30,9 @@ type Card struct {
 	SourceURL      string    `json:"sourceUrl,omitempty"`
 	OriginalText   string    `json:"originalText,omitempty"`
 	TranslatedText string    `json:"translatedText,omitempty"`
+	PublishedAt    string    `json:"publishedAt,omitempty"`
+	AuthorName     string    `json:"authorName,omitempty"`
+	AuthorAvatar   string    `json:"authorAvatar,omitempty"`
 	EchoOf         string    `json:"echoOf,omitempty"`
 	CreatedAt      time.Time `json:"createdAt"`
 }
