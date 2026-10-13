@@ -13,6 +13,7 @@ import (
 	"Finnegan/core/bus"
 	"Finnegan/core/config"
 	"Finnegan/core/module"
+	"Finnegan/core/search"
 	"Finnegan/core/watcher"
 	"Finnegan/modules/bugu"
 	"Finnegan/modules/bugu/api"
@@ -88,7 +89,69 @@ func (a *App) startup(ctx context.Context) {
 	babelCh := bus.GetBus().Subscribe(bus.EventBabelCardSpawned, "wails-frontend")
 	go func() {
 		for event := range babelCh {
-			runtime.EventsEmit(a.ctx, "bugu:card_spawned", event.Data)
+			var cardID string
+			var title, content, origText, transText, srcURL, echoOf string
+
+			if bc, ok := event.Data.(models.BabelCard); ok {
+				cardID = fmt.Sprintf("babel_%s", ulid.Make().String())
+				title = "Babel Echo"
+				origText = bc.OriginalText
+				transText = bc.TranslatedText
+				if transText != "" && transText != origText {
+					content = transText
+				} else {
+					content = origText
+				}
+				srcURL = bc.SourceURL
+				echoOf = bc.EchoOf
+			} else if bcp, ok := event.Data.(*models.BabelCard); ok && bcp != nil {
+				cardID = fmt.Sprintf("babel_%s", ulid.Make().String())
+				title = "Babel Echo"
+				origText = bcp.OriginalText
+				transText = bcp.TranslatedText
+				if transText != "" && transText != origText {
+					content = transText
+				} else {
+					content = origText
+				}
+				srcURL = bcp.SourceURL
+				echoOf = bcp.EchoOf
+			}
+
+			if cardID != "" {
+				if a.CardManager != nil {
+					a.CardManager.InjectBabelCards([]Card{
+						{
+							ID:             cardID,
+							Type:           CardTypeBabel,
+							Title:          title,
+							Content:        content,
+							SourceURL:      srcURL,
+							OriginalText:   origText,
+							TranslatedText: transText,
+							EchoOf:         echoOf,
+							CreatedAt:      time.Now(),
+						},
+					})
+				}
+				runtime.EventsEmit(a.ctx, "bugu:card_spawned", map[string]interface{}{
+					"id":             cardID,
+					"type":           "babel",
+					"title":          title,
+					"content":        content,
+					"sourceUrl":      srcURL,
+					"originalText":   origText,
+					"translatedText": transText,
+					"source_url":      srcURL,
+					"original_text":   origText,
+					"translated_text": transText,
+					"echoOf":         echoOf,
+					"echo_of":         echoOf,
+					"createdAt":      time.Now(),
+				})
+			} else {
+				runtime.EventsEmit(a.ctx, "bugu:card_spawned", event.Data)
+			}
 		}
 	}()
 
@@ -101,7 +164,7 @@ func (a *App) startup(ctx context.Context) {
 }
 
 func (a *App) shutdown(ctx context.Context) {
-    watcher.GetWatcher().Close()
+	watcher.GetWatcher().Close()
 	bus.GetBus().Close()
 }
 
@@ -237,4 +300,120 @@ func (a *App) GetNote(id string) (string, error) {
 
 func (a *App) ClearTempCards() {
 	a.CardManager.ClearTempCards()
+}
+
+// SearchLocalCards loads local cards and temporary cards, runs fuzzy search, and returns sorted results.
+func (a *App) SearchLocalCards(query string) []Card {
+	var rawCards []Card
+	rawCards = append(rawCards, a.LoadLocalCards()...)
+	rawCards = append(rawCards, a.GetTempCards()...)
+
+	// Deduplicate rawCards by ID and content
+	seenID := make(map[string]bool)
+	seenContent := make(map[string]bool)
+	var uniqueCards []Card
+	for _, c := range rawCards {
+		trimmedContent := strings.TrimSpace(c.Content)
+		if c.ID != "" && seenID[c.ID] {
+			continue
+		}
+		if trimmedContent != "" && seenContent[trimmedContent] {
+			continue
+		}
+		if c.ID != "" {
+			seenID[c.ID] = true
+		}
+		if trimmedContent != "" {
+			seenContent[trimmedContent] = true
+		}
+		uniqueCards = append(uniqueCards, c)
+	}
+
+	sCards := make([]search.Card, len(uniqueCards))
+	for i, c := range uniqueCards {
+		sCards[i] = search.Card{
+			ID:             c.ID,
+			Type:           string(c.Type),
+			Title:          c.Title,
+			Content:        c.Content,
+			SourceURL:      c.SourceURL,
+			OriginalText:   c.OriginalText,
+			TranslatedText: c.TranslatedText,
+			EchoOf:         c.EchoOf,
+			CreatedAt:      c.CreatedAt,
+		}
+	}
+
+	matched := search.SearchCards(query, sCards)
+
+	cardMap := make(map[string]Card, len(uniqueCards))
+	for _, c := range uniqueCards {
+		cardMap[c.ID] = c
+	}
+
+	resSeenID := make(map[string]bool)
+	resSeenContent := make(map[string]bool)
+	results := make([]Card, 0, len(matched))
+	for _, sc := range matched {
+		trimmedContent := strings.TrimSpace(sc.Content)
+		if sc.ID != "" && resSeenID[sc.ID] {
+			continue
+		}
+		if trimmedContent != "" && resSeenContent[trimmedContent] {
+			continue
+		}
+		if sc.ID != "" {
+			resSeenID[sc.ID] = true
+		}
+		if trimmedContent != "" {
+			resSeenContent[trimmedContent] = true
+		}
+
+		if orig, ok := cardMap[sc.ID]; ok {
+			results = append(results, orig)
+		} else {
+			results = append(results, Card{
+				ID:             sc.ID,
+				Type:           CardType(sc.Type),
+				Title:          sc.Title,
+				Content:        sc.Content,
+				SourceURL:      sc.SourceURL,
+				OriginalText:   sc.OriginalText,
+				TranslatedText: sc.TranslatedText,
+				EchoOf:         sc.EchoOf,
+				CreatedAt:      sc.CreatedAt,
+			})
+		}
+	}
+
+	return results
+}
+
+// GetRegisteredCommands iterates module.GetRegistry, finds modules implementing CommandProvider, and collects all CommandDefs.
+func (a *App) GetRegisteredCommands() []module.CommandDef {
+	commands := make([]module.CommandDef, 0)
+	for _, m := range module.GetRegistry() {
+		if cp, ok := m.(module.CommandProvider); ok {
+			commands = append(commands, cp.GetCommands()...)
+		}
+	}
+	return commands
+}
+
+// ExecuteModuleCommand dispatches a command to the module that owns cmdID.
+func (a *App) ExecuteModuleCommand(cmdID string, params map[string]interface{}) (interface{}, error) {
+	for _, m := range module.GetRegistry() {
+		if cp, ok := m.(module.CommandProvider); ok {
+			for _, cmd := range cp.GetCommands() {
+				if cmd.ID == cmdID {
+					ctx := a.ctx
+					if ctx == nil {
+						ctx = context.Background()
+					}
+					return cp.ExecuteCommand(ctx, cmdID, params)
+				}
+			}
+		}
+	}
+	return nil, fmt.Errorf("command not found: %s", cmdID)
 }

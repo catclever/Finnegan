@@ -18,8 +18,8 @@ type RadarResponse struct {
 	Error   string   `json:"error,omitempty"`
 }
 
-func ExecuteRadar(cfg *config.Config, router *llm.Router, searxURL, jinaKey string, maxConcurrency int, intent string, targetLanguage string) RadarResponse {
-	log.Printf("[Bugu Module] Processing intent: %s\n", intent)
+func ExecuteRadar(cfg *config.Config, router *llm.Router, searxURL, jinaKey string, maxConcurrency int, intent string, targetLanguage string, docID string) RadarResponse {
+	log.Printf("[Bugu Module] Processing intent: %s (docID: %s)\n", intent, docID)
 
 	searxClient := fetcher.NewSearxNGClient(searxURL)
 	jinaClient := fetcher.NewJinaClient(jinaKey)
@@ -105,6 +105,7 @@ func ExecuteRadar(cfg *config.Config, router *llm.Router, searxURL, jinaKey stri
 						log.Printf("[Distiller Error] %s: %v", u, err)
 						continue
 					}
+					card.EchoOf = docID
 					
 					// Broadcast the BabelCard to the frontend via Event Bus
 					eventBus.Publish(bus.Event{

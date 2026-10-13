@@ -1,14 +1,16 @@
 package bugu
 
 import (
+	"context"
+	"fmt"
+	"log"
+	"os"
+
+	"Finnegan/core/module"
 	"Finnegan/modules/bugu/api"
 	"Finnegan/modules/bugu/config"
 	"Finnegan/modules/bugu/llm"
 	"Finnegan/modules/bugu/models"
-	"Finnegan/core/module"
-	"Finnegan/core/bus"
-	"log"
-	"os"
 
 	"gopkg.in/yaml.v3"
 )
@@ -17,6 +19,7 @@ type BuguConfig struct {
 	SearxngURL     string `yaml:"searxng_url"`
 	MaxConcurrency int    `yaml:"max_concurrency"`
 	FallbackKey    string `yaml:"fallback_key"`
+	APIKey         string `yaml:"api_key"`
 	JinaAPIKey     string `yaml:"jina_api_key"`
 	TargetLanguage string `yaml:"target_language"`
 	LLMID          string `yaml:"llm_id"`
@@ -27,6 +30,9 @@ type BuguModule struct {
 	Router       *llm.Router
 	RadarTargets *config.Config
 }
+
+// Compile-time check that BuguModule implements module.CommandProvider
+var _ module.CommandProvider = (*BuguModule)(nil)
 
 func (b *BuguModule) Name() string {
 	return "bugu"
@@ -63,15 +69,30 @@ func (b *BuguModule) ConfigTarget() interface{} {
 }
 
 func (b *BuguModule) Init(ctx *module.Context) error {
-	cfg, err := config.LoadConfig("bugu/radar_targets.yml")
-	if err != nil {
-		cfg, err = config.LoadConfig("radar_targets.yml")
+	paths := []string{
+		"modules/bugu/radar_targets.yml",
+		"bugu/radar_targets.yml",
+		"radar_targets.yml",
 	}
-	if err != nil {
-		// Just a fallback for now
+	var cfg *config.Config
+	var err error
+	for _, p := range paths {
+		cfg, err = config.LoadConfig(p)
+		if err == nil && len(cfg.Targets) > 0 {
+			break
+		}
+	}
+	if cfg == nil || len(cfg.Targets) == 0 {
+		log.Printf("[Bugu Module] Warning: No radar targets loaded: %v", err)
 		cfg = &config.Config{Targets: []models.Target{}, TargetMap: make(map[string]models.Target)}
+	} else {
+		log.Printf("[Bugu Module] Successfully loaded %d radar targets", len(cfg.Targets))
 	}
 	b.RadarTargets = cfg
+
+	if b.MyConfig == nil {
+		b.ConfigTarget()
+	}
 
 	// Get specific LLM from core context
 	llmID := b.MyConfig.LLMID
@@ -88,27 +109,34 @@ func (b *BuguModule) Init(ctx *module.Context) error {
 		DefaultModel: globalLLM.DefaultModel,
 	}
 
-	// Override API Key tier
+	// 4-Tier Override for API Key
 	if finalLLM.APIKey == "" {
 		if b.MyConfig.FallbackKey != "" {
 			finalLLM.APIKey = b.MyConfig.FallbackKey
+		} else if b.MyConfig.APIKey != "" {
+			finalLLM.APIKey = b.MyConfig.APIKey
+		} else if envKey := os.Getenv("GEMINI_API_KEY"); envKey != "" {
+			finalLLM.APIKey = envKey
 		}
+	}
+
+	if finalLLM.DefaultModel == "" {
+		finalLLM.DefaultModel = "gemini-3.8-flash"
+	}
+
+	if finalLLM.APIKey != "" {
+		maskLen := 8
+		if len(finalLLM.APIKey) < maskLen {
+			maskLen = len(finalLLM.APIKey)
+		}
+		log.Printf("[Bugu Module] LLM initialized (provider: %s, model: %s, key prefix: %s...)",
+			finalLLM.Provider, finalLLM.DefaultModel, finalLLM.APIKey[:maskLen])
+	} else {
+		log.Printf("[Bugu Module] Warning: LLM API Key is empty after 4-tier check (llm_id: %s)", llmID)
 	}
 
 	// Router initialization using final LLM config
 	b.Router = llm.NewRouter(cfg, finalLLM)
-
-	// Subscribe to new thoughts to automatically run Radar
-	thoughtCh := bus.GetBus().Subscribe(bus.EventThoughtCaptured, "bugu-module")
-	go func() {
-		for event := range thoughtCh {
-			if data, ok := event.Data.(bus.EventThoughtCapturedData); ok {
-				log.Printf("[Bugu Module] Triggered automatically by new thought: %s", data.Text)
-				// Run radar asynchronously
-				go b.RunRadar(data.Text)
-			}
-		}
-	}()
 
 	return nil
 }
@@ -117,6 +145,74 @@ func (b *BuguModule) Bindings() []interface{} {
 	return []interface{}{
 		b,
 	}
+}
+
+// GetCommands returns the Omnibar commands provided by BuguModule
+func (b *BuguModule) GetCommands() []module.CommandDef {
+	return []module.CommandDef{
+		{
+			ID:          "bugu:radar",
+			Name:        "布谷深网雷达",
+			Trigger:     "bugu",
+			Description: "吾道不孤",
+			Params: []module.ParamSpec{
+				{
+					Name:        "card",
+					Type:        module.ParamTypeCard,
+					Description: "吾道不孤",
+					DataSource:  "cards",
+				},
+			},
+		},
+	}
+}
+
+// ExecuteCommand executes an Omnibar command implemented by BuguModule
+func (b *BuguModule) ExecuteCommand(ctx context.Context, cmdID string, params map[string]interface{}) (interface{}, error) {
+	if cmdID == "bugu:radar" {
+		var content string
+		if c, ok := params["content"].(string); ok && c != "" {
+			content = c
+		} else if text, ok := params["text"].(string); ok && text != "" {
+			content = text
+		} else if id, ok := params["id"].(string); ok && id != "" {
+			content = id
+		} else if cardVal, ok := params["card"]; ok {
+			switch cv := cardVal.(type) {
+			case string:
+				content = cv
+			case map[string]interface{}:
+				if c, ok := cv["content"].(string); ok && c != "" {
+					content = c
+				} else if t, ok := cv["title"].(string); ok && t != "" {
+					content = t
+				} else if id, ok := cv["id"].(string); ok && id != "" {
+					content = id
+				}
+			}
+		}
+
+		var cardID string
+		if id, ok := params["id"].(string); ok && id != "" {
+			cardID = id
+		}
+
+		if content == "" {
+			return nil, fmt.Errorf("no content or card provided for %s", cmdID)
+		}
+
+		// Run Radar asynchronously associated with cardID
+		go b.RunRadarForDoc(cardID, content)
+
+		return map[string]interface{}{
+			"status":  "triggered",
+			"command": cmdID,
+			"target":  content,
+			"card_id": cardID,
+		}, nil
+	}
+
+	return nil, fmt.Errorf("unknown command: %s", cmdID)
 }
 
 // Wails exposed methods
@@ -128,14 +224,18 @@ func (b *BuguModule) GetRadarTargets() []models.Target {
 	return b.RadarTargets.Targets
 }
 
-func (b *BuguModule) RunRadar(intent string) api.RadarResponse {
+func (b *BuguModule) RunRadarForDoc(docID string, intent string) api.RadarResponse {
 	if b.RadarTargets == nil || b.Router == nil {
 		return api.RadarResponse{
 			Status: "error",
 			Error:  "Bugu configuration is not loaded",
 		}
 	}
-	return api.ExecuteRadar(b.RadarTargets, b.Router, b.MyConfig.SearxngURL, b.MyConfig.JinaAPIKey, b.MyConfig.MaxConcurrency, intent, b.MyConfig.TargetLanguage)
+	return api.ExecuteRadar(b.RadarTargets, b.Router, b.MyConfig.SearxngURL, b.MyConfig.JinaAPIKey, b.MyConfig.MaxConcurrency, intent, b.MyConfig.TargetLanguage, docID)
+}
+
+func (b *BuguModule) RunRadar(intent string) api.RadarResponse {
+	return b.RunRadarForDoc("", intent)
 }
 
 func init() {

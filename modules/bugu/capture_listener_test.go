@@ -26,7 +26,7 @@ func TestCaptureListener(t *testing.T) {
 	listener := NewCaptureListener(&BuguModule{}, 1, injectFunc)
 	
 	var executedIntent string
-	listener.executeFunc = func(intent string) api.RadarResponse {
+	listener.executeFunc = func(docID string, intent string) api.RadarResponse {
 		mu.Lock()
 		executedIntent = intent
 		mu.Unlock()

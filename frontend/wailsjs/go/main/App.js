@@ -10,12 +10,20 @@ export function ClearTempCards() {
   return window['go']['main']['App']['ClearTempCards']();
 }
 
+export function ExecuteModuleCommand(arg1, arg2) {
+  return window['go']['main']['App']['ExecuteModuleCommand'](arg1, arg2);
+}
+
 export function GetNote(arg1) {
   return window['go']['main']['App']['GetNote'](arg1);
 }
 
 export function GetRadarTargets() {
   return window['go']['main']['App']['GetRadarTargets']();
+}
+
+export function GetRegisteredCommands() {
+  return window['go']['main']['App']['GetRegisteredCommands']();
 }
 
 export function GetTempCards() {
@@ -36,4 +44,8 @@ export function PromoteTempCard(arg1) {
 
 export function RunRadar(arg1) {
   return window['go']['main']['App']['RunRadar'](arg1);
+}
+
+export function SearchLocalCards(arg1) {
+  return window['go']['main']['App']['SearchLocalCards'](arg1);
 }

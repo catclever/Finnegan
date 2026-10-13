@@ -1,11 +1,38 @@
 package module
 
+import (
+	"strings"
+
+	"gopkg.in/yaml.v3"
+)
+
 // LLMConfig represents the network-level LLM configuration from the global config
 type LLMConfig struct {
-	Provider     string
-	APIKey       string
-	BaseURL      string
-	DefaultModel string
+	Provider     string `yaml:"provider" json:"provider"`
+	APIKey       string `yaml:"api_key" json:"api_key"`
+	BaseURL      string `yaml:"base_url" json:"base_url"`
+	DefaultModel string `yaml:"default_model" json:"default_model"`
+}
+
+func (c *LLMConfig) UnmarshalYAML(value *yaml.Node) error {
+	var raw map[string]string
+	if err := value.Decode(&raw); err != nil {
+		return err
+	}
+	for k, v := range raw {
+		normKey := strings.ToLower(strings.ReplaceAll(k, "_", ""))
+		switch normKey {
+		case "provider":
+			c.Provider = v
+		case "apikey", "key":
+			c.APIKey = v
+		case "baseurl", "url":
+			c.BaseURL = v
+		case "defaultmodel", "model":
+			c.DefaultModel = v
+		}
+	}
+	return nil
 }
 
 // StorageInterface represents a mock storage interface for modules

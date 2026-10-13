@@ -51,6 +51,22 @@ func (a *App) LoadLocalCards() []Card {
 				}
 			}
 
+			// Derive meaningful title from first line of content
+			lines := strings.Split(card.Content, "\n")
+			for _, l := range lines {
+				trimmed := strings.TrimSpace(l)
+				if trimmed != "" {
+					title := strings.TrimPrefix(trimmed, "# ")
+					runes := []rune(title)
+					if len(runes) > 24 {
+						card.Title = string(runes[:24]) + "..."
+					} else {
+						card.Title = string(runes)
+					}
+					break
+				}
+			}
+
 			localCards = append(localCards, card)
 		}
 	}

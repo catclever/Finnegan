@@ -14,7 +14,7 @@ type CaptureListener struct {
 	injectFunc func(docID string, intent string, results []string)
 	sem        *semaphore.Weighted
 	ctx        context.Context
-	executeFunc func(intent string) api.RadarResponse
+	executeFunc func(docID string, intent string) api.RadarResponse
 }
 
 func NewCaptureListener(m *BuguModule, concurrency int, injectFunc func(docID string, intent string, results []string)) *CaptureListener {
@@ -27,7 +27,7 @@ func NewCaptureListener(m *BuguModule, concurrency int, injectFunc func(docID st
 		sem:         semaphore.NewWeighted(int64(concurrency)),
 		ctx:         context.Background(),
 	}
-	l.executeFunc = m.RunRadar
+	l.executeFunc = m.RunRadarForDoc
 	return l
 }
 
@@ -65,7 +65,7 @@ func (l *CaptureListener) processEvent(data bus.EventThoughtCapturedData) {
 	}
 	defer l.sem.Release(1)
 
-	resp := l.executeFunc(data.Text)
+	resp := l.executeFunc(data.DocID, data.Text)
 	if resp.Status == "error" {
 		log.Printf("Bugu radar failed for DocID %s: %s", data.DocID, resp.Error)
 		return

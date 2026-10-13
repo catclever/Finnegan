@@ -17,6 +17,7 @@ type Config struct {
 	ExternalProjects []string                        `yaml:"external_projects"`
 	DebounceMs       int                             `yaml:"debounce_ms"`
 	LLMs             map[string]module.LLMConfig     `yaml:"llms"`
+	SingleLLM        *module.LLMConfig               `yaml:"llm"`
 	RawModules       map[string]yaml.Node            `yaml:",inline"`
 }
 
@@ -90,6 +91,23 @@ func LoadConfig() (*Config, string, error) {
 	var cfg Config
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, "", err
+	}
+
+	if cfg.LLMs == nil {
+		cfg.LLMs = make(map[string]module.LLMConfig)
+	}
+	if cfg.SingleLLM != nil {
+		def, exists := cfg.LLMs["default"]
+		if !exists || def.APIKey == "" {
+			cfg.LLMs["default"] = *cfg.SingleLLM
+		}
+	}
+	// Fallback to env GEMINI_API_KEY if default api_key is empty
+	if def, exists := cfg.LLMs["default"]; exists && def.APIKey == "" {
+		if envKey := os.Getenv("GEMINI_API_KEY"); envKey != "" {
+			def.APIKey = envKey
+			cfg.LLMs["default"] = def
+		}
 	}
 
 	if cfg.DataDir == "" {

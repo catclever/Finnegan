@@ -18,7 +18,7 @@ func TestConfigSkeletonAndPointer(t *testing.T) {
 		t.Fatalf("LoadConfig failed: %v", err)
 	}
 
-	expectedHome := filepath.Join(tempHome, "Finnegan")
+	expectedHome := filepath.Join(tempHome, "Documents", "Finnegan")
 	if home != expectedHome {
 		t.Errorf("Expected home %s, got %s", expectedHome, home)
 	}
@@ -37,6 +37,43 @@ func TestConfigSkeletonAndPointer(t *testing.T) {
 
 	if cfg.DebounceMs != 300 {
 		t.Errorf("Expected debounce 300, got %d", cfg.DebounceMs)
+	}
+}
+
+func TestLLMConfigParsing(t *testing.T) {
+	yamlData := []byte(`
+llms:
+  default:
+    provider: gemini
+    api_key: "AIzaSy_TEST_KEY"
+    default_model: "gemini-3.8-flash"
+`)
+	tempHome := t.TempDir()
+	origHome := os.Getenv("HOME")
+	os.Setenv("HOME", tempHome)
+	defer os.Setenv("HOME", origHome)
+
+	pointerPath := GetPointerConfigPath()
+	os.MkdirAll(filepath.Dir(pointerPath), 0755)
+	os.WriteFile(pointerPath, yamlData, 0644)
+
+	cfg, _, err := LoadConfig()
+	if err != nil {
+		t.Fatalf("LoadConfig failed: %v", err)
+	}
+
+	defLLM, ok := cfg.LLMs["default"]
+	if !ok {
+		t.Fatalf("Expected 'default' LLM in cfg.LLMs")
+	}
+	if defLLM.APIKey != "AIzaSy_TEST_KEY" {
+		t.Errorf("Expected APIKey 'AIzaSy_TEST_KEY', got '%s'", defLLM.APIKey)
+	}
+	if defLLM.DefaultModel != "gemini-3.8-flash" {
+		t.Errorf("Expected DefaultModel 'gemini-3.8-flash', got '%s'", defLLM.DefaultModel)
+	}
+	if defLLM.Provider != "gemini" {
+		t.Errorf("Expected Provider 'gemini', got '%s'", defLLM.Provider)
 	}
 }
 

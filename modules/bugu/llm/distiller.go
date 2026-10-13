@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"Finnegan/modules/bugu/models"
 	"github.com/google/generative-ai-go/genai"
@@ -43,14 +44,16 @@ WEBPAGE MARKDOWN:
 
 INSTRUCTIONS:
 1. Locate the 1 to 2 most relevant paragraphs in the markdown that directly address the user's intent. Do not summarize the whole page.
-2. Extract the exact original text.
-3. Provide a highly accurate, natural %s translation of the extracted text.
+2. Extract the exact original text into "original_text".
+3. Check the language of the extracted original text:
+   - If it is in a foreign language (different from %s), provide a highly accurate, natural %s translation in "translated_text".
+   - If it is ALREADY in %s, leave "translated_text" as an empty string (""). Absolutely do NOT translate, rephrase, or duplicate text that is already in %s.
 4. Output strict JSON matching this exact structure:
 {
-  "source_url": "the original url",
+  "source_url": "%s",
   "original_text": "the exact original text extracted",
-  "translated_text": "the translation in %s"
-}`, intent, url, markdown, targetLanguage, targetLanguage)
+  "translated_text": "translation or empty string"
+}`, intent, url, markdown, targetLanguage, targetLanguage, targetLanguage, targetLanguage, url)
 
 	resp, err := model.GenerateContent(ctx, genai.Text(prompt))
 	if err != nil {
@@ -80,6 +83,13 @@ INSTRUCTIONS:
 	if card.SourceURL == "" {
 		card.SourceURL = url
 	}
+
+	// If LLM echoed identical text or whitespace, clear translated_text
+	if strings.TrimSpace(card.TranslatedText) == strings.TrimSpace(card.OriginalText) {
+		card.TranslatedText = ""
+	}
+
+	card.CreatedAt = time.Now()
 
 	return &card, nil
 }
