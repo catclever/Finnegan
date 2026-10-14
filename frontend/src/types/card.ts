@@ -9,9 +9,16 @@ export interface AuraTrace {
   hitTime: number;
 }
 
+export type CardType = 'thought' | 'babel' | 'chat_log' | 'local' | string;
+
+export interface DialogueTurn {
+  speaker: string;
+  lines: string[];
+}
+
 export interface CosmicCard {
   id: string;
-  type?: string;
+  type?: CardType;
   title: string;
   content: string;
   originalText?: string;
@@ -21,6 +28,9 @@ export interface CosmicCard {
   authorName?: string;
   authorAvatar?: string;
   createdAt?: string | number;
+  participants?: string[];
+  startedAt?: string;
+  endedAt?: string;
   echoOf?: string;
   x: number;
   y: number;

@@ -1,18 +1,21 @@
 <!--
   ======================================================================================
-  BuguRayNetwork.svelte - Bugu Optical Ray Network & Dynamic Laser Fibers
-  Task: bugu_babel_meta_and_bezier_persistence
+  BuguRayNetwork.svelte - Bugu Directed Decaying Cross-Screen Rays & Radar Beacon
+  Task: temporary_card_and_bugu_ray_refine_028
   ======================================================================================
 -->
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import type { CosmicCard } from '../../types/card';
   import type { BuguBeacon } from './types';
   import BuguRadarBeacon from './BuguRadarBeacon.svelte';
 
   export let cards: CosmicCard[] = [];
   export let beacon: BuguBeacon | null = null;
+  export let scrollExpansion: number = 0;
   // Legacy session prop fallback
   export let session: any = null;
+  $: void scrollExpansion;
 
   $: activeBeacon = beacon || (session ? { sourceCardId: session.sourceCardId, status: session.status } : null);
 
@@ -20,8 +23,8 @@
     ? cards.find(c => c.id === activeBeacon.sourceCardId && !c.isFadingOut) 
     : null;
 
-  // Persistently derive all active laser rays between mother cards and their Babel echo children
-  $: activeRays = (() => {
+  // Requirement 6: Cross-screen connectivity without on-screen clipping
+  $: availableRays = (() => {
     const list: Array<{
       id: string;
       source: CosmicCard;
@@ -30,7 +33,9 @@
 
     for (const child of cards) {
       if (child.type === 'babel' && child.echoOf && !child.isFadingOut) {
-        const mother = cards.find(c => c.id === child.echoOf && !c.isFadingOut);
+        const mother = cards.find(
+          c => c.id === child.echoOf && !c.isFadingOut
+        );
         if (mother) {
           list.push({
             id: `${mother.id}->${child.id}`,
@@ -43,82 +48,139 @@
     return list;
   })();
 
-  // Compute organic cubic bezier paths connecting source to each target
-  function calculatePath(x0: number, y0: number, x1: number, y1: number): string {
-    const dx = x1 - x0;
-    const dy = y1 - y0;
-    const dist = Math.sqrt(dx * dx + dy * dy);
+  // Requirement 4 & 7: Asynchronous staggered ray scheduler
+  const SINGLE_PULSE_MS = 1300;
+  const MIN_NEXT_DELAY_MS = SINGLE_PULSE_MS; // Lower bound is duration of 1 pulse
+  const RANDOM_ADDITIONAL_MS = 900;          // Range [1300ms, 2200ms]
 
-    if (dist < 1) return `M ${x0} ${y0}`;
-
-    // Perpendicular vector for organic arc curve
-    const nx = -dy / dist;
-    const ny = dx / dist;
-    const curvature = Math.min(dist * 0.22, 55);
-
-    const cx0 = x0 + dx * 0.35 + nx * curvature;
-    const cy0 = y0 + dy * 0.35 + ny * curvature;
-    const cx1 = x0 + dx * 0.65 + nx * curvature;
-    const cy1 = y0 + dy * 0.65 + ny * curvature;
-
-    return `M ${x0} ${y0} C ${cx0} ${cy0}, ${cx1} ${cy1}, ${x1} ${y1}`;
+  interface ActiveRayInstance {
+    instanceId: number;
+    rayId: string;
+    sourceId: string;
+    targetId: string;
   }
+
+  let activeInstances: ActiveRayInstance[] = [];
+  let nextInstanceId = 0;
+  let nextSpawnTimer: any = null;
+  let lastSpawnedRayId: string = '';
+
+  function spawnNextRay() {
+    if (availableRays.length === 0) {
+      nextSpawnTimer = null;
+      return;
+    }
+
+    // Pick candidate: prefer a ray different from last spawned, or random
+    const candidates = availableRays.filter(r => r.id !== lastSpawnedRayId);
+    const selected = candidates.length > 0 
+      ? candidates[Math.floor(Math.random() * candidates.length)]
+      : availableRays[0];
+
+    const id = ++nextInstanceId;
+    lastSpawnedRayId = selected.id;
+    activeInstances = [
+      ...activeInstances,
+      {
+        instanceId: id,
+        rayId: selected.id,
+        sourceId: selected.source.id,
+        targetId: selected.target.id
+      }
+    ];
+
+    // Requirement 7: Write the random delay immediately when ray is launched
+    const delay = MIN_NEXT_DELAY_MS + Math.floor(Math.random() * RANDOM_ADDITIONAL_MS);
+    nextSpawnTimer = setTimeout(() => {
+      nextSpawnTimer = null;
+      spawnNextRay();
+    }, delay);
+  }
+
+  // Reactive trigger: ensure scheduler runs whenever availableRays exist
+  $: {
+    if (availableRays.length > 0) {
+      if (!nextSpawnTimer && activeInstances.length === 0) {
+        spawnNextRay();
+      }
+    } else {
+      if (nextSpawnTimer) {
+        clearTimeout(nextSpawnTimer);
+        nextSpawnTimer = null;
+      }
+      if (activeInstances.length > 0) {
+        activeInstances = [];
+      }
+    }
+  }
+
+  function handleRayFinished(instanceId: number) {
+    activeInstances = activeInstances.filter(inst => inst.instanceId !== instanceId);
+  }
+
+  $: renderedRays = activeInstances
+    .map(inst => {
+      const source = cards.find(c => c.id === inst.sourceId && !c.isFadingOut);
+      const target = cards.find(c => c.id === inst.targetId && !c.isFadingOut);
+      return source && target
+        ? {
+            instanceId: inst.instanceId,
+            id: inst.rayId,
+            source,
+            target
+          }
+        : null;
+    })
+    .filter(Boolean) as Array<{
+      instanceId: number;
+      id: string;
+      source: CosmicCard;
+      target: CosmicCard;
+    }>;
+
+  onDestroy(() => {
+    if (nextSpawnTimer) clearTimeout(nextSpawnTimer);
+  });
 </script>
 
+<!-- Requirement 5: Lowest 3D z-plane behind all cards (translateZ(-25px), z-index: 0) -->
 <div class="bugu-ray-network">
-  <!-- Mother Card Radar Beacon (Vanishes after scanning) -->
+  <!-- Mother Card Radar Beacon (Remains active until all Babel cards have appeared) -->
   {#if beaconCard && activeBeacon}
     <BuguRadarBeacon x={beaconCard.x} y={beaconCard.y} status={activeBeacon.status} />
   {/if}
 
-  <!-- Persistent SVG Laser Fibers -->
-  {#if activeRays.length > 0}
-    <svg class="bugu-ray-svg" viewBox="-2000 -2000 4000 4000">
-      <defs>
-        <!-- Amber gold neon glow filter -->
-        <filter id="bugu-laser-glow" x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-
-        <!-- Gradient from mother to child -->
-        <linearGradient id="bugu-ray-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#F59E0B" stop-opacity="0.95" />
-          <stop offset="70%" stop-color="#FBBF24" stop-opacity="0.85" />
-          <stop offset="100%" stop-color="#FDE68A" stop-opacity="0.95" />
-        </linearGradient>
-      </defs>
-
-      {#each activeRays as ray (ray.id)}
-        {@const pathD = calculatePath(ray.source.x, ray.source.y, ray.target.x, ray.target.y)}
-        <!-- Ambient outer glow line -->
-        <path
-          d={pathD}
-          class="ray-glow"
-        />
-
-        <!-- Core animated pulse laser line -->
-        <path
-          d={pathD}
-          class="ray-core"
-        />
-
-        <!-- Optical anchor node at child target -->
-        <circle 
-          cx={ray.target.x} 
-          cy={ray.target.y} 
-          r="4.5" 
-          class="ray-node"
-        />
+  <!-- Multi-Screen Laser Beams (Behind Cards in 3D, Staggered Directed Flow) -->
+  {#if renderedRays.length > 0}
+    <svg class="bugu-flat-svg" viewBox="-800 -500 1600 2800">
+      {#each renderedRays as ray (ray.instanceId)}
+        <g class="ray-instance">
+          <!-- Faint Hairline Guide Thread (0.8px) that dims over 3.9s -->
+          <line
+            x1={ray.source.x}
+            y1={ray.source.y}
+            x2={ray.target.x}
+            y2={ray.target.y}
+            class="ray-guide"
+          />
+          <!-- Dynamic Directed Laser Beam (1.1px) flowing Mother -> Child -->
+          <line
+            x1={ray.source.x}
+            y1={ray.source.y}
+            x2={ray.target.x}
+            y2={ray.target.y}
+            pathLength="100"
+            class="ray-beam"
+            on:animationend={() => handleRayFinished(ray.instanceId)}
+          />
+        </g>
       {/each}
     </svg>
   {/if}
 </div>
 
 <style>
+  /* Requirement 5: Deepest 3D z-plane behind cards */
   .bugu-ray-network {
     position: absolute;
     top: 0;
@@ -126,68 +188,103 @@
     width: 100%;
     height: 100%;
     pointer-events: none;
-    z-index: 1;
+    z-index: 0;
+    transform: translateZ(-25px);
+    transform-style: preserve-3d;
   }
 
-  .bugu-ray-svg {
+  /* Requirement 6: Spans entire multi-screen stage from Screen 1 down to Screen 4 */
+  .bugu-flat-svg {
     position: absolute;
-    top: 50%;
+    top: 0;
     left: 50%;
-    width: 4000px;
-    height: 4000px;
-    transform: translate(-50%, -50%);
+    width: 1600px;
+    height: 2800px;
+    transform: translate(-50%, 0);
     overflow: visible;
     pointer-events: none;
   }
 
-  /* Wide ambient halo */
-  .ray-glow {
-    fill: none;
-    stroke: rgba(245, 158, 11, 0.32);
-    stroke-width: 6px;
+  .ray-instance {
+    pointer-events: none;
+  }
+
+  /* Requirement 4: Delicate 0.8px Guide Line: dims progressively over 3 pulses (3.9s) */
+  .ray-guide {
+    stroke: rgba(245, 158, 11, 0.18);
+    stroke-width: 0.8px;
     stroke-linecap: round;
-    filter: url(#bugu-laser-glow);
-    transition: opacity 0.5s ease-out;
+    animation: bugu-guide-decay 3.9s ease-in-out forwards;
   }
 
-  /* Sharp golden pulsing core */
-  .ray-core {
-    fill: none;
-    stroke: url(#bugu-ray-gradient);
-    stroke-width: 2px;
+  /* Requirement 4: Fine 1.1px Directed Laser Beam: 3 pulses from Mother (0) to Child (100), progressively dimmer */
+  .ray-beam {
+    stroke: #fbbf24;
+    stroke-width: 1.1px;
     stroke-linecap: round;
-    stroke-dasharray: 8, 8;
-    animation: laser-flow 1.2s linear infinite;
-    filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.95));
-    transition: opacity 0.5s ease-out;
+    stroke-dasharray: 40 100;
+    filter: drop-shadow(0 0 2.5px rgba(245, 158, 11, 0.8));
+    animation: bugu-directed-beam 3.9s ease-in-out forwards;
   }
 
-  @keyframes laser-flow {
-    from {
-      stroke-dashoffset: 32;
-    }
-    to {
-      stroke-dashoffset: 0;
-    }
+  @keyframes bugu-guide-decay {
+    0% { opacity: 0; }
+    4% { opacity: 0.28; }
+    33% { opacity: 0.28; }
+    38% { opacity: 0.16; }
+    66% { opacity: 0.16; }
+    71% { opacity: 0.08; }
+    94% { opacity: 0.08; }
+    100% { opacity: 0; }
   }
 
-  /* Sparkling anchor node at target card */
-  .ray-node {
-    fill: #FDE68A;
-    stroke: #F59E0B;
-    stroke-width: 1.5px;
-    filter: drop-shadow(0 0 6px #F59E0B);
-    animation: node-pulse 2s ease-in-out infinite alternate;
-  }
-
-  @keyframes node-pulse {
-    from {
-      r: 3.5px;
-      opacity: 0.7;
+  @keyframes bugu-directed-beam {
+    /* Pulse 1: Bright (0s ~ 1.3s) */
+    0% {
+      stroke-dashoffset: 40;
+      opacity: 0;
     }
-    to {
-      r: 5.5px;
-      opacity: 1;
+    4% {
+      opacity: 0.95;
+    }
+    27% {
+      opacity: 0.95;
+    }
+    33.3% {
+      stroke-dashoffset: -100;
+      opacity: 0;
+    }
+
+    /* Pulse 2: Medium (1.3s ~ 2.6s) */
+    33.4% {
+      stroke-dashoffset: 40;
+      opacity: 0;
+    }
+    38% {
+      opacity: 0.55;
+    }
+    60% {
+      opacity: 0.55;
+    }
+    66.6% {
+      stroke-dashoffset: -100;
+      opacity: 0;
+    }
+
+    /* Pulse 3: Faint (2.6s ~ 3.9s) */
+    66.7% {
+      stroke-dashoffset: 40;
+      opacity: 0;
+    }
+    72% {
+      opacity: 0.22;
+    }
+    94% {
+      opacity: 0.22;
+    }
+    100% {
+      stroke-dashoffset: -100;
+      opacity: 0;
     }
   }
 </style>

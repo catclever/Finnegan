@@ -16,6 +16,8 @@
   import { createEventDispatcher, onDestroy } from 'svelte';
   import type { CosmicCard, SearchSession, CommandDef } from '../types/card';
   import AttachmentTray from './omnibar/AttachmentTray.svelte';
+  import { isChatLogFormat } from '../lib/chatlog';
+  import { CaptureChatLog } from '../../wailsjs/go/main/App.js';
 
   // Props
   export let availableCommands: CommandDef[] = [];
@@ -29,6 +31,7 @@
 
   // Callbacks
   export let onCaptureThought: ((text: string, images?: string[]) => Promise<void> | void) | undefined = undefined;
+  export let onCaptureChatLog: ((text: string) => Promise<void> | void) | undefined = undefined;
   export let onFreeSearch: ((text: string) => void) | undefined = undefined;
   export let onRevertSearch: (() => void) | undefined = undefined;
   export let onCommitSearch: (() => void) | undefined = undefined;
@@ -149,6 +152,7 @@
   }
 
   // Reactive expressions
+  $: isDialogueFormat = attachedImages.length === 0 && isChatLogFormat(omniText);
   $: showTopBanner = (omniText.trim().length > 0) || (attachedImages.length > 0) || commandParamMode || commandSelectMode || searchSession.isActive;
 
   $: omnibarPlaceholder = commandParamMode
@@ -403,10 +407,19 @@
     const imgs = [...attachedImages];
     if ((!text && imgs.length === 0) || capturePending) return;
     try {
-      if (onCaptureThought) {
-        await onCaptureThought(text, imgs);
+      if (imgs.length === 0 && isChatLogFormat(text)) {
+        if (onCaptureChatLog) {
+          await onCaptureChatLog(text);
+        } else {
+          await CaptureChatLog(text);
+        }
+        dispatch('captureChatLog', { text });
+      } else {
+        if (onCaptureThought) {
+          await onCaptureThought(text, imgs);
+        }
+        dispatch('captureThought', { text, images: imgs });
       }
-      dispatch('captureThought', { text, images: imgs });
       omniText = "";
       attachedImages = [];
       deleteHighlightIndex = -1;
@@ -703,6 +716,15 @@
           <span class="banner-key">Esc</span>
           <span class="banner-action">一闪念还原</span>
         </button>
+      {:else if isDialogueFormat}
+        <span class="banner-key">⌘ ↵</span>
+        <span class="banner-action">记录对话录</span>
+        <span class="banner-sep">·</span>
+        <span class="banner-key">↵</span>
+        <span class="banner-action">换行</span>
+        <span class="banner-sep">·</span>
+        <span class="banner-key">/</span>
+        <span class="banner-action">命令</span>
       {:else}
         <span class="banner-key">⌘ ↵</span>
         <span class="banner-action">发送思绪</span>

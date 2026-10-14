@@ -16,12 +16,13 @@
   import { spring } from 'svelte/motion';
   import OmniBar from './components/OmniBar.svelte';
   import CosmicStage from './components/CosmicStage.svelte';
-  import { CaptureThought, CaptureThoughtWithImages, GetTempCards, LoadLocalCards, SearchLocalCards, GetRegisteredCommands, ExecuteModuleCommand } from '../wailsjs/go/main/App.js';
+  import { CaptureThought, CaptureThoughtWithImages, CaptureChatLog, GetTempCards, LoadLocalCards, SearchLocalCards, GetRegisteredCommands, ExecuteModuleCommand } from '../wailsjs/go/main/App.js';
   import { EventsOn } from '../wailsjs/runtime/runtime.js';
   import type { CosmicCard, SearchSession, CommandDef } from './types/card';
   import type { BuguSession, BuguBeacon } from './modules/bugu/types';
   import { generateAuraColor, transformSearchResults, calculateSearchRepulsion, commitUnallocatedSearchResults } from './lib/auraSearch';
   import { BASE_CAPACITY, MACRO_TTL_MS, BASE_STAGE_DECAY_MS, stageCandidate, replenishStageCandidates, isProtectedCard, computeNextScrollTarget, toCosmicCard } from './lib/stageDecay';
+  import { isChatLogFormat } from './lib/chatlog';
 
   // --- Stage Pools & Selection State ---
   let memoryPool: CosmicCard[] = [], localVaultPool: CosmicCard[] = [], cards: CosmicCard[] = [];
@@ -131,9 +132,19 @@
       if (images && images.length > 0) {
         const payload = images.map(img => (typeof img === 'string' ? { data: img } : img));
         await CaptureThoughtWithImages(text, payload as any);
+      } else if (isChatLogFormat(text)) {
+        await CaptureChatLog(text);
       } else {
         await CaptureThought(text);
       }
+      if (searchSession.isActive) commitSearchView();
+    } finally { capturePending = false; }
+  }
+
+  async function handleCaptureChatLog(text: string) {
+    capturePending = true;
+    try {
+      await CaptureChatLog(text);
       if (searchSession.isActive) commitSearchView();
     } finally { capturePending = false; }
   }
@@ -246,7 +257,7 @@
 
     Promise.all([LoadLocalCards(), GetTempCards()]).then(([localCards, tempCards]) => {
       if (tempCards?.length) memoryPool = tempCards.map(c => ({ ...toCosmicCard(c, 'babel', 'bugu', MACRO_TTL_MS), isFresh: false, spawnTime: 0, decayDuration: 0, z: 50 }));
-      if (localCards?.length) localVaultPool = localCards.map(c => ({ ...toCosmicCard(c, 'thought', 'local'), isFresh: false, spawnTime: 0, decayDuration: 0, z: 50 }));
+      if (localCards?.length) localVaultPool = localCards.map(c => ({ ...toCosmicCard(c, c.type || 'thought', 'local'), isFresh: false, spawnTime: 0, decayDuration: 0, z: 50 }));
       replenishStage();
     }).catch(err => console.error("loadCards error:", err));
 
@@ -261,7 +272,16 @@
       }
       latestManualCardId = cardId;
       const images = data.Images || data.images;
-      const baseCard = toCosmicCard({ id: cardId, content: data.Text, images }, 'thought', 'manual');
+      const isChat = isChatLogFormat(data.Text);
+      const baseCard = toCosmicCard({ 
+        id: cardId, 
+        type: isChat ? 'chat_log' : 'thought',
+        content: data.Text, 
+        images,
+        participants: data.Participants || data.participants,
+        startedAt: data.StartedAt || data.startedAt,
+        endedAt: data.EndedAt || data.endedAt,
+      }, isChat ? 'chat_log' : 'thought', 'manual');
       const stagedCard = stageCandidate(baseCard, true, $scrollExpansion, cards, memoryPool);
       const newCard = { ...stagedCard, images: data.Images || data.images || stagedCard.images, isVIP: true, decayDuration: 12 * 3600 * 1000, z: 12 };
       localVaultPool = [newCard, ...localVaultPool.filter(c => c.id !== newCard.id)];
@@ -275,6 +295,12 @@
         }
       }
       cards = [...cards.filter(c => c.id !== newCard.id), newCard];
+    });
+
+    EventsOn("chatlog:card_spawned", (c: any) => {
+      const card = toCosmicCard(c, 'chat_log', 'bugu', MACRO_TTL_MS);
+      memoryPool = [card, ...memoryPool.filter(item => item.id !== card.id)];
+      replenishStage();
     });
 
     EventsOn("bugu:card_spawned", (c: any) => {
@@ -325,7 +351,7 @@
   <OmniBar
     bind:this={omniBarRef} {availableCommands} {searchSession} {focusedCardId} {cards} {localVaultPool} {capturePending}
     {isScrolling}
-    bind:isOmnibarFocused onCaptureThought={handleCaptureThought} onFreeSearch={handleFreeSearch}
+    bind:isOmnibarFocused onCaptureThought={handleCaptureThought} onCaptureChatLog={handleCaptureChatLog} onFreeSearch={handleFreeSearch}
     onRevertSearch={revertSearchView} onCommitSearch={commitSearchView}
     onExecuteCommand={handleExecuteCommand} onSearchLocalCards={SearchLocalCards}
   />

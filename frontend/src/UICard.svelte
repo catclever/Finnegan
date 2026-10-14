@@ -33,6 +33,7 @@
   import { spring } from 'svelte/motion';
   import { BrowserOpenURL } from '../wailsjs/runtime/runtime.js';
   import ThoughtCardBody from './components/cards/ThoughtCardBody.svelte';
+  import ChatLogCardBody from './components/cards/ChatLogCardBody.svelte';
 
   export let card: any;
   export let time: number = 0;
@@ -414,6 +415,8 @@
         <p class="pure-original">{card.originalText || card.content}</p>
       </div>
     {/if}
+  {:else if card.type === 'chat_log'}
+    <ChatLogCardBody {card} {isFocused} {isHovered} {thoughtTime} />
   {:else}
     <ThoughtCardBody {card} {isFocused} {isHovered} {thoughtTime} />
   {/if}
