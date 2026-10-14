@@ -393,22 +393,7 @@
             <span class="domain-icon">🌐</span> {hostname}
           </a>
         {/if}
-
-        {#if card.authorName || card.authorAvatar}
-          <div class="author-pill" title={card.authorName || 'Author'}>
-            {#if card.authorAvatar}
-              <img src={card.authorAvatar} alt="" class="author-avatar" on:error={handleAvatarError} />
-            {/if}
-            {#if card.authorName}
-              <span class="author-name">{card.authorName}</span>
-            {/if}
-          </div>
-        {/if}
       </div>
-
-      {#if babelTime}
-        <span class="card-time">{babelTime}</span>
-      {/if}
     </div>
 
     {#if hasTranslation}
@@ -425,6 +410,25 @@
         <p class="pure-original">{card.originalText || card.content}</p>
       </div>
     {/if}
+
+    <div class="babel-footer">
+      <div class="footer-left">
+        {#if card.authorName || card.authorAvatar}
+          <div class="author-pill" title={card.authorName || 'Author'}>
+            {#if card.authorAvatar}
+              <img src={card.authorAvatar} alt="" class="author-avatar" on:error={handleAvatarError} />
+            {/if}
+            {#if card.authorName}
+              <span class="author-name">{card.authorName}</span>
+            {/if}
+          </div>
+        {/if}
+      </div>
+
+      {#if babelTime}
+        <span class="card-time">{babelTime}</span>
+      {/if}
+    </div>
   {:else if card.type === 'chat_log'}
     <ChatLogCardBody {card} {isFocused} {isHovered} {thoughtTime} />
   {:else}
@@ -610,7 +614,8 @@
   }
 
   .babel-header,
-  .babel-content {
+  .babel-content,
+  .babel-footer {
     position: relative;
     z-index: 1;
   }
@@ -623,7 +628,16 @@
     margin-bottom: 8px;
   }
 
-  .header-left {
+  .babel-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .header-left,
+  .footer-left {
     display: flex;
     align-items: center;
     gap: 6px;
