@@ -16,26 +16,30 @@ import (
 type CardType string
 
 const (
-	CardTypeLocal CardType = "local" // Saved by user, permanent
-	CardTypeBabel CardType = "babel" // Discovered by Bugu, temporary
+	CardTypeLocal   CardType = "local" // Saved by user, permanent
+	CardTypeBabel   CardType = "babel" // Discovered by Bugu, temporary
 	CardTypeThought CardType = "thought"
+	CardTypeChatLog CardType = "chat_log"
 )
 
 // Card defines the core data model for a consciousness stream piece
 type Card struct {
-	ID             string    `json:"id"`
-	Type           CardType  `json:"type"`
-	Title          string    `json:"title"`
-	Content        string    `json:"content"`
-	Images         []string  `json:"images,omitempty"`
-	SourceURL      string    `json:"sourceUrl,omitempty"`
-	OriginalText   string    `json:"originalText,omitempty"`
-	TranslatedText string    `json:"translatedText,omitempty"`
-	PublishedAt    string    `json:"publishedAt,omitempty"`
-	AuthorName     string    `json:"authorName,omitempty"`
-	AuthorAvatar   string    `json:"authorAvatar,omitempty"`
-	EchoOf         string    `json:"echoOf,omitempty"`
-	CreatedAt      time.Time `json:"createdAt"`
+	ID             string     `json:"id"`
+	Type           CardType   `json:"type"`
+	Title          string     `json:"title"`
+	Content        string     `json:"content"`
+	Images         []string   `json:"images,omitempty"`
+	SourceURL      string     `json:"sourceUrl,omitempty"`
+	OriginalText   string     `json:"originalText,omitempty"`
+	TranslatedText string     `json:"translatedText,omitempty"`
+	PublishedAt    string     `json:"publishedAt,omitempty"`
+	AuthorName     string     `json:"authorName,omitempty"`
+	AuthorAvatar   string     `json:"authorAvatar,omitempty"`
+	EchoOf         string     `json:"echoOf,omitempty"`
+	CreatedAt      time.Time  `json:"createdAt"`
+	Participants   []string   `json:"participants,omitempty"`
+	StartedAt      *time.Time `json:"startedAt,omitempty"`
+	EndedAt        *time.Time `json:"endedAt,omitempty"`
 }
 
 // CardManager handles the lifecycle of permanent and temporary cards
@@ -73,7 +77,16 @@ func (m *CardManager) GetTempCards() []Card {
 	return cards
 }
 
-// PromoteToLocal converts a temporary Radar card to a permanent Local card
+// InjectChatLogCard receives a parsed chat log card and stores it in volatile memory
+func (m *CardManager) InjectChatLogCard(c Card) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	c.Type = CardTypeChatLog
+	m.tempCards[c.ID] = c
+}
+
+// PromoteToLocal converts a temporary Radar or ChatLog card to a permanent Local card
 func (m *CardManager) PromoteToLocal(cardID string, home string) (*Card, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -83,7 +96,9 @@ func (m *CardManager) PromoteToLocal(cardID string, home string) (*Card, error) 
 		return nil, errors.New("temporary card not found or already saved")
 	}
 
-	card.Type = CardTypeLocal
+	if card.Type != CardTypeChatLog {
+		card.Type = CardTypeLocal
+	}
 	now := time.Now()
 	newID := ulid.Make().String()
 	card.ID = newID
@@ -114,31 +129,57 @@ func (m *CardManager) PromoteToLocal(cardID string, home string) (*Card, error) 
 	}
 
 	var sb strings.Builder
-	sb.WriteString("---\n")
-	sb.WriteString(fmt.Sprintf("id: %s\n", newID))
-	sb.WriteString(fmt.Sprintf("created: %s\n", now.Format(time.RFC3339)))
-	sb.WriteString(fmt.Sprintf("updated: %s\n", now.Format(time.RFC3339)))
-	sb.WriteString("source: bugu\n")
-	if card.SourceURL != "" {
-		sb.WriteString(fmt.Sprintf("source_url: %s\n", card.SourceURL))
-	}
-	if card.EchoOf != "" {
-		sb.WriteString(fmt.Sprintf("echo_of: %s\n", card.EchoOf))
-	}
-	sb.WriteString("tags: []\n")
-	sb.WriteString("publish: false\n")
-	if len(card.Images) > 0 {
-		sb.WriteString("images:\n")
-		for _, img := range card.Images {
-			sb.WriteString(fmt.Sprintf("  - %s\n", img))
+	if card.Type == CardTypeChatLog {
+		sb.WriteString("---\n")
+		sb.WriteString(fmt.Sprintf("id: %s\n", newID))
+		sb.WriteString("type: chat_log\n")
+		if card.Title != "" {
+			sb.WriteString(fmt.Sprintf("title: %s\n", card.Title))
 		}
+		if len(card.Participants) > 0 {
+			sb.WriteString(fmt.Sprintf("participants: [%s]\n", strings.Join(card.Participants, ", ")))
+		}
+		if card.StartedAt != nil {
+			sb.WriteString(fmt.Sprintf("started_at: %s\n", card.StartedAt.Format(time.RFC3339)))
+		}
+		if card.EndedAt != nil {
+			sb.WriteString(fmt.Sprintf("ended_at: %s\n", card.EndedAt.Format(time.RFC3339)))
+		}
+		if card.StartedAt != nil {
+			sb.WriteString(fmt.Sprintf("created_at: %s\n", card.StartedAt.Format(time.RFC3339)))
+		} else {
+			sb.WriteString(fmt.Sprintf("created_at: %s\n", now.Format(time.RFC3339)))
+		}
+		sb.WriteString("---\n\n")
+		sb.WriteString(card.Content)
+		sb.WriteString("\n")
+	} else {
+		sb.WriteString("---\n")
+		sb.WriteString(fmt.Sprintf("id: %s\n", newID))
+		sb.WriteString(fmt.Sprintf("created: %s\n", now.Format(time.RFC3339)))
+		sb.WriteString(fmt.Sprintf("updated: %s\n", now.Format(time.RFC3339)))
+		sb.WriteString("source: bugu\n")
+		if card.SourceURL != "" {
+			sb.WriteString(fmt.Sprintf("source_url: %s\n", card.SourceURL))
+		}
+		if card.EchoOf != "" {
+			sb.WriteString(fmt.Sprintf("echo_of: %s\n", card.EchoOf))
+		}
+		sb.WriteString("tags: []\n")
+		sb.WriteString("publish: false\n")
+		if len(card.Images) > 0 {
+			sb.WriteString("images:\n")
+			for _, img := range card.Images {
+				sb.WriteString(fmt.Sprintf("  - %s\n", img))
+			}
+		}
+		sb.WriteString("---\n\n")
+		if card.Title != "" {
+			sb.WriteString(fmt.Sprintf("# %s\n\n", card.Title))
+		}
+		sb.WriteString(card.Content)
+		sb.WriteString("\n")
 	}
-	sb.WriteString("---\n\n")
-	if card.Title != "" {
-		sb.WriteString(fmt.Sprintf("# %s\n\n", card.Title))
-	}
-	sb.WriteString(card.Content)
-	sb.WriteString("\n")
 
 	err := watcher.GetWatcher().WriteFile(targetPath, []byte(sb.String()), "promote")
 	if err != nil {

@@ -99,6 +99,18 @@ func Parse(path string, content []byte, existingCreatedAt time.Time) (*ParsedDoc
 		if t, err := time.Parse(time.RFC3339, createdStr); err == nil {
 			doc.CreatedAt = t
 		}
+	} else if createdTime, ok := meta["created_at"].(time.Time); ok {
+		doc.CreatedAt = createdTime
+	} else if createdStr, ok := meta["created_at"].(string); ok && createdStr != "" {
+		if t, err := time.Parse(time.RFC3339, createdStr); err == nil {
+			doc.CreatedAt = t
+		}
+	} else if startedTime, ok := meta["started_at"].(time.Time); ok {
+		doc.CreatedAt = startedTime
+	} else if startedStr, ok := meta["started_at"].(string); ok && startedStr != "" {
+		if t, err := time.Parse(time.RFC3339, startedStr); err == nil {
+			doc.CreatedAt = t
+		}
 	}
 	
 	if doc.CreatedAt.IsZero() {

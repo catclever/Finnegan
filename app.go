@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"Finnegan/core/bus"
+	"Finnegan/core/chatlog"
 	"Finnegan/core/config"
 	"Finnegan/core/module"
 	"Finnegan/core/search"
@@ -637,4 +638,155 @@ func (a *App) ExecuteModuleCommand(cmdID string, params map[string]interface{}) 
 		}
 	}
 	return nil, fmt.Errorf("command not found: %s", cmdID)
+}
+
+func (a *App) getLLMConfig() module.LLMConfig {
+	cfg, _, err := config.LoadConfig()
+	if err == nil && cfg != nil {
+		if def, ok := cfg.LLMs["default"]; ok {
+			return def
+		}
+	}
+	return module.LLMConfig{
+		Provider:     "gemini",
+		APIKey:       os.Getenv("GEMINI_API_KEY"),
+		DefaultModel: "gemini-3.8-flash",
+	}
+}
+
+// ParseChatLog parses raw pasted chat log text and returns parsed metadata and coalesced text.
+func (a *App) ParseChatLog(rawText string) (*chatlog.ParsedChatLog, error) {
+	return chatlog.Parse(rawText)
+}
+
+// DeriveChatLogTitle derives a concise title and participants using LLM for the given chat log dialogue.
+func (a *App) DeriveChatLogTitle(dialogue string, participants []string) (*chatlog.TitleResult, error) {
+	ctx := a.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	llmCfg := a.getLLMConfig()
+	return chatlog.DeriveTitle(ctx, llmCfg, dialogue, participants)
+}
+
+// ProcessChatLog creates a temporary (volatile) chat_log card in memory and emits an event for the CosmicStage.
+func (a *App) ProcessChatLog(rawText string) (*Card, error) {
+	parsed, err := chatlog.Parse(rawText)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse chat log: %w", err)
+	}
+
+	titleRes, _ := a.DeriveChatLogTitle(parsed.Coalesced, parsed.Participants)
+	title := titleRes.Title
+	if len(titleRes.Participants) > 0 {
+		parsed.Participants = titleRes.Participants
+	}
+
+	now := time.Now()
+	createdAt := now
+	if parsed.StartedAt != nil {
+		createdAt = *parsed.StartedAt
+	}
+
+	cardID := fmt.Sprintf("chatlog_%s", ulid.Make().String())
+	card := Card{
+		ID:           cardID,
+		Type:         CardTypeChatLog,
+		Title:        title,
+		Content:      parsed.Coalesced,
+		Participants: parsed.Participants,
+		StartedAt:    parsed.StartedAt,
+		EndedAt:      parsed.EndedAt,
+		CreatedAt:    createdAt,
+	}
+
+	if a.CardManager != nil {
+		a.CardManager.InjectChatLogCard(card)
+	}
+
+	if a.ctx != nil {
+		runtime.EventsEmit(a.ctx, "chatlog:card_spawned", map[string]interface{}{
+			"id":           card.ID,
+			"type":         string(card.Type),
+			"title":        card.Title,
+			"content":      card.Content,
+			"participants": card.Participants,
+			"startedAt":    card.StartedAt,
+			"endedAt":      card.EndedAt,
+			"createdAt":    card.CreatedAt,
+		})
+	}
+
+	return &card, nil
+}
+
+// CaptureChatLog directly parses and saves a chat log card as a permanent Markdown file in Scattering.
+func (a *App) CaptureChatLog(rawText string) (string, error) {
+	parsed, err := chatlog.Parse(rawText)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse chat log: %w", err)
+	}
+
+	titleRes, _ := a.DeriveChatLogTitle(parsed.Coalesced, parsed.Participants)
+	title := titleRes.Title
+	if len(titleRes.Participants) > 0 {
+		parsed.Participants = titleRes.Participants
+	}
+
+	home := a.Home
+	if home == "" {
+		_, h, err := config.LoadConfig()
+		if err == nil {
+			home = h
+			a.Home = h
+		}
+	}
+	if home == "" {
+		return "", errors.New("home directory not configured")
+	}
+
+	targetDir := filepath.Join(home, "Scattering")
+	now := time.Now()
+	slugSrc := title
+	if slugSrc == "" {
+		slugSrc = "chat_log"
+	}
+	baseName := fmt.Sprintf("%s-%s", now.Format("20060102-1504"), sanitizeSlug(slugSrc))
+	var targetPath string
+
+	for i := 1; i <= 100; i++ {
+		suffix := ""
+		if i > 1 {
+			suffix = fmt.Sprintf("-%d", i)
+		}
+		candidate := filepath.Join(targetDir, fmt.Sprintf("%s%s.md", baseName, suffix))
+		if _, err := os.Stat(candidate); os.IsNotExist(err) {
+			targetPath = candidate
+			break
+		}
+	}
+
+	if targetPath == "" {
+		return "", errors.New("could not find a unique filename")
+	}
+
+	docID := ulid.Make().String()
+	contentStr := chatlog.FormatCardMarkdown(docID, title, parsed)
+
+	err = watcher.GetWatcher().WriteFile(targetPath, []byte(contentStr), "capture")
+	if err != nil {
+		return "", err
+	}
+
+	bus.GetBus().Publish(bus.Event{
+		Type: bus.EventThoughtCaptured,
+		Data: bus.EventThoughtCapturedData{
+			DocID:      docID,
+			FilePath:   targetPath,
+			Text:       parsed.Coalesced,
+			CapturedAt: now,
+		},
+	})
+
+	return docID, nil
 }
