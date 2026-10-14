@@ -17,7 +17,7 @@
   import type { CosmicCard, SearchSession, CommandDef } from '../types/card';
   import AttachmentTray from './omnibar/AttachmentTray.svelte';
   import { isChatLogFormat } from '../lib/chatlog';
-  import { CaptureChatLog } from '../../wailsjs/go/main/App.js';
+  import { CaptureChatLog, CaptureChatLogWithImages } from '../../wailsjs/go/main/App.js';
 
   // Props
   export let availableCommands: CommandDef[] = [];
@@ -31,7 +31,7 @@
 
   // Callbacks
   export let onCaptureThought: ((text: string, images?: string[]) => Promise<void> | void) | undefined = undefined;
-  export let onCaptureChatLog: ((text: string) => Promise<void> | void) | undefined = undefined;
+  export let onCaptureChatLog: ((text: string, images?: string[]) => Promise<void> | void) | undefined = undefined;
   export let onFreeSearch: ((text: string) => void) | undefined = undefined;
   export let onRevertSearch: (() => void) | undefined = undefined;
   export let onCommitSearch: (() => void) | undefined = undefined;
@@ -152,7 +152,7 @@
   }
 
   // Reactive expressions
-  $: isDialogueFormat = attachedImages.length === 0 && isChatLogFormat(omniText);
+  $: isDialogueFormat = isChatLogFormat(omniText);
   $: showTopBanner = (omniText.trim().length > 0) || (attachedImages.length > 0) || commandParamMode || commandSelectMode || searchSession.isActive;
 
   $: omnibarPlaceholder = commandParamMode
@@ -407,13 +407,23 @@
     const imgs = [...attachedImages];
     if ((!text && imgs.length === 0) || capturePending) return;
     try {
-      if (imgs.length === 0 && isChatLogFormat(text)) {
-        if (onCaptureChatLog) {
-          await onCaptureChatLog(text);
+      if (isDialogueFormat) {
+        if (imgs.length > 0) {
+          if (onCaptureChatLog) {
+            await onCaptureChatLog(text, imgs);
+          } else {
+            const payload = imgs.map(img => ({ data: img }));
+            await CaptureChatLogWithImages(text, payload as any);
+          }
+          dispatch('captureChatLog', { text, images: imgs });
         } else {
-          await CaptureChatLog(text);
+          if (onCaptureChatLog) {
+            await onCaptureChatLog(text, []);
+          } else {
+            await CaptureChatLog(text);
+          }
+          dispatch('captureChatLog', { text, images: [] });
         }
-        dispatch('captureChatLog', { text });
       } else {
         if (onCaptureThought) {
           await onCaptureThought(text, imgs);

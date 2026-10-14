@@ -8,6 +8,8 @@ import {api} from '../models';
 
 export function CaptureChatLog(arg1:string):Promise<string>;
 
+export function CaptureChatLogWithImages(arg1:string,arg2:Array<main.ImagePayload>):Promise<string>;
+
 export function CaptureThought(arg1:string):Promise<string>;
 
 export function CaptureThoughtWithImages(arg1:string,arg2:Array<main.ImagePayload>):Promise<string>;

@@ -22,6 +22,7 @@ type ParsedChatLog struct {
 	EndedAt      *time.Time `json:"endedAt,omitempty"`
 	Messages     []Message  `json:"messages"`
 	Coalesced    string     `json:"coalesced"`
+	Images       []string   `json:"images,omitempty"`
 }
 
 var (
@@ -365,16 +366,28 @@ func CoalesceMessages(messages []Message) string {
 }
 
 // FormatCardMarkdown generates the standardized Markdown card with YAML Frontmatter.
-func FormatCardMarkdown(id string, title string, parsed *ParsedChatLog) string {
+func FormatCardMarkdown(id string, title string, parsed *ParsedChatLog, images ...[]string) string {
 	var sb strings.Builder
 	sb.WriteString("---\n")
 	sb.WriteString(fmt.Sprintf("id: %s\n", id))
 	sb.WriteString("type: chat_log\n")
 	if title != "" {
-		sb.WriteString(fmt.Sprintf("title: %s\n", title))
+		if strings.ContainsAny(title, ":#\"'\n\r\t[]{}") {
+			sb.WriteString(fmt.Sprintf("title: %q\n", title))
+		} else {
+			sb.WriteString(fmt.Sprintf("title: %s\n", title))
+		}
 	}
 	if len(parsed.Participants) > 0 {
-		sb.WriteString(fmt.Sprintf("participants: [%s]\n", strings.Join(parsed.Participants, ", ")))
+		var quoted []string
+		for _, p := range parsed.Participants {
+			if strings.ContainsAny(p, ",:#\"'[]{}") {
+				quoted = append(quoted, fmt.Sprintf("%q", p))
+			} else {
+				quoted = append(quoted, p)
+			}
+		}
+		sb.WriteString(fmt.Sprintf("participants: [%s]\n", strings.Join(quoted, ", ")))
 	}
 	if parsed.StartedAt != nil {
 		sb.WriteString(fmt.Sprintf("started_at: %s\n", parsed.StartedAt.Format(time.RFC3339)))
@@ -387,8 +400,25 @@ func FormatCardMarkdown(id string, title string, parsed *ParsedChatLog) string {
 	} else {
 		sb.WriteString(fmt.Sprintf("created_at: %s\n", time.Now().Format(time.RFC3339)))
 	}
+
+	var cardImages []string
+	if len(images) > 0 {
+		cardImages = images[0]
+	} else if parsed != nil && len(parsed.Images) > 0 {
+		cardImages = parsed.Images
+	}
+
+	if len(cardImages) > 0 {
+		sb.WriteString("images:\n")
+		for _, img := range cardImages {
+			sb.WriteString(fmt.Sprintf("  - %s\n", img))
+		}
+	}
+
 	sb.WriteString("---\n\n")
-	sb.WriteString(parsed.Coalesced)
+	if parsed != nil {
+		sb.WriteString(parsed.Coalesced)
+	}
 	sb.WriteString("\n")
 
 	return sb.String()

@@ -64,6 +64,7 @@ export namespace chatlog {
 	    endedAt?: any;
 	    messages: Message[];
 	    coalesced: string;
+	    images?: string[];
 	
 	    static createFrom(source: any = {}) {
 	        return new ParsedChatLog(source);
@@ -76,6 +77,7 @@ export namespace chatlog {
 	        this.endedAt = this.convertValues(source["endedAt"], null);
 	        this.messages = this.convertValues(source["messages"], Message);
 	        this.coalesced = source["coalesced"];
+	        this.images = source["images"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

@@ -13,19 +13,46 @@
 <script lang="ts">
   import type { CosmicCard } from '../../types/card';
   import { parseDialogue, formatChatLogTime } from '../../lib/chatlog';
+  import CardImageGallery from './CardImageGallery.svelte';
 
   export let card: CosmicCard;
   export let isFocused: boolean = false;
   export let isHovered: boolean = false;
   export let thoughtTime: string = '';
 
+  export function formatAssetUrl(url: string): string {
+    if (!url) return '';
+    if (url.startsWith('data:') || url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    if (url.startsWith('/api/assets/')) {
+      return url;
+    }
+    const cleanName = url.startsWith('/') ? url.slice(1) : url;
+    return `/api/assets/${cleanName}`;
+  }
+
   $: turns = parseDialogue(card?.content || '');
   $: title = card?.title && card.title !== 'Thought' && card.title !== 'Card' && card.title !== 'Babel Echo' ? card.title : '';
   $: participants = Array.isArray(card?.participants) ? card.participants : [];
   $: timeStr = formatChatLogTime(card?.startedAt, card?.endedAt) || thoughtTime;
+
+  $: rawImages = card?.images || (card as any)?.Images || [];
+  $: images = (Array.isArray(rawImages) ? rawImages : [rawImages])
+    .map(item => {
+      if (typeof item === 'string') return item;
+      if (item && typeof item === 'object') {
+        return item.url || item.data || item.path || '';
+      }
+      return '';
+    })
+    .filter((url: string) => typeof url === 'string' && url.trim().length > 0)
+    .map(formatAssetUrl);
+
+  $: hasImages = images.length > 0;
 </script>
 
-<div class="chat-log-card-body" class:focused={isFocused} class:hovered={isHovered}>
+<div class="chat-log-card-body" class:focused={isFocused} class:hovered={isHovered} class:has-images={hasImages}>
   {#if isFocused}
     <!-- Focused mode: 420x420 Screenplay Layout -->
     <header class="screenplay-header">
@@ -44,6 +71,10 @@
     </header>
 
     <div class="screenplay-stream">
+      {#if hasImages}
+        <CardImageGallery {images} />
+      {/if}
+
       {#each turns as turn, i (turn.speaker + i)}
         <div class="screenplay-turn">
           {#if turn.speaker}

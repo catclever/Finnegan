@@ -16,7 +16,7 @@
   import { spring } from 'svelte/motion';
   import OmniBar from './components/OmniBar.svelte';
   import CosmicStage from './components/CosmicStage.svelte';
-  import { CaptureThought, CaptureThoughtWithImages, CaptureChatLog, GetTempCards, LoadLocalCards, SearchLocalCards, GetRegisteredCommands, ExecuteModuleCommand } from '../wailsjs/go/main/App.js';
+  import { CaptureThought, CaptureThoughtWithImages, CaptureChatLog, CaptureChatLogWithImages, GetTempCards, LoadLocalCards, SearchLocalCards, GetRegisteredCommands, ExecuteModuleCommand } from '../wailsjs/go/main/App.js';
   import { EventsOn } from '../wailsjs/runtime/runtime.js';
   import type { CosmicCard, SearchSession, CommandDef } from './types/card';
   import type { BuguSession, BuguBeacon } from './modules/bugu/types';
@@ -129,11 +129,11 @@
   async function handleCaptureThought(text: string, images?: string[]) {
     capturePending = true;
     try {
-      if (images && images.length > 0) {
+      if (isChatLogFormat(text)) {
+        await handleCaptureChatLog(text, images);
+      } else if (images && images.length > 0) {
         const payload = images.map(img => (typeof img === 'string' ? { data: img } : img));
         await CaptureThoughtWithImages(text, payload as any);
-      } else if (isChatLogFormat(text)) {
-        await CaptureChatLog(text);
       } else {
         await CaptureThought(text);
       }
@@ -141,10 +141,15 @@
     } finally { capturePending = false; }
   }
 
-  async function handleCaptureChatLog(text: string) {
+  async function handleCaptureChatLog(text: string, images?: string[]) {
     capturePending = true;
     try {
-      await CaptureChatLog(text);
+      if (images && images.length > 0) {
+        const payload = images.map(img => (typeof img === 'string' ? { data: img } : img));
+        await CaptureChatLogWithImages(text, payload as any);
+      } else {
+        await CaptureChatLog(text);
+      }
       if (searchSession.isActive) commitSearchView();
     } finally { capturePending = false; }
   }

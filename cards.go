@@ -150,6 +150,12 @@ func (m *CardManager) PromoteToLocal(cardID string, home string) (*Card, error) 
 		} else {
 			sb.WriteString(fmt.Sprintf("created_at: %s\n", now.Format(time.RFC3339)))
 		}
+		if len(card.Images) > 0 {
+			sb.WriteString("images:\n")
+			for _, img := range card.Images {
+				sb.WriteString(fmt.Sprintf("  - %s\n", img))
+			}
+		}
 		sb.WriteString("---\n\n")
 		sb.WriteString(card.Content)
 		sb.WriteString("\n")

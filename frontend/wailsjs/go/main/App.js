@@ -6,6 +6,10 @@ export function CaptureChatLog(arg1) {
   return window['go']['main']['App']['CaptureChatLog'](arg1);
 }
 
+export function CaptureChatLogWithImages(arg1, arg2) {
+  return window['go']['main']['App']['CaptureChatLogWithImages'](arg1, arg2);
+}
+
 export function CaptureThought(arg1) {
   return window['go']['main']['App']['CaptureThought'](arg1);
 }

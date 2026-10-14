@@ -305,3 +305,27 @@ func TestFormatCardMarkdownAndParseWithCoreMarkdown(t *testing.T) {
 		t.Errorf("doc.Body does not match parsed.Coalesced")
 	}
 }
+
+func TestFormatCardMarkdownWithImages(t *testing.T) {
+	parsed, err := Parse(exactWeChatSample)
+	if err != nil {
+		t.Fatalf("unexpected parse error: %v", err)
+	}
+
+	docID := "01JAX9K2IMGTEST"
+	title := "对白测试图片"
+	imgs := []string{"1728863456789-img1.png", "1728863456790-img2.jpg"}
+
+	// Test passing images as variadic arg
+	cardMD := FormatCardMarkdown(docID, title, parsed, imgs)
+	if !strings.Contains(cardMD, "images:\n  - 1728863456789-img1.png\n  - 1728863456790-img2.jpg") {
+		t.Fatalf("expected cardMD to contain images frontmatter, got:\n%s", cardMD)
+	}
+
+	// Test via parsed.Images
+	parsed.Images = imgs
+	cardMD2 := FormatCardMarkdown(docID, title, parsed)
+	if !strings.Contains(cardMD2, "images:\n  - 1728863456789-img1.png\n  - 1728863456790-img2.jpg") {
+		t.Fatalf("expected cardMD2 to contain images frontmatter from parsed.Images, got:\n%s", cardMD2)
+	}
+}

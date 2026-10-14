@@ -213,10 +213,23 @@ func (a *App) shutdown(ctx context.Context) {
 }
 
 func sanitizeSlug(s string) string {
+	s = strings.ReplaceAll(s, "\r", "")
+	s = strings.ReplaceAll(s, "\n", "_")
+	s = strings.ReplaceAll(s, "\t", "_")
 	s = strings.ReplaceAll(s, " ", "_")
-	if len(s) > 20 {
+	s = strings.ReplaceAll(s, "/", "_")
+	s = strings.ReplaceAll(s, "\\", "_")
+	s = strings.ReplaceAll(s, ":", "_")
+	s = strings.ReplaceAll(s, "*", "_")
+	s = strings.ReplaceAll(s, "?", "_")
+	s = strings.ReplaceAll(s, "\"", "_")
+	s = strings.ReplaceAll(s, "<", "_")
+	s = strings.ReplaceAll(s, ">", "_")
+	s = strings.ReplaceAll(s, "|", "_")
+	s = strings.Trim(s, "._ ")
+	if len([]rune(s)) > 20 {
 		runes := []rune(s)
-		return string(runes[:20])
+		return strings.TrimRight(string(runes[:20]), "._ ")
 	}
 	return s
 }
@@ -272,10 +285,9 @@ func (a *App) CaptureThought(text string) (string, error) {
 	return docID, nil
 }
 
-func (a *App) CaptureThoughtWithImages(text string, images []ImagePayload) (string, error) {
-	text = strings.TrimSpace(text)
-	if text == "" && len(images) == 0 {
-		return "", errors.New("empty text and images")
+func (a *App) saveAssetImages(images []ImagePayload) ([]string, error) {
+	if len(images) == 0 {
+		return nil, nil
 	}
 
 	home := a.Home
@@ -287,12 +299,12 @@ func (a *App) CaptureThoughtWithImages(text string, images []ImagePayload) (stri
 		}
 	}
 	if home == "" {
-		return "", errors.New("home directory not configured")
+		return nil, errors.New("home directory not configured")
 	}
 
 	assetsDir := filepath.Join(home, "assets")
 	if err := os.MkdirAll(assetsDir, 0755); err != nil {
-		return "", fmt.Errorf("failed to create assets directory: %w", err)
+		return nil, fmt.Errorf("failed to create assets directory: %w", err)
 	}
 
 	var savedImageNames []string
@@ -363,7 +375,7 @@ func (a *App) CaptureThoughtWithImages(text string, images []ImagePayload) (stri
 			if err != nil {
 				decoded, err = base64.URLEncoding.DecodeString(cleanB64)
 				if err != nil {
-					return "", fmt.Errorf("failed to decode base64 image: %w", err)
+					return nil, fmt.Errorf("failed to decode base64 image: %w", err)
 				}
 			}
 		}
@@ -374,11 +386,37 @@ func (a *App) CaptureThoughtWithImages(text string, images []ImagePayload) (stri
 
 		filePath := filepath.Join(assetsDir, fileName)
 		if err := os.WriteFile(filePath, decoded, 0644); err != nil {
-			return "", fmt.Errorf("failed to save asset file: %w", err)
+			return nil, fmt.Errorf("failed to save asset file: %w", err)
 		}
 
 		savedImageNames = append(savedImageNames, fileName)
 		time.Sleep(time.Millisecond)
+	}
+
+	return savedImageNames, nil
+}
+
+func (a *App) CaptureThoughtWithImages(text string, images []ImagePayload) (string, error) {
+	text = strings.TrimSpace(text)
+	if text == "" && len(images) == 0 {
+		return "", errors.New("empty text and images")
+	}
+
+	savedImageNames, err := a.saveAssetImages(images)
+	if err != nil {
+		return "", err
+	}
+
+	home := a.Home
+	if home == "" {
+		_, h, err := config.LoadConfig()
+		if err == nil {
+			home = h
+			a.Home = h
+		}
+	}
+	if home == "" {
+		return "", errors.New("home directory not configured")
 	}
 
 	targetDir := filepath.Join(home, "Scattering")
@@ -431,7 +469,7 @@ func (a *App) CaptureThoughtWithImages(text string, images []ImagePayload) (stri
 
 	contentStr := sb.String()
 
-	err := watcher.GetWatcher().WriteFile(targetPath, []byte(contentStr), "capture")
+	err = watcher.GetWatcher().WriteFile(targetPath, []byte(contentStr), "capture")
 	if err != nil {
 		return "", err
 	}
@@ -720,8 +758,8 @@ func (a *App) ProcessChatLog(rawText string) (*Card, error) {
 	return &card, nil
 }
 
-// CaptureChatLog directly parses and saves a chat log card as a permanent Markdown file in Scattering.
-func (a *App) CaptureChatLog(rawText string) (string, error) {
+// CaptureChatLogWithImages directly parses and saves a chat log card with image attachments to Scattering and assets.
+func (a *App) CaptureChatLogWithImages(rawText string, images []ImagePayload) (string, error) {
 	parsed, err := chatlog.Parse(rawText)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse chat log: %w", err)
@@ -745,7 +783,16 @@ func (a *App) CaptureChatLog(rawText string) (string, error) {
 		return "", errors.New("home directory not configured")
 	}
 
+	savedImageNames, err := a.saveAssetImages(images)
+	if err != nil {
+		return "", fmt.Errorf("failed to save asset images: %w", err)
+	}
+	parsed.Images = savedImageNames
+
 	targetDir := filepath.Join(home, "Scattering")
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create target directory: %w", err)
+	}
 	now := time.Now()
 	slugSrc := title
 	if slugSrc == "" {
@@ -771,7 +818,7 @@ func (a *App) CaptureChatLog(rawText string) (string, error) {
 	}
 
 	docID := ulid.Make().String()
-	contentStr := chatlog.FormatCardMarkdown(docID, title, parsed)
+	contentStr := chatlog.FormatCardMarkdown(docID, title, parsed, savedImageNames)
 
 	err = watcher.GetWatcher().WriteFile(targetPath, []byte(contentStr), "capture")
 	if err != nil {
@@ -785,8 +832,15 @@ func (a *App) CaptureChatLog(rawText string) (string, error) {
 			FilePath:   targetPath,
 			Text:       parsed.Coalesced,
 			CapturedAt: now,
+			Images:     savedImageNames,
 		},
 	})
 
 	return docID, nil
 }
+
+// CaptureChatLog directly parses and saves a chat log card as a permanent Markdown file in Scattering.
+func (a *App) CaptureChatLog(rawText string) (string, error) {
+	return a.CaptureChatLogWithImages(rawText, nil)
+}
+
