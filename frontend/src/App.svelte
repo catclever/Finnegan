@@ -336,6 +336,36 @@
     }
   }
 
+  function navigateFocus(direction: 'prev' | 'next') {
+    if (focusedCardId === null) return;
+
+    // Create an ordered unique list of all available cards
+    const allCardsMap = new Map<string, CosmicCard>();
+    cards.forEach(c => allCardsMap.set(c.id, c));
+    memoryPool.forEach(c => allCardsMap.set(c.id, c));
+    localVaultPool.forEach(c => allCardsMap.set(c.id, c));
+
+    const orderedCards = Array.from(allCardsMap.values());
+    if (orderedCards.length <= 1) return;
+
+    const currentIndex = orderedCards.findIndex(c => c.id === focusedCardId);
+    if (currentIndex === -1) return;
+
+    let targetIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
+    if (targetIndex < 0) targetIndex = orderedCards.length - 1;
+    if (targetIndex >= orderedCards.length) targetIndex = 0;
+
+    const targetCard = orderedCards[targetIndex];
+
+    // If target card is not in current active `cards`, add it to the stage
+    if (!cards.find(c => c.id === targetCard.id)) {
+      cards = [...cards, { ...targetCard, x: 0, y: $scrollExpansion * 300, isFadingOut: false }];
+    }
+
+    focusedCardId = targetCard.id;
+    resetTideTimer();
+  }
+
   function handleWindowClick(e: MouseEvent) {
     resetTideTimer();
     const target = e.target as Element | null;
@@ -343,13 +373,17 @@
     omniBarRef?.blurInput();
     omniBarRef?.closeCommandSelect();
     if (searchSession.isActive) { revertSearchView(); omniBarRef?.clearText(); }
-    if (target && !target.closest('.card')) focusedCardId = null;
+    if (target && !target.closest('.card') && !target.closest('.nav-button')) focusedCardId = null;
   }
 
   function handleWindowKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') {
       if (focusedCardId !== null) { focusedCardId = null; return; }
       if (omniBarRef?.handleEscape()) return;
+    }
+    if (focusedCardId !== null) {
+      if (e.key === 'ArrowLeft') { navigateFocus('prev'); return; }
+      if (e.key === 'ArrowRight') { navigateFocus('next'); return; }
     }
     if (e.key === 'Enter') omniBarRef?.handleGlobalEnter();
   }
@@ -505,6 +539,7 @@
     {lastScrollDirection}
     onToggleFocus={toggleFocus} onHoverCard={(id) => { hoveredCardId = id; resetTideTimer(); }}
     onLeaveCard={() => hoveredCardId = null} onBgClick={handleWindowClick}
+    on:navigate={(e) => navigateFocus(e.detail)}
   />
 
   <OmniBar
