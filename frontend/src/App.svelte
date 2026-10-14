@@ -16,7 +16,7 @@
   import { spring } from 'svelte/motion';
   import OmniBar from './components/OmniBar.svelte';
   import CosmicStage from './components/CosmicStage.svelte';
-  import { CaptureThought, GetTempCards, LoadLocalCards, SearchLocalCards, GetRegisteredCommands, ExecuteModuleCommand } from '../wailsjs/go/main/App.js';
+  import { CaptureThought, CaptureThoughtWithImages, GetTempCards, LoadLocalCards, SearchLocalCards, GetRegisteredCommands, ExecuteModuleCommand } from '../wailsjs/go/main/App.js';
   import { EventsOn } from '../wailsjs/runtime/runtime.js';
   import type { CosmicCard, SearchSession, CommandDef } from './types/card';
   import type { BuguSession, BuguBeacon } from './modules/bugu/types';
@@ -32,10 +32,14 @@
   let searchDebounceTimer: any = null, tideTimer: any = null;
   let activeBuguSession: BuguSession | null = null;
   let activeBuguBeacon: BuguBeacon | null = null, buguBeaconTimer: any = null;
+  let babelQueue: any[] = [], babelQueueTimer: any = null, radarBackendFinished = false;
 
   // --- Gravitational Tide (Multi-Screen Y-Axis Expansion) ---
   let scrollTarget = 0;
   let scrollExpansion = spring(0, { stiffness: 0.08, damping: 0.45 });
+  let isScrolling = false;
+  let scrollIdleTimer: any = null;
+  let lastScrollDirection: 'down' | 'up' = 'down';
   $: targetCapacity = Math.round(BASE_CAPACITY * (1 + $scrollExpansion * 0.6));
 
   function resetTideTimer() {
@@ -56,6 +60,15 @@
 
   function handleWheel(e: WheelEvent) {
     if (focusedCardId !== null) return;
+    if (Math.abs(e.deltaY) > 0.5) {
+      lastScrollDirection = e.deltaY > 0 ? 'down' : 'up';
+    }
+    isScrolling = true;
+    if (scrollIdleTimer) clearTimeout(scrollIdleTimer);
+    scrollIdleTimer = setTimeout(() => {
+      isScrolling = false;
+    }, 450);
+
     scrollTarget = computeNextScrollTarget(scrollTarget, e.deltaY, e.deltaMode, cards);
     scrollExpansion.set(scrollTarget);
     resetTideTimer();
@@ -112,26 +125,76 @@
     }, 250);
   }
 
-  async function handleCaptureThought(text: string) {
+  async function handleCaptureThought(text: string, images?: string[]) {
     capturePending = true;
     try {
-      await CaptureThought(text);
+      if (images && images.length > 0) {
+        const payload = images.map(img => (typeof img === 'string' ? { data: img } : img));
+        await CaptureThoughtWithImages(text, payload as any);
+      } else {
+        await CaptureThought(text);
+      }
       if (searchSession.isActive) commitSearchView();
     } finally { capturePending = false; }
   }
 
-  function startBuguRadar(sourceCardId: string) {
+  function finishBuguBeacon() {
     if (buguBeaconTimer) clearTimeout(buguBeaconTimer);
+    if (!activeBuguBeacon || activeBuguBeacon.status === 'fading') return;
+    const sid = activeBuguBeacon.sourceCardId;
+    activeBuguBeacon = { sourceCardId: sid, status: 'fading' };
+    buguBeaconTimer = setTimeout(() => {
+      if (activeBuguBeacon?.sourceCardId === sid) activeBuguBeacon = null;
+    }, 2500);
+  }
+
+  function resetBeaconSafetyTimer(sourceCardId: string) {
+    if (buguBeaconTimer) clearTimeout(buguBeaconTimer);
+    buguBeaconTimer = setTimeout(() => {
+      if (activeBuguBeacon?.sourceCardId === sourceCardId) finishBuguBeacon();
+    }, 90000);
+  }
+
+  function startBuguRadar(sourceCardId: string) {
+    radarBackendFinished = false;
     cards = cards.map(c => c.id === sourceCardId ? { ...c, isVIP: true, decayDuration: Math.max(c.decayDuration, 12 * 3600 * 1000) } : c);
     activeBuguBeacon = { sourceCardId, status: 'scanning' };
-    buguBeaconTimer = setTimeout(() => {
-      if (activeBuguBeacon?.sourceCardId === sourceCardId) {
-        activeBuguBeacon = { ...activeBuguBeacon, status: 'fading' };
-        buguBeaconTimer = setTimeout(() => {
-          if (activeBuguBeacon?.sourceCardId === sourceCardId) activeBuguBeacon = null;
-        }, 2500);
+    resetBeaconSafetyTimer(sourceCardId);
+  }
+
+  function stageOneBabelCard(c: any) {
+    const newCard = toCosmicCard(c, 'babel', 'bugu', MACRO_TTL_MS);
+    const substantive = (newCard.content || newCard.originalText || newCard.translatedText || '').trim();
+    if (!substantive) return;
+    memoryPool = [newCard, ...memoryPool.filter(m => m.id !== newCard.id)];
+    const staged = stageCandidate(newCard, true, $scrollExpansion, cards, memoryPool);
+    if (cards.filter(card => !card.isFadingOut).length >= BASE_CAPACITY * 3) {
+      const evictable = cards
+        .filter(card => !isProtectedCard(card, cards, activeBuguBeacon?.sourceCardId) && !card.isFadingOut)
+        .sort((a, b) => (a.spawnTime + a.decayDuration) - (b.spawnTime + b.decayDuration));
+      if (evictable.length > 0) {
+        evictable[0].isFadingOut = true;
+        setTimeout(() => { cards = cards.filter(card => card.id !== evictable[0].id); }, 2500);
       }
-    }, 15000);
+    }
+    cards = [...cards.filter(card => card.id !== staged.id), staged];
+  }
+
+  function processBabelQueue() {
+    if (babelQueueTimer) return;
+    if (babelQueue.length === 0) {
+      if (radarBackendFinished) finishBuguBeacon();
+      return;
+    }
+    stageOneBabelCard(babelQueue.shift());
+    if (babelQueue.length === 0 && radarBackendFinished) {
+      finishBuguBeacon();
+      return;
+    }
+    babelQueueTimer = setTimeout(() => {
+      babelQueueTimer = null;
+      processBabelQueue();
+    }, 850);
   }
 
   async function handleExecuteCommand(cmd: CommandDef, card: CosmicCard) {
@@ -197,9 +260,10 @@
         }
       }
       latestManualCardId = cardId;
-      const baseCard = toCosmicCard({ id: cardId, content: data.Text }, 'thought', 'manual');
+      const images = data.Images || data.images;
+      const baseCard = toCosmicCard({ id: cardId, content: data.Text, images }, 'thought', 'manual');
       const stagedCard = stageCandidate(baseCard, true, $scrollExpansion, cards, memoryPool);
-      const newCard = { ...stagedCard, isVIP: true, decayDuration: 12 * 3600 * 1000, z: 12 };
+      const newCard = { ...stagedCard, images: data.Images || data.images || stagedCard.images, isVIP: true, decayDuration: 12 * 3600 * 1000, z: 12 };
       localVaultPool = [newCard, ...localVaultPool.filter(c => c.id !== newCard.id)];
       if (cards.filter(c => !c.isFadingOut).length >= targetCapacity) {
         const evictable = cards
@@ -211,31 +275,17 @@
         }
       }
       cards = [...cards.filter(c => c.id !== newCard.id), newCard];
-      startBuguRadar(cardId);
     });
 
     EventsOn("bugu:card_spawned", (c: any) => {
-      const newCard = toCosmicCard(c, 'babel', 'bugu', MACRO_TTL_MS);
-      memoryPool = [newCard, ...memoryPool.filter(m => m.id !== newCard.id)];
-      if (cards.filter(card => !card.isFadingOut).length >= BASE_CAPACITY * 3) {
-        const evictable = cards
-          .filter(card => !isProtectedCard(card, cards, activeBuguBeacon?.sourceCardId) && !card.isFadingOut)
-          .sort((a, b) => (a.spawnTime + a.decayDuration) - (b.spawnTime + b.decayDuration));
-        if (evictable.length > 0) {
-          evictable[0].isFadingOut = true;
-          setTimeout(() => { cards = cards.filter(card => card.id !== evictable[0].id); }, 2500);
-        }
-      }
-      const staged = stageCandidate(newCard, true, $scrollExpansion, cards, memoryPool);
-      cards = [...cards.filter(card => card.id !== staged.id), staged];
+      if (activeBuguBeacon) resetBeaconSafetyTimer(activeBuguBeacon.sourceCardId);
+      babelQueue.push(c);
+      processBabelQueue();
+    });
 
-      if (activeBuguSession) {
-        const echoOf = c.echoOf || c.echo_of || c.EchoOf;
-        if (!echoOf || echoOf === activeBuguSession.sourceCardId) {
-          activeBuguSession.targetCardIds = [...activeBuguSession.targetCardIds.filter(id => id !== staged.id), staged.id];
-          activeBuguSession.status = 'linked';
-        }
-      }
+    EventsOn("bugu:radar_completed", () => {
+      radarBackendFinished = true;
+      if (babelQueue.length === 0 && !babelQueueTimer) finishBuguBeacon();
     });
 
     const metabolicInterval = setInterval(() => {
@@ -259,7 +309,10 @@
       cancelAnimationFrame(frame);
       clearInterval(metabolicInterval);
       if (tideTimer) clearTimeout(tideTimer);
+      if (scrollIdleTimer) clearTimeout(scrollIdleTimer);
       if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+      if (babelQueueTimer) clearTimeout(babelQueueTimer);
+      if (buguBeaconTimer) clearTimeout(buguBeaconTimer);
     };
   });
 </script>
@@ -271,6 +324,7 @@
 <div class="container" on:click={handleWindowClick}>
   <OmniBar
     bind:this={omniBarRef} {availableCommands} {searchSession} {focusedCardId} {cards} {localVaultPool} {capturePending}
+    {isScrolling}
     bind:isOmnibarFocused onCaptureThought={handleCaptureThought} onFreeSearch={handleFreeSearch}
     onRevertSearch={revertSearchView} onCommitSearch={commitSearchView}
     onExecuteCommand={handleExecuteCommand} onSearchLocalCards={SearchLocalCards}
@@ -279,6 +333,7 @@
   <CosmicStage
     {cards} {time} buguBeacon={activeBuguBeacon} buguSession={activeBuguSession}
     globalTilt={$globalTilt} scrollExpansion={$scrollExpansion} {focusedCardId} {hoveredCardId} {isOmnibarFocused}
+    {lastScrollDirection}
     onToggleFocus={toggleFocus} onHoverCard={(id) => { hoveredCardId = id; resetTideTimer(); }}
     onLeaveCard={() => hoveredCardId = null} onBgClick={handleWindowClick}
   />

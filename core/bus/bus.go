@@ -9,11 +9,12 @@ import (
 type EventType string
 
 const (
-	EventFileCreated     EventType = "FileCreated"
-	EventFileModified    EventType = "FileModified"
-	EventFileDeleted     EventType = "FileDeleted"
-	EventThoughtCaptured EventType = "ThoughtCaptured"
-	EventBabelCardSpawned EventType = "BabelCardSpawned"
+	EventFileCreated        EventType = "FileCreated"
+	EventFileModified       EventType = "FileModified"
+	EventFileDeleted        EventType = "FileDeleted"
+	EventThoughtCaptured    EventType = "ThoughtCaptured"
+	EventBabelCardSpawned   EventType = "BabelCardSpawned"
+	EventBuguRadarCompleted EventType = "BuguRadarCompleted"
 )
 
 type EventFileData struct {
@@ -30,6 +31,7 @@ type EventThoughtCapturedData struct {
 	FilePath   string
 	Text       string
 	CapturedAt time.Time
+	Images     []string
 }
 
 type Event struct {

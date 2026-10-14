@@ -15,6 +15,7 @@
 <script lang="ts">
   import { createEventDispatcher, onDestroy } from 'svelte';
   import type { CosmicCard, SearchSession, CommandDef } from '../types/card';
+  import AttachmentTray from './omnibar/AttachmentTray.svelte';
 
   // Props
   export let availableCommands: CommandDef[] = [];
@@ -24,9 +25,10 @@
   export let localVaultPool: CosmicCard[] = [];
   export let capturePending: boolean = false;
   export let isOmnibarFocused: boolean = false;
+  export let isScrolling: boolean = false;
 
   // Callbacks
-  export let onCaptureThought: ((text: string) => Promise<void> | void) | undefined = undefined;
+  export let onCaptureThought: ((text: string, images?: string[]) => Promise<void> | void) | undefined = undefined;
   export let onFreeSearch: ((text: string) => void) | undefined = undefined;
   export let onRevertSearch: (() => void) | undefined = undefined;
   export let onCommitSearch: (() => void) | undefined = undefined;
@@ -38,6 +40,89 @@
   // Internal state
   let omniText = "";
   let omnibarInputEl: HTMLTextAreaElement | null = null;
+  let attachedImages: string[] = [];
+  let deleteHighlightIndex: number = -1;
+  let isDraggingOver: boolean = false;
+  const MAX_IMAGES = 4;
+
+  function addImageFiles(files: FileList | File[]) {
+    const fileList = Array.from(files).filter(f => f.type.startsWith('image/'));
+    if (fileList.length === 0) return;
+
+    const availableSlots = MAX_IMAGES - attachedImages.length;
+    if (availableSlots <= 0) {
+      showToast(`最多添加 ${MAX_IMAGES} 张图片`);
+      return;
+    }
+
+    const filesToLoad = fileList.slice(0, availableSlots);
+    for (const file of filesToLoad) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result;
+        if (typeof dataUrl === 'string') {
+          if (attachedImages.length < MAX_IMAGES) {
+            attachedImages = [...attachedImages, dataUrl];
+            deleteHighlightIndex = -1;
+          }
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  function removeImage(index: number) {
+    if (index >= 0 && index < attachedImages.length) {
+      attachedImages = attachedImages.filter((_, i) => i !== index);
+      deleteHighlightIndex = -1;
+    }
+  }
+
+  function handlePaste(e: ClipboardEvent) {
+    if (e.clipboardData?.files && e.clipboardData.files.length > 0) {
+      const imgFiles = Array.from(e.clipboardData.files).filter(f => f.type.startsWith('image/'));
+      if (imgFiles.length > 0) {
+        e.preventDefault();
+        addImageFiles(imgFiles);
+        return;
+      }
+    }
+    if (e.clipboardData?.items) {
+      const imgFiles: File[] = [];
+      for (let i = 0; i < e.clipboardData.items.length; i++) {
+        const item = e.clipboardData.items[i];
+        if (item.type.startsWith('image/')) {
+          const f = item.getAsFile();
+          if (f) imgFiles.push(f);
+        }
+      }
+      if (imgFiles.length > 0) {
+        e.preventDefault();
+        addImageFiles(imgFiles);
+        return;
+      }
+    }
+  }
+
+  function handleDragOver(e: DragEvent) {
+    if (e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files')) {
+      e.preventDefault();
+      isDraggingOver = true;
+    }
+  }
+
+  function handleDragLeave(e: DragEvent) {
+    e.preventDefault();
+    isDraggingOver = false;
+  }
+
+  function handleDrop(e: DragEvent) {
+    e.preventDefault();
+    isDraggingOver = false;
+    if (e.dataTransfer?.files) {
+      addImageFiles(e.dataTransfer.files);
+    }
+  }
 
   // Command selection state
   let commandSelectMode: boolean = false;
@@ -64,7 +149,7 @@
   }
 
   // Reactive expressions
-  $: showTopBanner = (omniText.trim().length > 0) || commandParamMode || commandSelectMode || searchSession.isActive;
+  $: showTopBanner = (omniText.trim().length > 0) || (attachedImages.length > 0) || commandParamMode || commandSelectMode || searchSession.isActive;
 
   $: omnibarPlaceholder = commandParamMode
     ? (selectedCommand?.params?.[0]?.description || "吾道不孤")
@@ -150,6 +235,10 @@
   }
 
   export function handleEscape(): boolean {
+    if (deleteHighlightIndex !== -1) {
+      deleteHighlightIndex = -1;
+      return true;
+    }
     if (commandParamMode) {
       if (lockedCard) {
         unlockCard();
@@ -192,6 +281,8 @@
 
   export function clearText(): void {
     omniText = "";
+    attachedImages = [];
+    deleteHighlightIndex = -1;
     if (omnibarInputEl) {
       omnibarInputEl.style.height = 'auto';
     }
@@ -309,13 +400,16 @@
 
   async function captureCurrentThought() {
     const text = omniText.trim();
-    if (!text || capturePending) return;
+    const imgs = [...attachedImages];
+    if ((!text && imgs.length === 0) || capturePending) return;
     try {
       if (onCaptureThought) {
-        await onCaptureThought(text);
+        await onCaptureThought(text, imgs);
       }
-      dispatch('captureThought', text);
+      dispatch('captureThought', { text, images: imgs });
       omniText = "";
+      attachedImages = [];
+      deleteHighlightIndex = -1;
       if (searchSession.isActive) {
         if (onCommitSearch) onCommitSearch();
         dispatch('commitSearch');
@@ -332,6 +426,9 @@
   }
 
   async function handleOmnibarKeydown(e: KeyboardEvent) {
+    if (e.key !== 'Backspace' && deleteHighlightIndex !== -1) {
+      deleteHighlightIndex = -1;
+    }
     // Mode 1: Command Selection Dropdown Active
     if (commandSelectMode) {
       if (e.key === 'ArrowDown') {
@@ -441,6 +538,17 @@
       }
     }
 
+    // Backspace Deletion for Attached Images when Input is Empty
+    if (e.key === 'Backspace' && omniText === '' && attachedImages.length > 0 && !commandParamMode) {
+      e.preventDefault();
+      if (deleteHighlightIndex >= 0 && deleteHighlightIndex < attachedImages.length) {
+        removeImage(deleteHighlightIndex);
+      } else {
+        deleteHighlightIndex = attachedImages.length - 1;
+      }
+      return;
+    }
+
     // Mode 3: Normal Mode Thought Capture vs Search Solidify
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
       // Capturing a thought ONLY triggers on (e.metaKey || e.ctrlKey) && e.key === 'Enter'
@@ -530,7 +638,7 @@
 </script>
 
 <!-- Omnibar Container with Universal Two-Stage Assembly & Command Badges -->
-<div class="omnibar-container" class:faded={focusedCardId !== null}>
+<div class="omnibar-container" class:faded={focusedCardId !== null || isScrolling}>
   <!-- Floating Toast Feedback Banner -->
   {#if toastMessage}
     <div class="toast-feedback">
@@ -613,7 +721,12 @@
   <div 
     class="omnibar-box" 
     class:command-mode={commandParamMode}
+    class:drag-over={isDraggingOver}
     on:click={() => omnibarInputEl?.focus()}
+    on:paste={handlePaste}
+    on:dragover={handleDragOver}
+    on:dragleave={handleDragLeave}
+    on:drop={handleDrop}
   >
     <!-- Command Chip Badge: [🔭 /cmd] -->
     {#if commandParamMode && selectedCommand}
@@ -642,11 +755,20 @@
       bind:value={omniText}
       on:keydown={handleOmnibarKeydown}
       on:input={handleInput}
+      on:paste={handlePaste}
       on:focus={() => isOmnibarFocused = true}
       on:blur={() => isOmnibarFocused = false}
       disabled={capturePending}
       rows="1"
     ></textarea>
+
+    <!-- AttachmentTray below textarea inside .omnibar-box -->
+    <AttachmentTray 
+      images={attachedImages} 
+      deleteHighlightIndex={deleteHighlightIndex} 
+      on:remove={(e) => removeImage(e.detail)} 
+      onRemove={removeImage}
+    />
   </div>
 
   <!-- Dropdown 1: Command Selection Suggestions -->
@@ -702,7 +824,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    transition: opacity 0.5s ease, filter 0.5s ease;
+    transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), filter 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
     width: 580px;
     max-width: 90vw;
   }
@@ -711,11 +833,13 @@
     opacity: 0;
     filter: blur(10px);
     pointer-events: none;
+    transform: scale(0.96);
   }
 
   .omnibar-box {
     width: 100%;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 8px;
     padding: 12px 22px;
@@ -728,6 +852,12 @@
     transition: background 0.3s ease, border 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease;
     box-sizing: border-box;
     min-height: 60px;
+  }
+
+  .omnibar-box.drag-over {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.4), 0 20px 60px rgba(0, 0, 0, 0.2);
+    background: rgba(255, 255, 255, 0.98);
   }
 
   .omnibar-box:focus-within {

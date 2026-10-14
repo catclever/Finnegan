@@ -6,6 +6,10 @@ export function CaptureThought(arg1) {
   return window['go']['main']['App']['CaptureThought'](arg1);
 }
 
+export function CaptureThoughtWithImages(arg1, arg2) {
+  return window['go']['main']['App']['CaptureThoughtWithImages'](arg1, arg2);
+}
+
 export function ClearTempCards() {
   return window['go']['main']['App']['ClearTempCards']();
 }

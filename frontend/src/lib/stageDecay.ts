@@ -42,8 +42,22 @@ export interface StageCoordinates {
   z: number;
 }
 
-export const OMNIBAR_DEADZONE = { halfWidth: 340, halfHeight: 110 };
+export const OMNIBAR_DEADZONE = { halfWidth: 290, halfHeight: 28 };
 export const CARD_CLEARANCE = { dx: 220, dy: 200 };
+export const COMFORT_NORM_DIST = 1.15; // Minimum safe distance threshold for comfortable placement
+
+export interface ScreenZone {
+  minY: number;
+  maxY: number;
+  centerY: number;
+}
+
+export const SCREEN_ZONES: ScreenZone[] = [
+  { minY: -260, maxY: 260, centerY: 0 },     // Screen 1 (centered at Y = 0)
+  { minY: 300, maxY: 700, centerY: 480 },    // Screen 2 (centered at Y = 480)
+  { minY: 740, maxY: 1140, centerY: 940 },   // Screen 3 (centered at Y = 940)
+  { minY: 1180, maxY: 1580, centerY: 1380 }  // Screen 4 (deep fallback)
+];
 
 /**
  * Protects VIP cards, active Bugu radar source card, and any Mother card of an active stage echo.
@@ -98,6 +112,8 @@ export function toCosmicCard(
     const firstLine = rawContent.split('\n')[0].replace(/^[#\s\-*]+/, '').trim();
     title = firstLine ? (firstLine.length > 20 ? firstLine.slice(0, 20) + '...' : firstLine) : (type === 'babel' ? 'Babel Echo' : 'Thought');
   }
+  const rawImages = c.images || c.Images;
+  const images = rawImages ? (Array.isArray(rawImages) ? rawImages : [rawImages]) : undefined;
   return {
     id: c.id || c.ID || (type + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)),
     type: c.type || c.Type || type,
@@ -111,6 +127,7 @@ export function toCosmicCard(
     authorAvatar: c.authorAvatar || c.AuthorAvatar || c.author_avatar || '',
     createdAt: c.createdAt || c.CreatedAt || c.created_at || new Date().toISOString(),
     echoOf: c.echoOf || c.EchoOf || c.echo_of || '',
+    images,
     x: 0, y: 0, rotation: 0, z: 50,
     spawnTime: Date.now(), decayDuration: BASE_STAGE_DECAY_MS, isFresh: true, isVIP: false, origin,
     macroExpiresAt: ttl ? Date.now() + ttl : undefined
@@ -138,68 +155,70 @@ export function calculateDecayDuration(
 }
 
 /**
- * Calculates non-overlapping spatial placement across Screen 1, overflowing automatically
- * into Screen 2 (`Y in [320, 650]`, up to 8 cards) and Screen 3 (`Y in [650, 1000]`).
+ * Calculates non-overlapping spatial placement across screens using Idea A (Dynamic Spatial Density).
+ * Probes Screen 1 first; if all candidate points have safety distance < COMFORT_NORM_DIST (1.15),
+ * elastically cascades to Screen 2, then Screen 3, completely eliminating hard-coded card count limits.
+ * The central deadzone prevents card centers from being positioned underneath the Omnibar on all screens.
  */
 export function calculateSpatialPlacement(
   activeCards: CosmicCard[] = [],
-  scrollExpansion: number = 0,
+  _scrollExpansion: number = 0,
   isNewlyCreated: boolean = false,
-  origin?: string
+  _origin?: string
 ): StageCoordinates {
   const solidCards = activeCards.filter(c => !c.isFadingOut);
-  const screen1Cards = solidCards.filter(c => c.y < 300);
-  const screen2Cards = solidCards.filter(c => c.y >= 300 && c.y < 650);
-  const screen1Limit = origin === 'bugu' ? 8 : BASE_CAPACITY;
-  const isOverflow = screen1Cards.length >= screen1Limit;
-  const bottomMaxY = 270 + scrollExpansion * 600;
 
-  const sampleFromZone = (zoneIndex: number): { x: number; y: number } => {
-    if (isOverflow) {
-      if (screen2Cards.length < 8) {
-        return { x: -500 + Math.random() * 1000, y: 320 + Math.random() * 330 };
+  const SAMPLES_PER_ZONE = 28;
+  let chosenPoint: { x: number; y: number } | null = null;
+  let globalBestPoint: { x: number; y: number } | null = null;
+  let globalMaxDistance = -Infinity;
+
+  for (const zone of SCREEN_ZONES) {
+    let zoneBestPoint: { x: number; y: number } | null = null;
+    let zoneMaxDistance = -Infinity;
+
+    for (let i = 0; i < SAMPLES_PER_ZONE; i++) {
+      const pt = {
+        x: -500 + Math.random() * 1000,
+        y: zone.minY + Math.random() * (zone.maxY - zone.minY)
+      };
+
+      // Deadzone: card center must not be positioned underneath the central Omnibar on any screen
+      if (Math.abs(pt.x) < OMNIBAR_DEADZONE.halfWidth && Math.abs(pt.y - zone.centerY) < OMNIBAR_DEADZONE.halfHeight) {
+        continue;
       }
-      return { x: -500 + Math.random() * 1000, y: 650 + Math.random() * 350 };
-    }
-    switch (zoneIndex) {
-      case 0: return { x: -520 + Math.random() * 1040, y: -270 + Math.random() * 140 };
-      case 1:
-        if (scrollExpansion > 0.05 && Math.random() < 0.6) {
-          return { x: -520 + Math.random() * 1040, y: 190 + Math.random() * (bottomMaxY - 190) };
-        }
-        return { x: -520 + Math.random() * 1040, y: 135 + Math.random() * (bottomMaxY - 135) };
-      case 2: return { x: -520 + Math.random() * 170, y: -130 + Math.random() * 260 };
-      case 3:
-      default: return { x: 350 + Math.random() * 170, y: -130 + Math.random() * 260 };
-    }
-  };
 
-  const SAMPLES = 36;
-  let bestCandidate: { x: number; y: number } | null = null;
-  let maxMinDistance = -Infinity;
+      let minCandidateDist = Infinity;
+      for (const other of solidCards) {
+        const dx = Math.abs(pt.x - other.x);
+        const dy = Math.abs(pt.y - other.y);
+        const normDist = Math.sqrt(Math.pow(dx / CARD_CLEARANCE.dx, 2) + Math.pow(dy / CARD_CLEARANCE.dy, 2));
+        if (normDist < minCandidateDist) minCandidateDist = normDist;
+      }
 
-  for (let i = 0; i < SAMPLES; i++) {
-    const zone = (!isOverflow && scrollExpansion > 0.05 && Math.random() < 0.45) ? 1 : (i % 4);
-    const pt = sampleFromZone(zone);
-    if (Math.abs(pt.x) < OMNIBAR_DEADZONE.halfWidth && Math.abs(pt.y) < OMNIBAR_DEADZONE.halfHeight) continue;
-
-    let minCandidateDist = Infinity;
-    for (const other of solidCards) {
-      const dx = Math.abs(pt.x - other.x), dy = Math.abs(pt.y - other.y);
-      const normDist = Math.sqrt(Math.pow(dx / CARD_CLEARANCE.dx, 2) + Math.pow(dy / CARD_CLEARANCE.dy, 2));
-      if (normDist < minCandidateDist) minCandidateDist = normDist;
+      if (minCandidateDist > zoneMaxDistance) {
+        zoneMaxDistance = minCandidateDist;
+        zoneBestPoint = pt;
+        if (minCandidateDist >= 1.45 && i >= 10) break;
+      }
     }
 
-    if (minCandidateDist > maxMinDistance) {
-      maxMinDistance = minCandidateDist;
-      bestCandidate = pt;
-      if (minCandidateDist >= 1.35 && i >= 16) break;
+    if (zoneBestPoint && zoneMaxDistance > globalMaxDistance) {
+      globalMaxDistance = zoneMaxDistance;
+      globalBestPoint = zoneBestPoint;
+    }
+
+    // Idea A: If this screen zone has a comfortable, non-overlapping location, settle here!
+    if (zoneBestPoint && zoneMaxDistance >= COMFORT_NORM_DIST) {
+      chosenPoint = zoneBestPoint;
+      break;
     }
   }
 
-  const fallbackY = isOverflow ? (screen2Cards.length < 8 ? 460 : 780) : (Math.random() < 0.5 ? -180 : 180);
-  const finalX = bestCandidate ? Math.round(bestCandidate.x) : (Math.random() < 0.5 ? -390 : 390);
-  const finalY = bestCandidate ? Math.round(bestCandidate.y) : fallbackY;
+  // Fallback to the globally best candidate if all zones were crowded
+  const finalPoint = chosenPoint || globalBestPoint || { x: Math.random() < 0.5 ? -380 : 380, y: 0 };
+  const finalX = Math.round(finalPoint.x);
+  const finalY = Math.round(finalPoint.y);
   const rotation = Number(((Math.random() - 0.5) * 50).toFixed(1));
   const z = isNewlyCreated ? Number((10 + Math.random() * 16).toFixed(1)) : Number((35 + Math.random() * 50).toFixed(1));
 

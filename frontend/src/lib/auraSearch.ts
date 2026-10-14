@@ -4,6 +4,7 @@
  */
 
 import type { AuraTrace, CosmicCard } from '../types/card';
+export { toCosmicCard } from './stageDecay';
 
 /**
  * Generates a distinct aura color using the Color Wheel Max Angular Gap Algorithm
@@ -95,9 +96,13 @@ export function transformSearchResults(
     const prevTraces = existing?.auraTraces || [];
     const newTraces: AuraTrace[] = [...prevTraces, createAuraTrace(searchId, searchColor, now)];
 
+    const rawImages = r.images || r.Images;
+    const images = rawImages ? (Array.isArray(rawImages) ? rawImages : [rawImages]) : undefined;
+
     if (existing) {
       return {
         ...existing,
+        images: existing.images || images,
         isSearchResult: true,
         auraTraces: newTraces,
         spawnTime: now,
@@ -117,6 +122,7 @@ export function transformSearchResults(
       type: r.type || 'thought',
       title,
       content: r.content || '',
+      images,
       originalText: r.originalText || '',
       translatedText: r.translatedText || '',
       sourceUrl: r.sourceUrl || '',

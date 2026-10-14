@@ -26,6 +26,7 @@ export interface CosmicCard {
   y: number;
   rotation: number;
   z: number;
+  images?: string[];
 
   // Lifecycle & Decay properties
   spawnTime: number;         // When entered active stage (ms timestamp)

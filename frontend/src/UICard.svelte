@@ -32,6 +32,7 @@
 <script lang="ts">
   import { spring } from 'svelte/motion';
   import { BrowserOpenURL } from '../wailsjs/runtime/runtime.js';
+  import ThoughtCardBody from './components/cards/ThoughtCardBody.svelte';
 
   export let card: any;
   export let time: number = 0;
@@ -112,15 +113,22 @@
     return `conic-gradient(from 0deg, ${stops.join(', ')}, ${colors[0]} 360deg)`;
   })();
 
-  // Dynamic box-shadow accounting for focus & aura decay stages
+  $: isTemporary = card.origin === 'bugu' || card.type === 'babel';
+
+  // Dynamic box-shadow accounting for focus, temporary state & aura decay stages
   $: dynamicBoxShadow = (() => {
     if (isFocused) {
-      return hasAura 
-        ? `0 40px 100px rgba(0, 0, 0, 0.22), 0 0 24px ${toHsla(latestColor, 0.7)}, 0 0 0 1px rgba(255, 255, 255, 0.9)`
+      if (hasAura) {
+        return `0 40px 100px rgba(0, 0, 0, 0.22), 0 0 24px ${toHsla(latestColor, 0.7)}, 0 0 0 1px rgba(255, 255, 255, 0.9)`;
+      }
+      return isTemporary
+        ? '0 40px 100px rgba(0, 0, 0, 0.16), 0 0 36px rgba(245, 158, 11, 0.10), inset 0 0 24px rgba(255, 250, 240, 0.45)'
         : '0 40px 100px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.9)';
     }
     if (!hasAura) {
-      return '0 8px 24px rgba(0, 0, 0, 0.04)';
+      return isTemporary
+        ? '0 8px 28px rgba(245, 158, 11, 0.06), inset 0 0 18px rgba(255, 250, 240, 0.35)'
+        : '0 8px 24px rgba(0, 0, 0, 0.04)';
     }
     if (auraStage === 1) {
       // Stage 1 (< 3 min): Bright flowing glow
@@ -315,6 +323,7 @@
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <div 
   class="card"
+  class:temporary={isTemporary}
   class:focused={isFocused}
   class:hovered={isHovered && !isFocused}
   class:has-aura={hasAura}
@@ -322,6 +331,7 @@
   class:aura-stage-2={auraStage === 2}
   class:aura-stage-3={auraStage === 3}
   on:click={(e) => { e.stopPropagation(); onToggleFocus(); }}
+  on:wheel={(e) => { if (isFocused) e.stopPropagation(); }}
   on:mouseenter={onHover}
   on:mouseleave={onLeave}
   style="
@@ -335,7 +345,7 @@
     filter: blur({$animSpring.blur}px) saturate({$animSpring.saturation});
     z-index: {isFocused ? 1000 : (isHovered ? 999 : Math.round(100 - card.z))};
     box-shadow: {dynamicBoxShadow};
-    {auraStage === 3 ? `border: 1.5px solid ${toHsla(latestColor, 0.75)};` : ''}
+    {!isTemporary && auraStage === 3 ? `border: 1.5px solid ${toHsla(latestColor, 0.75)};` : ''}
     --card-text-color: rgba({Math.round($animSpring.textGray || 38)}, {Math.round($animSpring.textGray || 38)}, {Math.round($animSpring.textGray || 38)}, {($animSpring.textOpacity ?? 0.95).toFixed(2)});
   "
 >
@@ -349,6 +359,13 @@
       ></div>
     </div>
     <div class="aura-inner-mask" class:focused={isFocused}></div>
+  {/if}
+
+  <!-- Dynamic Flowing Dashed Border for Temporary Cards -->
+  {#if isTemporary}
+    <svg class="temporary-flow-border" class:focused={isFocused} aria-hidden="true">
+      <rect class="flow-rect" rx={isFocused ? 27 : 15} ry={isFocused ? 27 : 15} />
+    </svg>
   {/if}
 
   {#if card.type === 'babel'}
@@ -398,14 +415,7 @@
       </div>
     {/if}
   {:else}
-    {#if thoughtTime && isFocused}
-      <div class="thought-header">
-        <span class="card-time">{thoughtTime}</span>
-      </div>
-    {/if}
-    <div class="thought-content">
-      <p>{card.content}</p>
-    </div>
+    <ThoughtCardBody {card} {isFocused} {isHovered} {thoughtTime} />
   {/if}
 </div>
 
@@ -419,17 +429,95 @@
     padding: 12px 18px;
     text-align: left;
     pointer-events: auto; /* Catch clicks and mouse events reliably */
-    background: rgba(255, 255, 255, 0.7);
+    background: rgba(255, 255, 255, 0.76);
     border-radius: 16px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
     color: var(--card-text-color, rgba(38, 38, 38, 0.95));
     cursor: pointer;
     transform-origin: center center;
     user-select: none;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+    border: 1px solid rgba(255, 255, 255, 0.65);
     overflow: hidden;
+  }
+
+  /* Ephemeral / Temporary Card Aesthetics: Ultra-Translucent Gossamer Glass + Fine Dynamic Flowing Dashes */
+  /* Ephemeral / Temporary Card Aesthetics: Substantial Frosted Cool Mist Slate + Decoupled Pearl Gray-White Light Beads */
+  .card.temporary {
+    background: linear-gradient(135deg, rgba(238, 242, 246, 0.84) 0%, rgba(225, 232, 240, 0.78) 100%);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid transparent !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+  }
+
+  .card.temporary.hovered,
+  .card.temporary:hover {
+    background: linear-gradient(135deg, rgba(244, 247, 250, 0.92) 0%, rgba(232, 238, 245, 0.86) 100%);
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+    border: 1px solid transparent !important;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+  }
+
+  /* Dynamic Flowing Orbit Light Beads (Decoupled Pearl 灰白 Luminous Constellation Dots) */
+  .temporary-flow-border {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 2;
+    overflow: visible;
+    border-radius: inherit;
+  }
+
+  .temporary-flow-border .flow-rect {
+    x: 1px;
+    y: 1px;
+    width: calc(100% - 2px);
+    height: calc(100% - 2px);
+    fill: none;
+    stroke: rgba(226, 232, 240, 0.92);
+    stroke-width: 2px;
+    stroke-linecap: round;
+    stroke-dasharray: 0.1 20;
+    filter: drop-shadow(0 0 2.5px rgba(241, 245, 249, 0.85));
+    animation: temporary-dash-flow 4.5s linear infinite;
+  }
+
+  .card.temporary:hover .temporary-flow-border .flow-rect,
+  .card.temporary.hovered .temporary-flow-border .flow-rect {
+    stroke: #ffffff;
+    stroke-width: 2.2px;
+    filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 8px rgba(203, 213, 225, 0.6));
+  }
+
+  .temporary-flow-border.focused .flow-rect {
+    stroke: rgba(226, 232, 240, 0.95);
+    stroke-width: 2.4px;
+    stroke-dasharray: 0.1 24;
+    filter: drop-shadow(0 0 3.5px rgba(241, 245, 249, 0.9));
+    animation: temporary-dash-flow-focused 5.4s linear infinite;
+  }
+
+  @keyframes temporary-dash-flow {
+    from {
+      stroke-dashoffset: 0;
+    }
+    to {
+      stroke-dashoffset: -60px; /* Exact multiple of 20px gap for seamless 60fps loop */
+    }
+  }
+
+  @keyframes temporary-dash-flow-focused {
+    from {
+      stroke-dashoffset: 0;
+    }
+    to {
+      stroke-dashoffset: -72px; /* Exact multiple of 24px gap for seamless 60fps loop */
+    }
   }
 
   /* Flowing Light Aura Animation Layers */
@@ -483,8 +571,7 @@
   }
 
   .babel-header,
-  .babel-content,
-  .thought-content {
+  .babel-content {
     position: relative;
     z-index: 1;
   }
@@ -554,6 +641,16 @@
     color: rgba(0, 0, 0, 0.8);
   }
 
+  .card.temporary .author-pill {
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+  }
+
+  .card.temporary .source-link {
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(226, 232, 240, 0.75);
+  }
+
   .card-time {
     font-size: 0.7rem;
     color: rgba(0, 0, 0, 0.42);
@@ -563,12 +660,6 @@
     white-space: nowrap;
   }
 
-  .thought-header {
-    display: flex;
-    justify-content: flex-end;
-    margin-bottom: 6px;
-    width: 100%;
-  }
 
   .single-container {
     position: relative;
@@ -635,8 +726,8 @@
   
   .twinkle-container.focused {
     height: auto;
-    overflow-y: auto;
-    max-height: 400px;
+    overflow: visible;
+    max-height: none;
   }
   
   @keyframes twinkle-a {
@@ -671,38 +762,48 @@
     background: rgba(255, 255, 255, 0.96);
     box-shadow: 0 40px 100px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.9);
     cursor: default;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
 
-  .card.focused .thought-content {
-    justify-content: center;
-    height: 100%;
-    overflow-y: auto;
-    text-align: left;
+  .card.temporary.focused {
+    background: linear-gradient(145deg, rgba(248, 250, 253, 0.96) 0%, rgba(240, 244, 248, 0.92) 100%);
+    backdrop-filter: blur(26px);
+    -webkit-backdrop-filter: blur(26px);
+    border: 1px solid transparent !important;
   }
 
-  .card.focused .thought-content p {
-    font-size: 1.15rem;
-    line-height: 1.75;
-    display: block;
-    -webkit-line-clamp: unset;
-    overflow: visible;
-    text-align: left;
-    color: rgba(32, 32, 32, 0.98);
+  .card.focused::-webkit-scrollbar,
+  .card.focused .babel-content::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
   }
 
   .card.focused .babel-content {
     justify-content: flex-start;
+    flex: 1;
+    min-height: 0;
     height: 100%;
-    overflow-y: auto;
+    max-height: 100%;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
     text-align: left;
   }
 
   .card.focused .twinkle-container,
   .card.focused .single-container {
     height: auto;
-    max-height: none;
-    overflow: visible;
+    min-height: 0;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
   }
 
   .card.focused .original,
@@ -713,6 +814,7 @@
     overflow: visible !important;
     text-overflow: unset !important;
     max-height: none !important;
+    padding-bottom: 18px;
   }
 
   .card.focused .translated {
@@ -737,33 +839,6 @@
     color: rgba(30, 30, 30, 0.98);
   }
 
-  .thought-content {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: center; /* Vertical center */
-    height: 100%;
-    width: 100%;
-    overflow: hidden;
-    text-align: left;
-  }
-
-  .thought-content p {
-    margin: 0;
-    font-size: 0.825rem;
-    line-height: 1.55;
-    color: var(--card-text-color, rgba(38, 38, 38, 0.95));
-    font-weight: 450;
-    letter-spacing: 0.01em;
-    display: -webkit-box;
-    -webkit-line-clamp: 6;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    word-break: break-word;
-    width: 100%;
-    text-align: left;
-  }
 
   p {
     margin: 0;
@@ -798,22 +873,5 @@
     text-overflow: ellipsis;
     text-align: left;
     color: var(--card-text-color, rgba(38, 38, 38, 0.95));
-  }
-  
-  /* Global sleek scrollbar for cards and other elements */
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  ::-webkit-scrollbar-track {
-    background: transparent;
-    margin: 8px 0; 
-  }
-  ::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.15);
-    border-radius: 10px;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.3);
   }
 </style>

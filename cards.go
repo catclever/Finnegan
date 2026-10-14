@@ -27,6 +27,7 @@ type Card struct {
 	Type           CardType  `json:"type"`
 	Title          string    `json:"title"`
 	Content        string    `json:"content"`
+	Images         []string  `json:"images,omitempty"`
 	SourceURL      string    `json:"sourceUrl,omitempty"`
 	OriginalText   string    `json:"originalText,omitempty"`
 	TranslatedText string    `json:"translatedText,omitempty"`
@@ -126,6 +127,12 @@ func (m *CardManager) PromoteToLocal(cardID string, home string) (*Card, error) 
 	}
 	sb.WriteString("tags: []\n")
 	sb.WriteString("publish: false\n")
+	if len(card.Images) > 0 {
+		sb.WriteString("images:\n")
+		for _, img := range card.Images {
+			sb.WriteString(fmt.Sprintf("  - %s\n", img))
+		}
+	}
 	sb.WriteString("---\n\n")
 	if card.Title != "" {
 		sb.WriteString(fmt.Sprintf("# %s\n\n", card.Title))

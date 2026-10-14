@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 // LoadLocalCards scans the home directory's Scattering and Weaving folders and returns parsed local cards
@@ -43,11 +45,29 @@ func (a *App) LoadLocalCards() []Card {
 				CreatedAt: time.Now(),
 			}
 			
-			// Remove frontmatter if present
+			// Remove frontmatter if present and parse metadata
 			if strings.HasPrefix(content, "---") {
 				parts := strings.SplitN(content, "---", 3)
 				if len(parts) >= 3 {
 					card.Content = strings.TrimSpace(parts[2])
+
+					var fm struct {
+						Images []string `yaml:"images"`
+					}
+					if err := yaml.Unmarshal([]byte(parts[1]), &fm); err == nil && len(fm.Images) > 0 {
+						card.Images = fm.Images
+					} else {
+						var rawMeta map[string]any
+						if err := yaml.Unmarshal([]byte(parts[1]), &rawMeta); err == nil {
+							if rawImgs, ok := rawMeta["images"].([]any); ok {
+								for _, item := range rawImgs {
+									if s, ok := item.(string); ok && strings.TrimSpace(s) != "" {
+										card.Images = append(card.Images, strings.TrimSpace(s))
+									}
+								}
+							}
+						}
+					}
 				}
 			}
 

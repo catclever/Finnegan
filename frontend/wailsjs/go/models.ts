@@ -26,6 +26,7 @@ export namespace main {
 	    type: string;
 	    title: string;
 	    content: string;
+	    images?: string[];
 	    sourceUrl?: string;
 	    originalText?: string;
 	    translatedText?: string;
@@ -46,6 +47,7 @@ export namespace main {
 	        this.type = source["type"];
 	        this.title = source["title"];
 	        this.content = source["content"];
+	        this.images = source["images"];
 	        this.sourceUrl = source["sourceUrl"];
 	        this.originalText = source["originalText"];
 	        this.translatedText = source["translatedText"];
@@ -73,6 +75,22 @@ export namespace main {
 		    }
 		    return a;
 		}
+	}
+	export class ImagePayload {
+	    data: string;
+	    name?: string;
+	    ext?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ImagePayload(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.data = source["data"];
+	        this.name = source["name"];
+	        this.ext = source["ext"];
+	    }
 	}
 
 }
