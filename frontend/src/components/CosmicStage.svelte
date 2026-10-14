@@ -56,6 +56,7 @@
 
   let activeCueDirection: 'down' | 'up' = 'down';
   let screen1DwellTimer: any = null;
+  let bottomDwellTimer: any = null;
   let prevScrollDir: 'down' | 'up' = 'down';
 
   // Track max scroll depth and boundaries
@@ -99,13 +100,27 @@
       if (screen1DwellTimer) { clearTimeout(screen1DwellTimer); screen1DwellTimer = null; }
       activeCueDirection = lastScrollDirection;
     }
+
+    // Step 5: Bottom Dwell Timer (Prompt to scroll up when reaching the bottom)
+    if (isNearBottom) {
+      if (!bottomDwellTimer && activeCueDirection !== 'up') {
+        bottomDwellTimer = setTimeout(() => {
+          if (isNearBottom) {
+            activeCueDirection = 'up';
+          }
+          bottomDwellTimer = null;
+        }, 1000);
+      }
+    } else {
+      if (bottomDwellTimer) { clearTimeout(bottomDwellTimer); bottomDwellTimer = null; }
+    }
   }
 
   $: hasCardsBelow = cards.some(c => !c.isFadingOut && (c.y - scrollExpansion * 300) > 280);
   $: hasCardsAbove = scrollExpansion > 0.15;
 
   // Requirement 3:
-  // - Reached bottom: if lastScrollDirection was 'down', do not show ANY cue
+  // - Reached bottom: if lastScrollDirection was 'down', do not show ANY cue (unless bottom dwell timer flips it to 'up')
   // - Reached top: if lastScrollDirection was 'up', do not show ANY cue (until dwell timer flips it to 'down')
   $: isCueVisible = (() => {
     if (focusedCardId !== null) return false;
@@ -138,8 +153,19 @@
     dispatch('bgClick', e);
   }
 
+  function handleNavLeft(e: MouseEvent) {
+    e.stopPropagation();
+    dispatch('navigate', 'prev');
+  }
+
+  function handleNavRight(e: MouseEvent) {
+    e.stopPropagation();
+    dispatch('navigate', 'next');
+  }
+
   onDestroy(() => {
     if (screen1DwellTimer) clearTimeout(screen1DwellTimer);
+    if (bottomDwellTimer) clearTimeout(bottomDwellTimer);
   });
 </script>
 
@@ -150,6 +176,14 @@
   class:elevated={focusedCardId !== null} 
   on:click={handleWrapperClick}
 >
+  {#if focusedCardId !== null}
+    <div class="nav-button nav-left" on:click={handleNavLeft}>
+      <svg viewBox="0 0 24 24" width="32" height="32" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </div>
+    <div class="nav-button nav-right" on:click={handleNavRight}>
+      <svg viewBox="0 0 24 24" width="32" height="32" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </div>
+  {/if}
   <!-- svelte-ignore a11y-click-events-have-key-events -->
   <!-- svelte-ignore a11y-no-static-element-interactions -->
   <div 
@@ -159,6 +193,17 @@
       transform-style: preserve-3d;
     "
   >
+    <!-- Focus Backdrop -->
+    {#if focusedCardId !== null}
+      <!-- svelte-ignore a11y-click-events-have-key-events -->
+      <!-- svelte-ignore a11y-no-static-element-interactions -->
+      <div
+        class="focus-backdrop"
+        style="transform: translateZ(80px) translateY({scrollExpansion * 300}px);"
+        on:click|stopPropagation={handleWrapperClick}
+      ></div>
+    {/if}
+
     <BuguRayNetwork {cards} beacon={buguBeacon} session={buguSession} {scrollExpansion} />
 
     {#each cards as card (card.id)}
@@ -167,7 +212,6 @@
         {time}
         {globalTilt}
         {scrollExpansion}
-        hasAnyFocused={focusedCardId !== null}
         isFocused={focusedCardId === card.id}
         isHovered={hoveredCardId === card.id}
         onToggleFocus={() => handleToggleFocus(card.id)}
@@ -219,6 +263,62 @@
     position: relative;
     transform-style: preserve-3d;
     will-change: transform;
+  }
+
+  .focus-backdrop {
+    position: absolute;
+    top: -50vh;
+    left: -50vw;
+    width: 200vw;
+    height: 200vh;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 90;
+    pointer-events: auto;
+    animation: fade-in 0.3s ease-out;
+  }
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  /* Navigation Buttons */
+  .nav-button {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.35);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: rgba(30, 40, 50, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    z-index: 150;
+    pointer-events: auto;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .nav-button:hover {
+    background: rgba(255, 255, 255, 0.85);
+    color: rgba(20, 30, 40, 0.9);
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+  }
+
+  .nav-left {
+    left: 40px;
+  }
+
+  .nav-right {
+    right: 40px;
   }
 
   /* Deep Space Pulsating Scroll Indicator */

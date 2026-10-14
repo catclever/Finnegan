@@ -39,7 +39,6 @@
   export let time: number = 0;
   export let globalTilt: { rx: number, ry: number } = { rx: 0, ry: 0 };
   export let scrollExpansion: number = 0;
-  export let hasAnyFocused: boolean = false;
   export let isFocused: boolean = false;
   export let isHovered: boolean = false;
   export let onToggleFocus: () => void;
@@ -114,6 +113,7 @@
     return `conic-gradient(from 0deg, ${stops.join(', ')}, ${colors[0]} 360deg)`;
   })();
 
+  $: isBuguEcho = card.type === 'babel' && card.origin === 'bugu' && Boolean(card.echoOf);
   $: isTemporary = card.origin === 'bugu' || card.type === 'babel';
 
   // Dynamic box-shadow accounting for focus, temporary state & aura decay stages
@@ -122,14 +122,12 @@
       if (hasAura) {
         return `0 40px 100px rgba(0, 0, 0, 0.22), 0 0 24px ${toHsla(latestColor, 0.7)}, 0 0 0 1px rgba(255, 255, 255, 0.9)`;
       }
-      return isTemporary
+      return isBuguEcho
         ? '0 40px 100px rgba(0, 0, 0, 0.16), 0 0 36px rgba(245, 158, 11, 0.10), inset 0 0 24px rgba(255, 250, 240, 0.45)'
         : '0 40px 100px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.9)';
     }
     if (!hasAura) {
-      return isTemporary
-        ? '0 8px 28px rgba(245, 158, 11, 0.06), inset 0 0 18px rgba(255, 250, 240, 0.35)'
-        : '0 8px 24px rgba(0, 0, 0, 0.04)';
+      return isBuguEcho ? '' : '0 8px 24px rgba(0, 0, 0, 0.04)';
     }
     if (auraStage === 1) {
       // Stage 1 (< 3 min): Bright flowing glow
@@ -201,63 +199,44 @@
       const dist = Math.sqrt(card.x * card.x + viewY * viewY);
       const edgeFade = Math.max(0, Math.min(1, 1 - (dist - 440) / 240));
       const edgeBlur = Math.max(0, Math.min(5, (dist - 400) * 0.025));
-      
-      const anotherFocused = !isFocused && (hasAnyFocused || (typeof document !== 'undefined' && Boolean(document.querySelector('.card.focused'))));
-      
-      if (anotherFocused) {
-        animSpring.set({
-          x: card.x * 1.4,
-          y: scrollOffsetY + viewY * 1.4,
-          rotation: card.rotation,
-          opacity: 0.08,
-          scale: 0.7,
-          blur: 10,
-          saturation: 0.1,
-          textGray: 150,
-          textOpacity: 0.15,
-          rotX: 0,
-          rotY: 0,
-          z3d: 0
-        });
-      } else {
-        const zNorm = Math.max(0, Math.min(1, (card.z || 0) / 100));
 
-        // 4. Card size with authentic cosmic perspective hierarchy:
-        // Z = 0 -> scale 1.08; Z = 50 -> scale 0.86; Z = 100 -> scale 0.64
-        const uniformScale = 1.08 - (zNorm * 0.44);
+      const zNorm = Math.max(0, Math.min(1, (card.z || 0) / 100));
 
-        // 3D displacement: Z = 0 -> +100px; Z = 50 -> +25px; Z = 100 -> -50px
-        const z3dVal = (100 - (card.z || 0)) * 1.5 - 50 + pulseZ;
+      // 4. Card size with authentic cosmic perspective hierarchy:
+      // Z = 0 -> scale 1.08; Z = 50 -> scale 0.86; Z = 100 -> scale 0.64
+      const uniformScale = 1.08 - (zNorm * 0.44);
 
-        // 5. Container opacity, blur, and saturation following Z-depth:
-        const depthBlur = zNorm > 0.65 ? (zNorm - 0.65) * 6 : 0;
-        const baseBlur = Math.min(4.5, depthBlur + edgeBlur);
-        
-        // Base opacity naturally scales from 0.96 (near) to 0.64 (distant)
-        const depthOpacity = 0.96 - (zNorm * 0.32);
-        const baseOpacity = depthOpacity * (card.isFresh ? Math.max(0.85, edgeFade) : edgeFade);
-        const baseSat = Math.max(0.42, 1.0 - (zNorm * 0.5));
+      // 3D displacement: Z = 0 -> +100px; Z = 50 -> +25px; Z = 100 -> -50px
+      const z3dVal = (100 - (card.z || 0)) * 1.5 - 50 + pulseZ;
 
-        // 3. Continuous linear grayscale formula strictly tracking Z:
-        // Gray(Z) = 34 + zNorm * (145 - 34)
-        const targetGray = Math.round(34 + zNorm * 111);
-        const targetTextOp = Number((0.98 - zNorm * 0.16).toFixed(2));
-        
-        animSpring.set({
-          x: card.x,
-          y: card.y,
-          rotation: card.rotation + (Math.sin(time * 0.8 + hashId) * 1.5),
-          opacity: baseOpacity,
-          scale: uniformScale,
-          blur: baseBlur,
-          saturation: baseSat,
-          textGray: targetGray,
-          textOpacity: targetTextOp,
-          rotX: globalTilt.rx * 0.25,
-          rotY: globalTilt.ry * 0.25,
-          z3d: z3dVal
-        });
-      }
+      // 5. Container opacity, blur, and saturation following Z-depth:
+      const depthBlur = zNorm > 0.65 ? (zNorm - 0.65) * 6 : 0;
+      const baseBlur = Math.min(4.5, depthBlur + edgeBlur);
+
+      // Base opacity naturally scales from 0.96 (near) to 0.64 (distant)
+      const depthOpacity = 0.96 - (zNorm * 0.32);
+      const baseOpacity = depthOpacity * (card.isFresh ? Math.max(0.85, edgeFade) : edgeFade);
+      const baseSat = Math.max(0.42, 1.0 - (zNorm * 0.5));
+
+      // 3. Continuous linear grayscale formula strictly tracking Z:
+      // Gray(Z) = 34 + zNorm * (145 - 34)
+      const targetGray = Math.round(34 + zNorm * 111);
+      const targetTextOp = Number((0.98 - zNorm * 0.16).toFixed(2));
+
+      animSpring.set({
+        x: card.x,
+        y: card.y,
+        rotation: card.rotation + (Math.sin(time * 0.8 + hashId) * 1.5),
+        opacity: baseOpacity,
+        scale: uniformScale,
+        blur: baseBlur,
+        saturation: baseSat,
+        textGray: targetGray,
+        textOpacity: targetTextOp,
+        rotX: globalTilt.rx * 0.25,
+        rotY: globalTilt.ry * 0.25,
+        z3d: z3dVal
+      });
     }
   }
 
@@ -333,6 +312,7 @@
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <div 
   class="card"
+  class:bugu-echo={isBuguEcho}
   class:temporary={isTemporary}
   class:focused={isFocused}
   class:hovered={isHovered && !isFocused}
@@ -370,13 +350,6 @@
       ></div>
     </div>
     <div class="aura-inner-mask" class:focused={isFocused}></div>
-  {/if}
-
-  <!-- Dynamic Flowing Dashed Border for Temporary Cards -->
-  {#if isTemporary}
-    <svg class="temporary-flow-border" class:focused={isFocused} aria-hidden="true">
-      <rect class="flow-rect" rx={isFocused ? 27 : 15} ry={isFocused ? 27 : 15} />
-    </svg>
   {/if}
 
   {#if card.type === 'babel'}
@@ -495,71 +468,22 @@
     }
   }
 
-  .card.temporary.hovered,
-  .card.temporary:hover {
-    background: linear-gradient(135deg, rgba(234, 242, 252, 0.72) 0%, rgba(218, 228, 244, 0.56) 100%);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid transparent !important;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+  .card.bugu-echo {
+    box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.25);
+    animation: bugu-breathing 4s ease-in-out infinite;
   }
 
-  /* Dynamic Flowing Orbit Light Beads (Decoupled Pearl 灰白 Luminous Constellation Dots) */
-  .temporary-flow-border {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 2;
-    overflow: visible;
-    border-radius: inherit;
+  .card.bugu-echo.focused {
+    animation: none;
+    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.16), 0 0 36px rgba(245, 158, 11, 0.10), inset 0 0 24px rgba(255, 250, 240, 0.45);
   }
 
-  .temporary-flow-border .flow-rect {
-    x: 1px;
-    y: 1px;
-    width: calc(100% - 2px);
-    height: calc(100% - 2px);
-    fill: none;
-    stroke: rgba(226, 232, 240, 0.92);
-    stroke-width: 2px;
-    stroke-linecap: round;
-    stroke-dasharray: 0.1 20;
-    filter: drop-shadow(0 0 2.5px rgba(241, 245, 249, 0.85));
-    animation: temporary-dash-flow 4.5s linear infinite;
-  }
-
-  .card.temporary:hover .temporary-flow-border .flow-rect,
-  .card.temporary.hovered .temporary-flow-border .flow-rect {
-    stroke: #ffffff;
-    stroke-width: 2.2px;
-    filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 8px rgba(203, 213, 225, 0.6));
-  }
-
-  .temporary-flow-border.focused .flow-rect {
-    stroke: rgba(226, 232, 240, 0.95);
-    stroke-width: 2.4px;
-    stroke-dasharray: 0.1 24;
-    filter: drop-shadow(0 0 3.5px rgba(241, 245, 249, 0.9));
-    animation: temporary-dash-flow-focused 5.4s linear infinite;
-  }
-
-  @keyframes temporary-dash-flow {
-    from {
-      stroke-dashoffset: 0;
+  @keyframes bugu-breathing {
+    0%, 100% {
+      box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.15), 0 0 10px rgba(245, 158, 11, 0.05);
     }
-    to {
-      stroke-dashoffset: -60px; /* Exact multiple of 20px gap for seamless 60fps loop */
-    }
-  }
-
-  @keyframes temporary-dash-flow-focused {
-    from {
-      stroke-dashoffset: 0;
-    }
-    to {
-      stroke-dashoffset: -72px; /* Exact multiple of 24px gap for seamless 60fps loop */
+    50% {
+      box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.45), 0 0 16px rgba(245, 158, 11, 0.15);
     }
   }
 
@@ -633,7 +557,19 @@
     justify-content: space-between;
     align-items: center;
     gap: 8px;
-    margin-top: 8px;
+    position: absolute;
+    bottom: 12px;
+    left: 18px;
+    right: 18px;
+  }
+
+  .card.focused .babel-footer {
+    position: relative;
+    margin-top: auto;
+    padding-top: 16px;
+    bottom: auto;
+    left: auto;
+    right: auto;
   }
 
   .header-left,
