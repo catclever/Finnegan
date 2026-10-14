@@ -27,7 +27,13 @@ func NewSearxNGClient(baseURL string) *SearxNGClient {
 	}
 }
 
-func (s *SearxNGClient) Search(query string, target models.Target) ([]string, error) {
+type SearchResult struct {
+	URL     string `json:"url"`
+	Title   string `json:"title"`
+	Content string `json:"content"`
+}
+
+func (s *SearxNGClient) Search(query string, target models.Target) ([]SearchResult, error) {
 	// e.g. "LLM vulnerabilities site:linuxfr.org"
 	finalQuery := fmt.Sprintf("%s %s", query, target.Value)
 
@@ -45,7 +51,9 @@ func (s *SearxNGClient) Search(query string, target models.Target) ([]string, er
 
 	var result struct {
 		Results []struct {
-			URL string `json:"url"`
+			URL     string `json:"url"`
+			Title   string `json:"title"`
+			Content string `json:"content"`
 		} `json:"results"`
 	}
 
@@ -53,14 +61,21 @@ func (s *SearxNGClient) Search(query string, target models.Target) ([]string, er
 		return nil, err
 	}
 
-	var urls []string
+	var items []SearchResult
 	// Limit to top 3 results per target-query combo to prevent flooding
 	for i, r := range result.Results {
 		if i >= 3 {
 			break
 		}
-		urls = append(urls, r.URL)
+		if r.URL == "" {
+			continue
+		}
+		items = append(items, SearchResult{
+			URL:     r.URL,
+			Title:   r.Title,
+			Content: r.Content,
+		})
 	}
 
-	return urls, nil
+	return items, nil
 }

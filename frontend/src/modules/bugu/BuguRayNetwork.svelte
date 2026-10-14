@@ -1,7 +1,7 @@
 <!--
   ======================================================================================
   BuguRayNetwork.svelte - Bugu Directed Decaying Cross-Screen Rays & Radar Beacon
-  Task: temporary_card_and_bugu_ray_refine_028
+  Task: bugu_ray_exact_center_and_pure_amber_decay_030
   ======================================================================================
 -->
 <script lang="ts">
@@ -23,7 +23,7 @@
     ? cards.find(c => c.id === activeBeacon.sourceCardId && !c.isFadingOut) 
     : null;
 
-  // Requirement 6: Cross-screen connectivity without on-screen clipping
+  // Requirement 1 & 6: Cross-screen connectivity from mother center to child center
   $: availableRays = (() => {
     const list: Array<{
       id: string;
@@ -48,10 +48,10 @@
     return list;
   })();
 
-  // Requirement 4 & 7: Asynchronous staggered ray scheduler
-  const SINGLE_PULSE_MS = 1300;
+  // Requirement 3: Synchronized 3-cycle decay (4.8s per cycle, 14.4s total - 2x duration)
+  const SINGLE_PULSE_MS = 4800;
   const MIN_NEXT_DELAY_MS = SINGLE_PULSE_MS; // Lower bound is duration of 1 pulse
-  const RANDOM_ADDITIONAL_MS = 900;          // Range [1300ms, 2200ms]
+  const RANDOM_ADDITIONAL_MS = 2400;         // Range [4800ms, 7200ms]
 
   interface ActiveRayInstance {
     instanceId: number;
@@ -89,7 +89,7 @@
       }
     ];
 
-    // Requirement 7: Write the random delay immediately when ray is launched
+    // Schedule next ray at a random interval whose lower bound is 1 pulse duration
     const delay = MIN_NEXT_DELAY_MS + Math.floor(Math.random() * RANDOM_ADDITIONAL_MS);
     nextSpawnTimer = setTimeout(() => {
       nextSpawnTimer = null;
@@ -118,24 +118,125 @@
     activeInstances = activeInstances.filter(inst => inst.instanceId !== instanceId);
   }
 
+  function getCardScale(card: CosmicCard): number {
+    const zNorm = Math.max(0, Math.min(1, (card.z || 0) / 100));
+    return 1.08 - (zNorm * 0.44);
+  }
+
+  // Refined Docking Inset: 2px close to card edge so aperture circle sits right on border
+  const DOCKING_INSET_PX = 2;
+
+  function computeAnimatedBeamPath(
+    source: CosmicCard,
+    target: CosmicCard
+  ): { path: string; x1: number; y1: number; x2: number; y2: number } {
+    const rawDx = target.x - source.x;
+    const rawDy = target.y - source.y;
+    const dist = Math.hypot(rawDx, rawDy);
+
+    if (dist < 1) {
+      return {
+        path: `M ${source.x} ${source.y} L ${target.x} ${target.y}`,
+        x1: source.x,
+        y1: source.y,
+        x2: target.x,
+        y2: target.y
+      };
+    }
+
+    const sourceScale = getCardScale(source);
+    const targetScale = getCardScale(target);
+
+    const sourceHalfW = Math.max(16, (200 * sourceScale) / 2 - DOCKING_INSET_PX);
+    const sourceHalfH = Math.max(16, (190 * sourceScale) / 2 - DOCKING_INSET_PX);
+
+    const targetHalfW = Math.max(16, (200 * targetScale) / 2 - DOCKING_INSET_PX);
+    const targetHalfH = Math.max(16, (190 * targetScale) / 2 - DOCKING_INSET_PX);
+
+    let startX: number, startY: number, endX: number, endY: number;
+    let c1x: number, c1y: number, c2x: number, c2y: number;
+
+    const isHorizontal = Math.abs(rawDx) >= Math.abs(rawDy);
+
+    if (isHorizontal) {
+      // Exit from horizontal side (left or right)
+      if (rawDx >= 0) {
+        startX = source.x + sourceHalfW;
+        endX = target.x - targetHalfW;
+      } else {
+        startX = source.x - sourceHalfW;
+        endX = target.x + targetHalfW;
+      }
+      // Gentle vertical alignment adjustment
+      const maxSagY = Math.min(24, Math.abs(rawDy) * 0.2);
+      startY = source.y + (rawDy > 0 ? maxSagY : -maxSagY);
+      endY = target.y + (rawDy > 0 ? -maxSagY : maxSagY);
+
+      const dx = endX - startX;
+      const dy = endY - startY;
+      const curvature = Math.min(180, Math.max(40, Math.abs(dx) * 0.45));
+
+      c1x = startX + (dx >= 0 ? curvature : -curvature);
+      c1y = startY;
+      c2x = endX - (dx >= 0 ? curvature : -curvature);
+      c2y = endY;
+    } else {
+      // Exit from vertical side (top or bottom, e.g. cross-screen gravitational tide)
+      if (rawDy >= 0) {
+        startY = source.y + sourceHalfH;
+        endY = target.y - targetHalfH;
+      } else {
+        startY = source.y - sourceHalfH;
+        endY = target.y + targetHalfH;
+      }
+      // Gentle horizontal alignment adjustment
+      const maxSagX = Math.min(24, Math.abs(rawDx) * 0.2);
+      startX = source.x + (rawDx > 0 ? maxSagX : -maxSagX);
+      endX = target.x + (rawDx > 0 ? -maxSagX : maxSagX);
+
+      const dx = endX - startX;
+      const dy = endY - startY;
+      const curvature = Math.min(180, Math.max(40, Math.abs(dy) * 0.45));
+
+      c1x = startX;
+      c1y = startY + (dy >= 0 ? curvature : -curvature);
+      c2x = endX;
+      c2y = endY - (dy >= 0 ? curvature : -curvature);
+    }
+
+    const path = `M ${startX.toFixed(1)} ${startY.toFixed(1)} C ${c1x.toFixed(1)} ${c1y.toFixed(1)}, ${c2x.toFixed(1)} ${c2y.toFixed(1)}, ${endX.toFixed(1)} ${endY.toFixed(1)}`;
+
+    return { path, x1: startX, y1: startY, x2: endX, y2: endY };
+  }
+
   $: renderedRays = activeInstances
     .map(inst => {
       const source = cards.find(c => c.id === inst.sourceId && !c.isFadingOut);
       const target = cards.find(c => c.id === inst.targetId && !c.isFadingOut);
-      return source && target
-        ? {
-            instanceId: inst.instanceId,
-            id: inst.rayId,
-            source,
-            target
-          }
-        : null;
+      if (!source || !target) return null;
+      const beam = computeAnimatedBeamPath(source, target);
+      return {
+        instanceId: inst.instanceId,
+        id: inst.rayId,
+        source,
+        target,
+        path: beam.path,
+        x1: beam.x1,
+        y1: beam.y1,
+        x2: beam.x2,
+        y2: beam.y2
+      };
     })
     .filter(Boolean) as Array<{
       instanceId: number;
       id: string;
       source: CosmicCard;
       target: CosmicCard;
+      path: string;
+      x1: number;
+      y1: number;
+      x2: number;
+      y2: number;
     }>;
 
   onDestroy(() => {
@@ -143,36 +244,53 @@
   });
 </script>
 
-<!-- Requirement 5: Lowest 3D z-plane behind all cards (translateZ(-25px), z-index: 0) -->
+<!-- Requirement 4: Normalized 3D z-depth (-5px) & z-index: -1, seamlessly beneath cards -->
 <div class="bugu-ray-network">
   <!-- Mother Card Radar Beacon (Remains active until all Babel cards have appeared) -->
   {#if beaconCard && activeBeacon}
     <BuguRadarBeacon x={beaconCard.x} y={beaconCard.y} status={activeBeacon.status} />
   {/if}
 
-  <!-- Multi-Screen Laser Beams (Behind Cards in 3D, Staggered Directed Flow) -->
+  <!-- Magic UI Animated Beam: Refined Fiber, Bezier Curvature & Synchronized Blooming Aperture Nodes -->
   {#if renderedRays.length > 0}
-    <svg class="bugu-flat-svg" viewBox="-800 -500 1600 2800">
+    <svg class="bugu-flat-svg">
+      <defs>
+        <!-- Soft glowing radial gradient for aperture nodes -->
+        <radialGradient id="bugu-aperture-glow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#f59e0b" stop-opacity="1" />
+          <stop offset="35%" stop-color="#f59e0b" stop-opacity="0.65" />
+          <stop offset="70%" stop-color="#f59e0b" stop-opacity="0.2" />
+          <stop offset="100%" stop-color="#f59e0b" stop-opacity="0" />
+        </radialGradient>
+      </defs>
+
       {#each renderedRays as ray (ray.instanceId)}
         <g class="ray-instance">
-          <!-- Faint Hairline Guide Thread (0.8px) that dims over 3.9s -->
-          <line
-            x1={ray.source.x}
-            y1={ray.source.y}
-            x2={ray.target.x}
-            y2={ray.target.y}
-            class="ray-guide"
+          <!-- Source Node Aperture Bloom (Erupts before launch, dissolves as beam flies) -->
+          <g class="aperture-group" transform="translate({ray.x1}, {ray.y1})">
+            <circle cx="0" cy="0" r="22" fill="url(#bugu-aperture-glow)" class="glow-ring source-bloom" />
+            <circle cx="0" cy="0" r="3.2" fill="#f59e0b" class="core-dot source-bloom" />
+          </g>
+
+          <!-- Magic UI Style: Static ambient beam path in pure Amber Gold (#f59e0b) -->
+          <path
+            d={ray.path}
+            class="beam-track"
           />
-          <!-- Dynamic Directed Laser Beam (1.1px) flowing Mother -> Child -->
-          <line
-            x1={ray.source.x}
-            y1={ray.source.y}
-            x2={ray.target.x}
-            y2={ray.target.y}
+
+          <!-- Magic UI Style: Traveling energy pulse in pure Amber Gold (#f59e0b) flowing Mother -> Child -->
+          <path
+            d={ray.path}
             pathLength="100"
-            class="ray-beam"
+            class="beam-pulse"
             on:animationend={() => handleRayFinished(ray.instanceId)}
           />
+
+          <!-- Target Node Aperture Bloom (Warms up as beam approaches, peaks upon arrival, fades out) -->
+          <g class="aperture-group" transform="translate({ray.x2}, {ray.y2})">
+            <circle cx="0" cy="0" r="22" fill="url(#bugu-aperture-glow)" class="glow-ring target-bloom" />
+            <circle cx="0" cy="0" r="3.2" fill="#f59e0b" class="core-dot target-bloom" />
+          </g>
         </g>
       {/each}
     </svg>
@@ -180,7 +298,7 @@
 </div>
 
 <style>
-  /* Requirement 5: Deepest 3D z-plane behind cards */
+  /* Requirement 4: Normalized 3D z-depth (-5px) & z-index: -1, eliminating parallax while staying beneath cards */
   .bugu-ray-network {
     position: absolute;
     top: 0;
@@ -188,19 +306,19 @@
     width: 100%;
     height: 100%;
     pointer-events: none;
-    z-index: 0;
-    transform: translateZ(-25px);
+    z-index: -1;
+    transform: translateZ(-5px);
     transform-style: preserve-3d;
   }
 
-  /* Requirement 6: Spans entire multi-screen stage from Screen 1 down to Screen 4 */
+  /* Origin anchored at top: 50%; left: 50% with width: 0; height: 0.
+     No viewBox distortion: exact pixel tracking across 3D Cosmic Stage */
   .bugu-flat-svg {
     position: absolute;
-    top: 0;
+    top: 50%;
     left: 50%;
-    width: 1600px;
-    height: 2800px;
-    transform: translate(-50%, 0);
+    width: 0;
+    height: 0;
     overflow: visible;
     pointer-events: none;
   }
@@ -209,81 +327,347 @@
     pointer-events: none;
   }
 
-  /* Requirement 4: Delicate 0.8px Guide Line: dims progressively over 3 pulses (3.9s) */
-  .ray-guide {
-    stroke: rgba(245, 158, 11, 0.18);
-    stroke-width: 0.8px;
-    stroke-linecap: round;
-    animation: bugu-guide-decay 3.9s ease-in-out forwards;
+  /* Aperture Node Styles */
+  .aperture-group {
+    pointer-events: none;
   }
 
-  /* Requirement 4: Fine 1.1px Directed Laser Beam: 3 pulses from Mother (0) to Child (100), progressively dimmer */
-  .ray-beam {
-    stroke: #fbbf24;
-    stroke-width: 1.1px;
-    stroke-linecap: round;
-    stroke-dasharray: 40 100;
-    filter: drop-shadow(0 0 2.5px rgba(245, 158, 11, 0.8));
-    animation: bugu-directed-beam 3.9s ease-in-out forwards;
+  .glow-ring {
+    transform-origin: 0 0;
+    filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.95)) drop-shadow(0 0 16px rgba(217, 119, 6, 0.6));
   }
 
-  @keyframes bugu-guide-decay {
+  .core-dot {
+    transform-origin: 0 0;
+    filter: drop-shadow(0 0 3px rgba(245, 158, 11, 1));
+  }
+
+  .source-bloom {
+    animation: bugu-source-bloom 14.4s ease-in-out forwards;
+  }
+
+  .target-bloom {
+    animation: bugu-target-bloom 14.4s ease-in-out forwards;
+  }
+
+  /* Refined Magic UI Track: Thinner (0.9px), subtle and elegant */
+  .beam-track {
+    fill: none;
+    stroke: #f59e0b;
+    stroke-width: 0.9px;
+    stroke-linecap: round;
+    filter: drop-shadow(0 0 2px rgba(245, 158, 11, 0.35));
+    animation: bugu-track-decay 14.4s ease-in-out forwards;
+  }
+
+  /* Refined Magic UI Pulse: Delicate (1.6px), crisp high-precision laser filament */
+  .beam-pulse {
+    fill: none;
+    stroke: #f59e0b;
+    stroke-width: 1.6px;
+    stroke-linecap: round;
+    stroke-dasharray: 24 100;
+    filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.95)) drop-shadow(0 0 10px rgba(217, 119, 6, 0.5));
+    animation: bugu-beam-pulse 14.4s ease-in-out forwards;
+  }
+
+  @keyframes bugu-source-bloom {
+    /* Cycle 1 (0 ~ 4.8s): Charges up, PEAKS at launch (4% ~ 7%), fades as pulse moves away (7% ~ 18%) */
+    0% {
+      opacity: 0;
+      transform: scale(0.35);
+    }
+    4% {
+      /* Pulse Launch Moment: Maximum Radiance */
+      opacity: 0.92;
+      transform: scale(1.25);
+    }
+    7% {
+      /* Pulse begins traveling into deep space */
+      opacity: 0.92;
+      transform: scale(1.15);
+    }
+    11% {
+      /* Pulse is moving further away */
+      opacity: 0.65;
+      transform: scale(0.95);
+    }
+    15% {
+      opacity: 0.30;
+      transform: scale(0.70);
+    }
+    18% {
+      /* Pulse is midway, source fully dissolves */
+      opacity: 0;
+      transform: scale(0.40);
+    }
+    33.3% {
+      opacity: 0;
+      transform: scale(0.40);
+    }
+
+    /* Cycle 2 (4.8s ~ 9.6s): Charges up, PEAKS at launch (37.3% ~ 40.3%), fades as pulse moves away */
+    33.4% {
+      opacity: 0;
+      transform: scale(0.35);
+    }
+    37.3% {
+      opacity: 0.58;
+      transform: scale(1.25);
+    }
+    40.3% {
+      opacity: 0.58;
+      transform: scale(1.15);
+    }
+    44.3% {
+      opacity: 0.40;
+      transform: scale(0.95);
+    }
+    48.3% {
+      opacity: 0.18;
+      transform: scale(0.70);
+    }
+    51.3% {
+      opacity: 0;
+      transform: scale(0.40);
+    }
+    66.6% {
+      opacity: 0;
+      transform: scale(0.40);
+    }
+
+    /* Cycle 3 (9.6s ~ 14.4s): Charges up, PEAKS at launch (70.7% ~ 73.7%), fades as pulse moves away */
+    66.7% {
+      opacity: 0;
+      transform: scale(0.35);
+    }
+    70.7% {
+      opacity: 0.28;
+      transform: scale(1.25);
+    }
+    73.7% {
+      opacity: 0.28;
+      transform: scale(1.15);
+    }
+    77.7% {
+      opacity: 0.18;
+      transform: scale(0.95);
+    }
+    81.7% {
+      opacity: 0.08;
+      transform: scale(0.70);
+    }
+    84.7% {
+      opacity: 0;
+      transform: scale(0.40);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(0.40);
+    }
+  }
+
+  @keyframes bugu-target-bloom {
+    /* Cycle 1 (0 ~ 4.8s): Warms up as pulse approaches, PEAKS upon arrival (25%), fades till 33.3% */
+    0%, 15% {
+      opacity: 0;
+      transform: scale(0.40);
+    }
+    18% {
+      opacity: 0.20;
+      transform: scale(0.70);
+    }
+    22% {
+      opacity: 0.65;
+      transform: scale(0.95);
+    }
+    25% {
+      /* Arrival Peak Moment */
+      opacity: 0.92;
+      transform: scale(1.25);
+    }
+    27.5% {
+      opacity: 0.68;
+      transform: scale(1.10);
+    }
+    31% {
+      opacity: 0.18;
+      transform: scale(0.75);
+    }
+    33.3% {
+      opacity: 0;
+      transform: scale(0.45);
+    }
+
+    /* Cycle 2 (4.8s ~ 9.6s): Warms up, PEAKS upon arrival (58.3%), fades till 66.6% */
+    33.4%, 48.3% {
+      opacity: 0;
+      transform: scale(0.40);
+    }
+    51.3% {
+      opacity: 0.12;
+      transform: scale(0.70);
+    }
+    55.3% {
+      opacity: 0.40;
+      transform: scale(0.95);
+    }
+    58.3% {
+      /* Arrival Peak Moment */
+      opacity: 0.58;
+      transform: scale(1.25);
+    }
+    60.8% {
+      opacity: 0.42;
+      transform: scale(1.10);
+    }
+    64.3% {
+      opacity: 0.12;
+      transform: scale(0.75);
+    }
+    66.6% {
+      opacity: 0;
+      transform: scale(0.45);
+    }
+
+    /* Cycle 3 (9.6s ~ 14.4s): Warms up, PEAKS upon arrival (91.7%), fades till 100% */
+    66.7%, 81.7% {
+      opacity: 0;
+      transform: scale(0.40);
+    }
+    84.7% {
+      opacity: 0.06;
+      transform: scale(0.70);
+    }
+    88.7% {
+      opacity: 0.18;
+      transform: scale(0.95);
+    }
+    91.7% {
+      /* Arrival Peak Moment */
+      opacity: 0.28;
+      transform: scale(1.25);
+    }
+    94.2% {
+      opacity: 0.18;
+      transform: scale(1.10);
+    }
+    97.7% {
+      opacity: 0.05;
+      transform: scale(0.75);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(0.45);
+    }
+  }
+
+  @keyframes bugu-track-decay {
+    /* Cycle 1 (0 ~ 4.8s): Base Track Opacity 0.22 */
     0% { opacity: 0; }
-    4% { opacity: 0.28; }
-    33% { opacity: 0.28; }
-    38% { opacity: 0.16; }
-    66% { opacity: 0.16; }
-    71% { opacity: 0.08; }
-    94% { opacity: 0.08; }
+    3% { opacity: 0.22; }
+    30% { opacity: 0.22; }
+    33.3% { opacity: 0.22; }
+
+    /* Cycle 2 (4.8s ~ 9.6s): Base Track Opacity 0.12 */
+    33.4% { opacity: 0.12; }
+    63% { opacity: 0.12; }
+    66.6% { opacity: 0.12; }
+
+    /* Cycle 3 (9.6s ~ 14.4s): Base Track Opacity 0.04 */
+    66.7% { opacity: 0.04; }
+    96% { opacity: 0.04; }
     100% { opacity: 0; }
   }
 
-  @keyframes bugu-directed-beam {
-    /* Pulse 1: Bright (0s ~ 1.3s) */
-    0% {
-      stroke-dashoffset: 40;
+  @keyframes bugu-beam-pulse {
+    /* Cycle 1 (0 ~ 4.8s): Pulse Peak Opacity 0.92 */
+    0%, 4% {
+      stroke-dashoffset: 24;
       opacity: 0;
     }
-    4% {
-      opacity: 0.95;
+    5% {
+      stroke-dashoffset: 24;
+      opacity: 0.92;
     }
-    27% {
-      opacity: 0.95;
+    7% {
+      stroke-dashoffset: 10;
+      opacity: 0.92;
+    }
+    22% {
+      stroke-dashoffset: -85;
+      opacity: 0.92;
+    }
+    25% {
+      stroke-dashoffset: -100;
+      opacity: 0.92;
+    }
+    26.5% {
+      stroke-dashoffset: -105;
+      opacity: 0;
     }
     33.3% {
-      stroke-dashoffset: -100;
+      stroke-dashoffset: -105;
       opacity: 0;
     }
 
-    /* Pulse 2: Medium (1.3s ~ 2.6s) */
-    33.4% {
-      stroke-dashoffset: 40;
+    /* Cycle 2 (4.8s ~ 9.6s): Pulse Peak Opacity 0.58 */
+    33.4%, 37.3% {
+      stroke-dashoffset: 24;
       opacity: 0;
     }
-    38% {
-      opacity: 0.55;
+    38.3% {
+      stroke-dashoffset: 24;
+      opacity: 0.58;
     }
-    60% {
-      opacity: 0.55;
+    40.3% {
+      stroke-dashoffset: 10;
+      opacity: 0.58;
+    }
+    55.3% {
+      stroke-dashoffset: -85;
+      opacity: 0.58;
+    }
+    58.3% {
+      stroke-dashoffset: -100;
+      opacity: 0.58;
+    }
+    59.8% {
+      stroke-dashoffset: -105;
+      opacity: 0;
     }
     66.6% {
-      stroke-dashoffset: -100;
+      stroke-dashoffset: -105;
       opacity: 0;
     }
 
-    /* Pulse 3: Faint (2.6s ~ 3.9s) */
-    66.7% {
-      stroke-dashoffset: 40;
+    /* Cycle 3 (9.6s ~ 14.4s): Pulse Peak Opacity 0.28 */
+    66.7%, 70.7% {
+      stroke-dashoffset: 24;
       opacity: 0;
     }
-    72% {
-      opacity: 0.22;
+    71.7% {
+      stroke-dashoffset: 24;
+      opacity: 0.28;
     }
-    94% {
-      opacity: 0.22;
+    73.7% {
+      stroke-dashoffset: 10;
+      opacity: 0.28;
+    }
+    88.7% {
+      stroke-dashoffset: -85;
+      opacity: 0.28;
+    }
+    91.7% {
+      stroke-dashoffset: -100;
+      opacity: 0.28;
+    }
+    93.2% {
+      stroke-dashoffset: -105;
+      opacity: 0;
     }
     100% {
-      stroke-dashoffset: -100;
+      stroke-dashoffset: -105;
       opacity: 0;
     }
   }

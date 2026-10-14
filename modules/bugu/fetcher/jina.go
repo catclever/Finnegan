@@ -31,8 +31,8 @@ func (j *JinaClient) Extract(targetURL string) (string, error) {
 		return "", err
 	}
 	
-	// Adding specific headers for Jina API
-	req.Header.Set("Accept", "text/event-stream")
+	// Request plain markdown directly rather than SSE stream so each article returns immediately
+	req.Header.Set("Accept", "text/plain")
 	
 	if j.APIKey != "" {
 		req.Header.Set("Authorization", "Bearer "+j.APIKey)

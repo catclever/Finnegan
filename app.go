@@ -260,7 +260,7 @@ func (a *App) CaptureThought(text string) (string, error) {
 		if i > 1 {
 			suffix = fmt.Sprintf("-%d", i)
 		}
-		candidate := filepath.Join(targetDir, fmt.Sprintf("%s%s.draft.md", baseName, suffix))
+		candidate := filepath.Join(targetDir, fmt.Sprintf("%s%s.epiphany.md", baseName, suffix))
 		if _, err := os.Stat(candidate); os.IsNotExist(err) {
 			targetPath = candidate
 			break
@@ -442,7 +442,7 @@ func (a *App) CaptureThoughtWithImages(text string, images []ImagePayload) (stri
 		if i > 1 {
 			suffix = fmt.Sprintf("-%d", i)
 		}
-		candidate := filepath.Join(targetDir, fmt.Sprintf("%s%s.draft.md", baseName, suffix))
+		candidate := filepath.Join(targetDir, fmt.Sprintf("%s%s.epiphany.md", baseName, suffix))
 		if _, err := os.Stat(candidate); os.IsNotExist(err) {
 			targetPath = candidate
 			break

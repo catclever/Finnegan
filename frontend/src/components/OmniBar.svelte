@@ -1030,8 +1030,7 @@
     border-bottom: none;
   }
 
-  .dropdown-item.active,
-  .dropdown-item:hover {
+  .dropdown-item.active {
     background: rgba(59, 130, 246, 0.1);
   }
 

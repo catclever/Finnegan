@@ -138,6 +138,21 @@ func (b *BuguModule) Init(ctx *module.Context) error {
 	// Router initialization using final LLM config
 	b.Router = llm.NewRouter(cfg, finalLLM)
 
+	// Automatic background enrichment of new/untranslated tags
+	if finalLLM.APIKey != "" {
+		missingTags := cfg.FindUntranslatedTags()
+		if len(missingTags) > 0 {
+			log.Printf("[Bugu Module] Detected %d new untranslated tags. Starting background auto-enrichment...", len(missingTags))
+			go func() {
+				if err := cfg.AutoEnrich(b.Router); err != nil {
+					log.Printf("[Bugu Module] Tag auto-enrichment warning: %v", err)
+				} else {
+					log.Printf("[Bugu Module] Successfully auto-enriched and cached %d tags into %s", len(missingTags), cfg.I18nFilePath)
+				}
+			}()
+		}
+	}
+
 	return nil
 }
 

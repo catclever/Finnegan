@@ -52,10 +52,51 @@ func (a *App) LoadLocalCards() []Card {
 					card.Content = strings.TrimSpace(parts[2])
 
 					var fm struct {
-						Images []string `yaml:"images"`
+						ID           string   `yaml:"id"`
+						Type         string   `yaml:"type"`
+						Title        string   `yaml:"title"`
+						Participants []string `yaml:"participants"`
+						StartedAt    string   `yaml:"started_at"`
+						EndedAt      string   `yaml:"ended_at"`
+						CreatedAt    string   `yaml:"created_at"`
+						Created      string   `yaml:"created"`
+						Images       []string `yaml:"images"`
 					}
-					if err := yaml.Unmarshal([]byte(parts[1]), &fm); err == nil && len(fm.Images) > 0 {
-						card.Images = fm.Images
+					if err := yaml.Unmarshal([]byte(parts[1]), &fm); err == nil {
+						if fm.ID != "" {
+							card.ID = fm.ID
+						}
+						if fm.Type != "" {
+							card.Type = CardType(fm.Type)
+						}
+						if fm.Title != "" {
+							card.Title = fm.Title
+						}
+						if len(fm.Participants) > 0 {
+							card.Participants = fm.Participants
+						}
+						if fm.StartedAt != "" {
+							if t, err := time.Parse(time.RFC3339, fm.StartedAt); err == nil {
+								card.StartedAt = &t
+							}
+						}
+						if fm.EndedAt != "" {
+							if t, err := time.Parse(time.RFC3339, fm.EndedAt); err == nil {
+								card.EndedAt = &t
+							}
+						}
+						if fm.CreatedAt != "" {
+							if t, err := time.Parse(time.RFC3339, fm.CreatedAt); err == nil {
+								card.CreatedAt = t
+							}
+						} else if fm.Created != "" {
+							if t, err := time.Parse(time.RFC3339, fm.Created); err == nil {
+								card.CreatedAt = t
+							}
+						}
+						if len(fm.Images) > 0 {
+							card.Images = fm.Images
+						}
 					} else {
 						var rawMeta map[string]any
 						if err := yaml.Unmarshal([]byte(parts[1]), &rawMeta); err == nil {
@@ -71,19 +112,21 @@ func (a *App) LoadLocalCards() []Card {
 				}
 			}
 
-			// Derive meaningful title from first line of content
-			lines := strings.Split(card.Content, "\n")
-			for _, l := range lines {
-				trimmed := strings.TrimSpace(l)
-				if trimmed != "" {
-					title := strings.TrimPrefix(trimmed, "# ")
-					runes := []rune(title)
-					if len(runes) > 24 {
-						card.Title = string(runes[:24]) + "..."
-					} else {
-						card.Title = string(runes)
+			// If no explicit title was in frontmatter, derive from first line
+			if card.Title == "Thought" || card.Title == "" {
+				lines := strings.Split(card.Content, "\n")
+				for _, l := range lines {
+					trimmed := strings.TrimSpace(l)
+					if trimmed != "" {
+						title := strings.TrimPrefix(trimmed, "# ")
+						runes := []rune(title)
+						if len(runes) > 24 {
+							card.Title = string(runes[:24]) + "..."
+						} else {
+							card.Title = string(runes)
+						}
+						break
 					}
-					break
 				}
 			}
 

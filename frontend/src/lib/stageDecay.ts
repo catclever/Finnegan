@@ -224,7 +224,9 @@ export function calculateSpatialPlacement(
   const finalX = Math.round(finalPoint.x);
   const finalY = Math.round(finalPoint.y);
   const rotation = Number(((Math.random() - 0.5) * 50).toFixed(1));
-  const z = isNewlyCreated ? Number((10 + Math.random() * 16).toFixed(1)) : Number((35 + Math.random() * 50).toFixed(1));
+  const z = (_origin === 'manual' && isNewlyCreated)
+    ? Number((8 + Math.random() * 20).toFixed(1))
+    : Number((15 + Math.random() * 70).toFixed(1));
 
   return { x: finalX, y: finalY, rotation, z };
 }
@@ -240,7 +242,7 @@ export function stageCandidate(
   memoryPool: CosmicCard[] = []
 ): CosmicCard {
   const coords = calculateSpatialPlacement(activeCards, scrollExpansion, isNewlyCreated, candidate.origin);
-  const z = (candidate.z !== undefined && candidate.isSearchResult) ? candidate.z : coords.z;
+  const z = candidate.z !== undefined ? candidate.z : coords.z;
   const spawnTime = Date.now();
   const decayDuration = calculateDecayDuration(candidate.origin, z, candidate.isVIP, activeCards, memoryPool);
 

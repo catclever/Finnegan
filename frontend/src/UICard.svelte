@@ -220,19 +220,28 @@
           z3d: 0
         });
       } else {
-        // At the exact same depth/distance, card size is strictly uniform
-        const uniformScale = Math.max(0.55, 1 - (card.z * 0.0045));
-        
-        // Card container opacity and blur (capped at max 5px soft blur)
-        const depthBlur = card.z > 70 ? (card.z - 70) * 0.04 : 0;
-        const baseBlur = Math.min(5, card.isFresh ? edgeBlur * 0.5 : (depthBlur + edgeBlur));
-        const baseOpacity = (card.isFresh ? 1.0 : (0.95 - (card.z * 0.005))) * (card.isFresh ? Math.max(0.7, edgeFade) : edgeFade);
-        const baseSat = card.isFresh ? 1.0 : Math.max(0.4, 1 - (card.z * 0.006));
-        // Pure continuous linear formula based strictly on depth distance Z (no discrete stages/gears):
-        // Gray(Z) = 38 + (Z / 100) * (135 - 38) = 38 + 0.97 * Z
         const zNorm = Math.max(0, Math.min(1, (card.z || 0) / 100));
-        const targetGray = 38 + zNorm * (135 - 38);
-        const targetTextOp = 0.95;
+
+        // 4. Card size with authentic cosmic perspective hierarchy:
+        // Z = 0 -> scale 1.08; Z = 50 -> scale 0.86; Z = 100 -> scale 0.64
+        const uniformScale = 1.08 - (zNorm * 0.44);
+
+        // 3D displacement: Z = 0 -> +100px; Z = 50 -> +25px; Z = 100 -> -50px
+        const z3dVal = (100 - (card.z || 0)) * 1.5 - 50 + pulseZ;
+
+        // 5. Container opacity, blur, and saturation following Z-depth:
+        const depthBlur = zNorm > 0.65 ? (zNorm - 0.65) * 6 : 0;
+        const baseBlur = Math.min(4.5, depthBlur + edgeBlur);
+        
+        // Base opacity naturally scales from 0.96 (near) to 0.64 (distant)
+        const depthOpacity = 0.96 - (zNorm * 0.32);
+        const baseOpacity = depthOpacity * (card.isFresh ? Math.max(0.85, edgeFade) : edgeFade);
+        const baseSat = Math.max(0.42, 1.0 - (zNorm * 0.5));
+
+        // 3. Continuous linear grayscale formula strictly tracking Z:
+        // Gray(Z) = 34 + zNorm * (145 - 34)
+        const targetGray = Math.round(34 + zNorm * 111);
+        const targetTextOp = Number((0.98 - zNorm * 0.16).toFixed(2));
         
         animSpring.set({
           x: card.x,
@@ -246,7 +255,7 @@
           textOpacity: targetTextOp,
           rotX: globalTilt.rx * 0.25,
           rotY: globalTilt.ry * 0.25,
-          z3d: (100 - card.z) * 0.4 + pulseZ
+          z3d: z3dVal
         });
       }
     }
@@ -348,6 +357,7 @@
     box-shadow: {dynamicBoxShadow};
     {!isTemporary && auraStage === 3 ? `border: 1.5px solid ${toHsla(latestColor, 0.75)};` : ''}
     --card-text-color: rgba({Math.round($animSpring.textGray || 38)}, {Math.round($animSpring.textGray || 38)}, {Math.round($animSpring.textGray || 38)}, {($animSpring.textOpacity ?? 0.95).toFixed(2)});
+    --card-text-secondary: rgba({Math.min(160, Math.round(($animSpring.textGray || 38) + 24))}, {Math.min(160, Math.round(($animSpring.textGray || 38) + 24))}, {Math.min(160, Math.round(($animSpring.textGray || 38) + 24))}, {($animSpring.textOpacity ?? 0.95).toFixed(2)});
   "
 >
   <!-- Flowing Light Aura Layers -->
@@ -445,21 +455,47 @@
     overflow: hidden;
   }
 
-  /* Ephemeral / Temporary Card Aesthetics: Ultra-Translucent Gossamer Glass + Fine Dynamic Flowing Dashes */
-  /* Ephemeral / Temporary Card Aesthetics: Substantial Frosted Cool Mist Slate + Decoupled Pearl Gray-White Light Beads */
+  /* Ephemeral / Temporary Card Aesthetics: Translucent Mist-Blue Base + Dynamic Breathing 灰白 Vignette Rim */
   .card.temporary {
-    background: linear-gradient(135deg, rgba(238, 242, 246, 0.84) 0%, rgba(225, 232, 240, 0.78) 100%);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
+    background: linear-gradient(135deg, rgba(226, 236, 248, 0.58) 0%, rgba(210, 222, 238, 0.42) 100%);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     border: 1px solid transparent !important;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
   }
 
+  .card.temporary::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 0;
+    background: radial-gradient(
+      ellipse at center,
+      transparent 42%,
+      rgba(248, 250, 252, 0.32) 76%,
+      rgba(224, 234, 246, 0.70) 100%
+    );
+    animation: temporary-rim-breathe 5.5s ease-in-out infinite;
+  }
+
+  @keyframes temporary-rim-breathe {
+    0%, 100% {
+      opacity: 0.65;
+      box-shadow: inset 0 0 16px rgba(255, 255, 255, 0.55), inset 0 0 32px rgba(220, 232, 246, 0.35);
+    }
+    50% {
+      opacity: 0.95;
+      box-shadow: inset 0 0 24px rgba(255, 255, 255, 0.9), inset 0 0 44px rgba(200, 220, 245, 0.55);
+    }
+  }
+
   .card.temporary.hovered,
   .card.temporary:hover {
-    background: linear-gradient(135deg, rgba(244, 247, 250, 0.92) 0%, rgba(232, 238, 245, 0.86) 100%);
-    backdrop-filter: blur(22px);
-    -webkit-backdrop-filter: blur(22px);
+    background: linear-gradient(135deg, rgba(234, 242, 252, 0.72) 0%, rgba(218, 228, 244, 0.56) 100%);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     border: 1px solid transparent !important;
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
   }
@@ -853,8 +889,7 @@
   
   .original {
     font-size: 0.775rem;
-    color: var(--card-text-color, rgba(38, 38, 38, 0.95));
-    opacity: 0.75;
+    color: var(--card-text-secondary, rgba(70, 70, 70, 0.9));
     font-style: italic;
     line-height: 1.4;
     display: -webkit-box;

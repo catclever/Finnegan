@@ -3,13 +3,14 @@ package api
 import (
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 
+	"Finnegan/core/bus"
 	"Finnegan/modules/bugu/config"
 	"Finnegan/modules/bugu/fetcher"
 	"Finnegan/modules/bugu/llm"
 	"Finnegan/modules/bugu/models"
-	"Finnegan/core/bus"
 )
 
 type RadarResponse struct {
@@ -18,11 +19,117 @@ type RadarResponse struct {
 	Error   string   `json:"error,omitempty"`
 }
 
+// isBlockedOrLowQualityMarkdown detects blocked/anti-crawler/empty pages (e.g. Reddit 403, Zhihu login walls)
+func isBlockedOrLowQualityMarkdown(md string) bool {
+	trimmed := strings.TrimSpace(md)
+	if len(trimmed) < 80 {
+		return true
+	}
+	lower := strings.ToLower(trimmed)
+	blockPhrases := []string{
+		"403 forbidden",
+		"access denied",
+		"just a moment...",
+		"verify you are human",
+		"blocked by network security",
+		"sorry, you have been blocked",
+		"please turn javascript on",
+		"enable cookies",
+		"登录知乎",
+		"知乎 - 有问题，就会有答案",
+		"安全验证",
+		"sec.zhihu.com",
+		"reddit.com/r/popular",
+	}
+	for _, p := range blockPhrases {
+		if strings.Contains(lower, p) {
+			return true
+		}
+	}
+	return false
+}
+
+// resolveTargetQueries safely resolves search queries for a target.
+// It prioritizes exact language match, base language match, and universal English fallback.
+// It STRICTLY PREVENTS sending Chinese queries to foreign/minor language websites.
+func resolveTargetQueries(target models.Target, searchQueries map[string][]string) []string {
+	if len(searchQueries) == 0 {
+		return nil
+	}
+
+	// 1. Try exact target languages in order (e.g. "zh-CN", "ru", "fr", "de")
+	for _, l := range target.Languages {
+		l = strings.TrimSpace(l)
+		if qs, ok := searchQueries[l]; ok && len(qs) > 0 {
+			return qs
+		}
+		// 2. Try base language prefix (e.g. "zh" for "zh-CN", "en" for "en-US")
+		base := strings.ToLower(strings.Split(l, "-")[0])
+		if qs, ok := searchQueries[base]; ok && len(qs) > 0 {
+			return qs
+		}
+	}
+
+	// Determine if target is Chinese
+	isChineseTarget := false
+	for _, l := range target.Languages {
+		if strings.HasPrefix(strings.ToLower(strings.TrimSpace(l)), "zh") {
+			isChineseTarget = true
+			break
+		}
+	}
+
+	// 3. Fallback for non-Chinese foreign targets: English ("en") is universal!
+	// NEVER leak Chinese query into Russian, French, German, or Japanese searches!
+	if !isChineseTarget {
+		if qs, ok := searchQueries["en"]; ok && len(qs) > 0 {
+			return qs
+		}
+		// If no English query, check other non-Chinese queries
+		for k, qs := range searchQueries {
+			if !strings.HasPrefix(strings.ToLower(k), "zh") && len(qs) > 0 {
+				return qs
+			}
+		}
+		// Strictly avoid returning Chinese queries for foreign targets
+		return nil
+	} else {
+		// Chinese target: try "zh", then "zh-CN", then "en"
+		if qs, ok := searchQueries["zh"]; ok && len(qs) > 0 {
+			return qs
+		}
+		if qs, ok := searchQueries["zh-CN"]; ok && len(qs) > 0 {
+			return qs
+		}
+		if qs, ok := searchQueries["en"]; ok && len(qs) > 0 {
+			return qs
+		}
+		for _, qs := range searchQueries {
+			if len(qs) > 0 {
+				return qs
+			}
+		}
+	}
+
+	return nil
+}
+
 func ExecuteRadar(cfg *config.Config, router *llm.Router, searxURL, jinaKey string, maxConcurrency int, intent string, targetLanguage string, docID string) RadarResponse {
 	log.Printf("[Bugu Module] Processing intent: %s (docID: %s)\n", intent, docID)
 
+	eventBus := bus.GetBus()
+	defer func() {
+		eventBus.Publish(bus.Event{
+			Type: bus.EventBuguRadarCompleted,
+			Data: map[string]string{
+				"docId": docID,
+			},
+		})
+	}()
+
 	searxClient := fetcher.NewSearxNGClient(searxURL)
 	jinaClient := fetcher.NewJinaClient(jinaKey)
+	redditClient := fetcher.NewRedditClient()
 
 	// 1. Ask LLM for the plan
 	plan, err := router.GenerateSearchPlan(intent)
@@ -33,9 +140,11 @@ func ExecuteRadar(cfg *config.Config, router *llm.Router, searxURL, jinaKey stri
 
 	log.Printf("[LLM Plan] Selected Targets: %v", plan.SelectedTargetIDs)
 
-	// 2. Fetch URLs concurrently via SearxNG
+	// 2. Fetch results concurrently via SearxNG and stream unique items immediately to itemChan
 	var wgSearx sync.WaitGroup
-	urlChan := make(chan string, 100)
+	itemChan := make(chan fetcher.SearchResult, 100)
+	var seenMu sync.Mutex
+	seenURLs := make(map[string]bool)
 
 	for _, targetID := range plan.SelectedTargetIDs {
 		target, exists := cfg.TargetMap[targetID]
@@ -43,29 +152,33 @@ func ExecuteRadar(cfg *config.Config, router *llm.Router, searxURL, jinaKey stri
 			continue
 		}
 
-		lang := "en"
-		if len(target.Languages) > 0 {
-			lang = target.Languages[0]
-		}
-		queries, ok := plan.SearchQueries[lang]
-		if !ok {
-			for _, v := range plan.SearchQueries {
-				queries = v
-				break
-			}
+		queries := resolveTargetQueries(target, plan.SearchQueries)
+		if len(queries) == 0 {
+			log.Printf("[Bugu Module] Skipping target %s: no compatible queries for languages %v", target.ID, target.Languages)
+			continue
 		}
 
 		for _, query := range queries {
 			wgSearx.Add(1)
 			go func(q string, t models.Target) {
 				defer wgSearx.Done()
-				urls, err := searxClient.Search(q, t)
+				items, err := searxClient.Search(q, t)
 				if err != nil {
 					log.Printf("[SearxNG Error] %s: %v", t.ID, err)
 					return
 				}
-				for _, u := range urls {
-					urlChan <- u
+				for _, item := range items {
+					if item.URL == "" {
+						continue
+					}
+					seenMu.Lock()
+					if seenURLs[item.URL] {
+						seenMu.Unlock()
+						continue
+					}
+					seenURLs[item.URL] = true
+					seenMu.Unlock()
+					itemChan <- item
 				}
 			}(query, target)
 		}
@@ -73,49 +186,96 @@ func ExecuteRadar(cfg *config.Config, router *llm.Router, searxURL, jinaKey stri
 
 	go func() {
 		wgSearx.Wait()
-		close(urlChan)
+		close(itemChan)
 	}()
 
-	// 3. Extract Markdown & Distill concurrently
+	// 3. Extract Markdown & Distill concurrently, with fallback to Search Snippet and discarding empty cards
 	var wgJina sync.WaitGroup
 	resultChan := make(chan string, 100)
 
 	if maxConcurrency <= 0 {
-		maxConcurrency = 10
+		maxConcurrency = 4
+	} else if maxConcurrency > 4 {
+		maxConcurrency = 4
 	}
-
-	eventBus := bus.GetBus()
 
 	for i := 0; i < maxConcurrency; i++ {
 		wgJina.Add(1)
 		go func() {
 			defer wgJina.Done()
-			for u := range urlChan {
-				log.Printf("[Jina Reader] Extracting -> %s", u)
-				md, err := jinaClient.Extract(u)
+			for item := range itemChan {
+				var md string
+				var jinaErr error
+				usedSearchSnippet := false
+
+				// Fast path: Reddit URLs route directly to residential IP .json extractor
+				if fetcher.IsRedditURL(item.URL) {
+					log.Printf("[Reddit FastPath] Extracting via direct JSON -> %s", item.URL)
+					var rErr error
+					md, rErr = redditClient.Extract(item.URL)
+					if rErr != nil || isBlockedOrLowQualityMarkdown(md) {
+						log.Printf("[Reddit FastPath] Failed or blocked (%v, len: %d). Falling back to search snippet.", rErr, len(md))
+						if strings.TrimSpace(item.Content) != "" || strings.TrimSpace(item.Title) != "" {
+							md = fmt.Sprintf("# %s\n\n%s", item.Title, item.Content)
+							usedSearchSnippet = true
+						} else {
+							log.Printf("[Bugu Module] Skipping %s: Reddit extraction failed and empty search snippet", item.URL)
+							continue
+						}
+					}
+				} else {
+					// Cloud path: All other URLs use Jina Reader API
+					log.Printf("[Jina Reader] Extracting -> %s", item.URL)
+					md, jinaErr = jinaClient.Extract(item.URL)
+
+					// Detect anti-crawler walls (Zhihu login wall, Cloudflare blocks) or extraction errors
+					if jinaErr != nil || isBlockedOrLowQualityMarkdown(md) {
+						log.Printf("[Jina Fallback] URL %s blocked or low quality (err: %v, len: %d). Falling back to search snippet.", item.URL, jinaErr, len(md))
+						if strings.TrimSpace(item.Content) != "" || strings.TrimSpace(item.Title) != "" {
+							md = fmt.Sprintf("# %s\n\n%s", item.Title, item.Content)
+							usedSearchSnippet = true
+						} else {
+							// Both Jina and search snippet empty -> skip completely
+							log.Printf("[Bugu Module] Skipping %s: no Jina markdown and empty search snippet", item.URL)
+							continue
+						}
+					}
+				}
+
+				// Distill markdown into a BabelCard
+				log.Printf("[LLM Distiller] Processing -> %s", item.URL)
+				card, err := router.DistillMarkdown(intent, md, item.URL, targetLanguage)
 				if err != nil {
-					log.Printf("[Jina Error] %s: %v", u, err)
+					log.Printf("[Distiller Error] %s: %v", item.URL, err)
 					continue
 				}
-				if len(md) > 100 {
-					// Distill the markdown into a BabelCard
-					log.Printf("[LLM Distiller] Processing -> %s", u)
-					card, err := router.DistillMarkdown(intent, md, u, targetLanguage)
-					if err != nil {
-						log.Printf("[Distiller Error] %s: %v", u, err)
-						continue
+
+				// If Jina markdown yielded no substantive text, retry with SearxNG snippet if available
+				if strings.TrimSpace(card.OriginalText) == "" && strings.TrimSpace(card.TranslatedText) == "" && !usedSearchSnippet {
+					if strings.TrimSpace(item.Content) != "" {
+						log.Printf("[Distiller Fallback] LLM returned empty text on Jina markdown. Retrying with search snippet for %s", item.URL)
+						snippetMD := fmt.Sprintf("# %s\n\n%s", item.Title, item.Content)
+						if retryCard, retryErr := router.DistillMarkdown(intent, snippetMD, item.URL, targetLanguage); retryErr == nil {
+							card = retryCard
+						}
 					}
-					card.EchoOf = docID
-					
-					// Broadcast the BabelCard to the frontend via Event Bus
-					eventBus.Publish(bus.Event{
-						Type: bus.EventBabelCardSpawned,
-						Data: *card,
-					})
-					
-					// Also append to standard results for legacy/sync support
-					resultChan <- fmt.Sprintf("Source: %s\n\n%s", u, card.TranslatedText)
 				}
+
+				// Final check: If still empty, DO NOT show this card ("如果还是空 则这个卡片可以不展示")
+				if strings.TrimSpace(card.OriginalText) == "" && strings.TrimSpace(card.TranslatedText) == "" {
+					log.Printf("[Bugu Module] Discarding empty card for %s (no substantive text)", item.URL)
+					continue
+				}
+
+				card.EchoOf = docID
+
+				// Broadcast the valid BabelCard immediately to the frontend
+				eventBus.Publish(bus.Event{
+					Type: bus.EventBabelCardSpawned,
+					Data: *card,
+				})
+
+				resultChan <- fmt.Sprintf("Source: %s\n\n%s", item.URL, card.TranslatedText)
 			}
 		}()
 	}

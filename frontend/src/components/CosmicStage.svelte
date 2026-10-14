@@ -44,6 +44,7 @@
   export let buguSession: BuguSession | null = null;
   export let buguBeacon: BuguBeacon | null = null;
   export let lastScrollDirection: 'down' | 'up' = 'down';
+  $: void isOmnibarFocused;
 
   // Callbacks
   export let onToggleFocus: ((cardId: string) => void) | undefined = undefined;
@@ -146,7 +147,7 @@
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <div 
   class="cards-wrapper" 
-  class:elevated={(hoveredCardId !== null && !isOmnibarFocused) || focusedCardId !== null} 
+  class:elevated={focusedCardId !== null} 
   on:click={handleWrapperClick}
 >
   <!-- svelte-ignore a11y-click-events-have-key-events -->

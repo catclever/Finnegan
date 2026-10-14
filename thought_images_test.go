@@ -255,3 +255,147 @@ func TestAssetServerHTTPHandler(t *testing.T) {
 		t.Fatalf("expected status 405 Method Not Allowed, got %d", rr.Code)
 	}
 }
+
+func TestCaptureChatLogWithImages(t *testing.T) {
+	tempHome, err := os.MkdirTemp("", "finnegan_chatlog_*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempHome)
+
+	app := &App{Home: tempHome}
+
+	// 1x1 transparent PNG bytes
+	pngBytes := []byte{
+		0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+		0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+		0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+		0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4,
+		0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41,
+		0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
+		0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00,
+		0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE,
+		0x42, 0x60, 0x82,
+	}
+	b64Data := "data:image/png;base64," + base64.StdEncoding.EncodeToString(pngBytes)
+
+	ch := bus.GetBus().Subscribe(bus.EventThoughtCaptured, "chatlog_test_listener")
+	defer bus.GetBus().Unsubscribe(bus.EventThoughtCaptured, "chatlog_test_listener")
+
+	images := []ImagePayload{
+		{
+			Data: b64Data,
+			Name: "screen.png",
+			Ext:  "png",
+		},
+	}
+
+	dialogue := `巧先生 2026-10-14 08:15
+大模型这句“作为一个AI”，是不是在自我防御？
+
+Kael 2026-10-14 08:16
+哈哈，标准防御机制，免责第一条。`
+
+	res, err := app.CaptureChatLogWithImages(dialogue, images)
+	if err != nil {
+		t.Fatalf("CaptureChatLogWithImages failed: %v", err)
+	}
+	if res == nil || res.DocID == "" {
+		t.Fatal("expected non-empty docID")
+	}
+	docID := res.DocID
+	if res.Title == "" || strings.HasPrefix(res.Title, "巧先生:") {
+		t.Fatalf("unexpected result title: %q", res.Title)
+	}
+
+	// Verify asset file was saved
+	assetsDir := filepath.Join(tempHome, "assets")
+	files, err := os.ReadDir(assetsDir)
+	if err != nil || len(files) != 1 {
+		t.Fatalf("expected 1 asset file in %s, got %v", assetsDir, files)
+	}
+	savedFileName := files[0].Name()
+
+	// Verify markdown file in Scattering
+	scatteringDir := filepath.Join(tempHome, "Scattering")
+	scatFiles, err := os.ReadDir(scatteringDir)
+	if err != nil || len(scatFiles) != 1 {
+		t.Fatalf("expected 1 scattering file, got %v", scatFiles)
+	}
+	mdData, err := os.ReadFile(filepath.Join(scatteringDir, scatFiles[0].Name()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	mdStr := string(mdData)
+	if !strings.Contains(mdStr, "type: chat_log") {
+		t.Fatalf("expected type: chat_log, got:\n%s", mdStr)
+	}
+	if !strings.Contains(mdStr, "images:") || !strings.Contains(mdStr, savedFileName) {
+		t.Fatalf("markdown frontmatter does not contain saved image name:\n%s", mdStr)
+	}
+
+	// Verify bus event
+	select {
+	case event := <-ch:
+		data, ok := event.Data.(bus.EventThoughtCapturedData)
+		if !ok {
+			t.Fatalf("unexpected event data type: %T", event.Data)
+		}
+		if data.DocID != docID {
+			t.Fatalf("event docID mismatch: %s vs %s", data.DocID, docID)
+		}
+		if len(data.Images) != 1 || data.Images[0] != savedFileName {
+			t.Fatalf("event images mismatch: %v vs %s", data.Images, savedFileName)
+		}
+		if data.Title == "" || strings.HasPrefix(data.Title, "巧先生:") {
+			t.Fatalf("unexpected title in EventThoughtCapturedData: %q", data.Title)
+		}
+		if data.Type != "chat_log" {
+			t.Fatalf("expected type chat_log, got %s", data.Type)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for EventThoughtCaptured")
+	}
+
+	// Verify LoadLocalCards parses chat_log card and its images
+	loadedCards := app.LoadLocalCards()
+	if len(loadedCards) != 1 {
+		t.Fatalf("expected 1 loaded card, got %d", len(loadedCards))
+	}
+	if loadedCards[0].Type != CardTypeChatLog {
+		t.Fatalf("expected CardTypeChatLog, got %v", loadedCards[0].Type)
+	}
+	if len(loadedCards[0].Images) != 1 || loadedCards[0].Images[0] != savedFileName {
+		t.Fatalf("LoadLocalCards failed to parse saved images: %v", loadedCards[0].Images)
+	}
+}
+
+func TestCaptureThoughtEpiphanySuffix(t *testing.T) {
+	tempHome, err := os.MkdirTemp("", "finnegan_epiphany_*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempHome)
+
+	app := &App{Home: tempHome}
+
+	docID, err := app.CaptureThought("An instant epiphany in the cosmos")
+	if err != nil {
+		t.Fatalf("CaptureThought failed: %v", err)
+	}
+	if docID == "" {
+		t.Fatal("expected docID")
+	}
+
+	scatteringDir := filepath.Join(tempHome, "Scattering")
+	files, err := os.ReadDir(scatteringDir)
+	if err != nil || len(files) != 1 {
+		t.Fatalf("expected 1 file in Scattering, got %v", files)
+	}
+
+	fileName := files[0].Name()
+	if !strings.HasSuffix(fileName, ".epiphany.md") {
+		t.Fatalf("expected file to end with .epiphany.md, got %q", fileName)
+	}
+}
+

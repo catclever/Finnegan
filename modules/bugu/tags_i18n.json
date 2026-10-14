@@ -1,0 +1,5432 @@
+{
+  "Arduino社区": {
+    "de": "Arduino-Community",
+    "en": "Arduino Community",
+    "es": "Comunidad Arduino",
+    "fr": "Communauté Arduino",
+    "it": "Community Arduino",
+    "ja": "Arduinoコミュニティ",
+    "ko": "아두이노 커뮤니티",
+    "ru": "Сообщество Arduino"
+  },
+  "CG建模": {
+    "de": "3D-Modellierung",
+    "en": "CG Modeling",
+    "es": "Modelado 3D",
+    "fr": "Modélisation 3D",
+    "it": "Modellazione 3D",
+    "ja": "CGモデリング",
+    "ko": "CG 모델링",
+    "ru": "3D-моделирование"
+  },
+  "CTF": {
+    "de": "CTF",
+    "en": "CTF",
+    "es": "CTF",
+    "fr": "CTF",
+    "it": "CTF",
+    "ja": "CTF",
+    "ko": "CTF",
+    "ru": "CTF"
+  },
+  "DIY": {
+    "de": "DIY",
+    "en": "DIY",
+    "es": "Bricolaje",
+    "fr": "Bricolage",
+    "it": "Fai da te",
+    "ja": "DIY",
+    "ko": "DIY",
+    "ru": "DIY"
+  },
+  "DIY发烧友": {
+    "de": "DIY-Enthusiasten",
+    "en": "DIY Enthusiasts",
+    "es": "Aficionados al bricolaje",
+    "fr": "Passionnés de bricolage",
+    "it": "Appassionati di fai da te",
+    "ja": "自作派・DIYマニア",
+    "ko": "DIY 마니아",
+    "ru": "DIY-энтузиасты"
+  },
+  "DIY软件": {
+    "de": "DIY-Software",
+    "en": "Self-Hosted \u0026 DIY Software",
+    "es": "Software casero",
+    "fr": "Logiciels auto-hébergés",
+    "it": "Software fatto in casa",
+    "ja": "自作ソフトウェア",
+    "ko": "DIY 소프트웨어",
+    "ru": "Самодельный софт"
+  },
+  "IT从业者": {
+    "de": "IT-Fachleute",
+    "en": "IT Professionals",
+    "es": "Profesionales de TI",
+    "fr": "Professionnels de l'IT",
+    "it": "Professionisti IT",
+    "ja": "IT技術者",
+    "ko": "IT 종사자",
+    "ru": "ИТ-специалисты"
+  },
+  "IT分析": {
+    "de": "IT-Analysen",
+    "en": "IT Analysis",
+    "es": "Análisis de TI",
+    "fr": "Analyses informatiques",
+    "it": "Analisi IT",
+    "ja": "IT分析",
+    "ko": "IT 분석",
+    "ru": "ИТ-аналитика"
+  },
+  "IT合规": {
+    "de": "IT-Compliance",
+    "en": "IT Compliance",
+    "es": "Cumplimiento de TI",
+    "fr": "Conformité informatique",
+    "it": "Conformità IT",
+    "ja": "ITコンプライアンス",
+    "ko": "IT 규제 준수",
+    "ru": "ИТ-комплаенс"
+  },
+  "IT技术": {
+    "de": "IT-Technologie",
+    "en": "IT Technology",
+    "es": "Tecnología informática",
+    "fr": "Technologies IT",
+    "it": "Tecnologia informatica",
+    "ja": "IT技術",
+    "ko": "IT 기술",
+    "ru": "ИТ-технологии"
+  },
+  "IT教程": {
+    "de": "IT-Tutorials",
+    "en": "IT Tutorials",
+    "es": "Tutoriales de TI",
+    "fr": "Tutoriels informatiques",
+    "it": "Tutorial IT",
+    "ja": "ITチュートリアル",
+    "ko": "IT 튜토리얼",
+    "ru": "ИТ-руководства"
+  },
+  "IT新闻": {
+    "de": "IT-Nachrichten",
+    "en": "IT News",
+    "es": "Noticias de TI",
+    "fr": "Actualités IT",
+    "it": "Notizie IT",
+    "ja": "ITニュース",
+    "ko": "IT 뉴스",
+    "ru": "ИТ-новости"
+  },
+  "IT社区": {
+    "de": "IT-Community",
+    "en": "IT Communities",
+    "es": "Comunidad de TI",
+    "fr": "Communautés informatiques",
+    "it": "Community IT",
+    "ja": "ITコミュニティ",
+    "ko": "IT 커뮤니티",
+    "ru": "ИТ-сообщества"
+  },
+  "IT管理员": {
+    "de": "IT-Administratoren",
+    "en": "IT Administrators",
+    "es": "Administradores de TI",
+    "fr": "Administrateurs réseau",
+    "it": "Amministratori IT",
+    "ja": "IT管理者",
+    "ko": "IT 관리자",
+    "ru": "ИТ-администраторы"
+  },
+  "IT资讯": {
+    "de": "IT-Informationen",
+    "en": "IT Information",
+    "es": "Información de TI",
+    "fr": "Informations informatiques",
+    "it": "Informazioni IT",
+    "ja": "IT総合情報",
+    "ko": "IT 동향",
+    "ru": "ИТ-информация"
+  },
+  "Java": {
+    "de": "Java",
+    "en": "Java",
+    "es": "Java",
+    "fr": "Java",
+    "it": "Java",
+    "ja": "Java",
+    "ko": "자바",
+    "ru": "Java"
+  },
+  "Linux社区": {
+    "de": "Linux-Community",
+    "en": "Linux Community",
+    "es": "Comunidad Linux",
+    "fr": "Communauté Linux",
+    "it": "Community Linux",
+    "ja": "Linuxコミュニティ",
+    "ko": "리눅스 커뮤니티",
+    "ru": "Сообщество Linux"
+  },
+  "Mac新闻": {
+    "de": "Mac-Nachrichten",
+    "en": "Mac News",
+    "es": "Noticias sobre Mac",
+    "fr": "Actualités Mac",
+    "it": "Notizie su Mac",
+    "ja": "Mac関連ニュース",
+    "ko": "맥 소식",
+    "ru": "Новости Mac"
+  },
+  "PC": {
+    "de": "PC",
+    "en": "PC",
+    "es": "PC",
+    "fr": "PC",
+    "it": "PC",
+    "ja": "PC",
+    "ko": "PC",
+    "ru": "ПК"
+  },
+  "PC游戏": {
+    "de": "PC-Spiele",
+    "en": "PC Gaming",
+    "es": "Juegos de PC",
+    "fr": "Jeux PC",
+    "it": "Videogiochi per PC",
+    "ja": "PCゲーム",
+    "ko": "PC 게임",
+    "ru": "Игры на ПК"
+  },
+  "PC硬件": {
+    "de": "PC-Hardware",
+    "en": "PC Hardware",
+    "es": "Hardware de PC",
+    "fr": "Matériel PC",
+    "it": "Hardware per PC",
+    "ja": "自作PCハードウェア",
+    "ko": "PC 하드웨어",
+    "ru": "Железо для ПК"
+  },
+  "PC资讯": {
+    "de": "PC-Neuigkeiten",
+    "en": "PC News",
+    "es": "Noticias de PC",
+    "fr": "Actualités PC",
+    "it": "Notizie PC",
+    "ja": "PCニュース",
+    "ko": "PC 뉴스",
+    "ru": "Новости о ПК"
+  },
+  "Perl社区": {
+    "de": "Perl-Community",
+    "en": "Perl Community",
+    "es": "Comunidad de Perl",
+    "fr": "Communauté Perl",
+    "it": "Community Perl",
+    "ja": "Perlコミュニティ",
+    "ko": "펄 커뮤니티",
+    "ru": "Сообщество Perl"
+  },
+  "Reddit社区": {
+    "de": "Reddit-Communities",
+    "en": "Reddit Communities",
+    "es": "Comunidades de Reddit",
+    "fr": "Communautés Reddit",
+    "it": "Community di Reddit",
+    "ja": "Redditコミュニティ",
+    "ko": "레딧 커뮤니티",
+    "ru": "Сообщества Reddit"
+  },
+  "SEO": {
+    "de": "SEO",
+    "en": "SEO",
+    "es": "SEO",
+    "fr": "SEO",
+    "it": "SEO",
+    "ja": "SEO",
+    "ko": "검색엔진 최적화",
+    "ru": "SEO"
+  },
+  "SEO与编程": {
+    "de": "SEO \u0026 Programmierung",
+    "en": "SEO \u0026 Coding",
+    "es": "SEO y programación",
+    "fr": "SEO et programmation",
+    "it": "SEO e programmazione",
+    "ja": "SEOとコーディング",
+    "ko": "SEO 및 프로그래밍",
+    "ru": "SEO и программирование"
+  },
+  "UI设计": {
+    "de": "UI-Design",
+    "en": "UI Design",
+    "es": "Diseño UI",
+    "fr": "Design d'interface",
+    "it": "UI Design",
+    "ja": "UIデザイン",
+    "ko": "UI 디자인",
+    "ru": "UI-дизайн"
+  },
+  "Ubuntu": {
+    "de": "Ubuntu",
+    "en": "Ubuntu",
+    "es": "Ubuntu",
+    "fr": "Ubuntu",
+    "it": "Ubuntu",
+    "ja": "Ubuntu",
+    "ko": "우분투",
+    "ru": "Ubuntu"
+  },
+  "Web开发": {
+    "de": "Webentwicklung",
+    "en": "Web Development",
+    "es": "Desarrollo web",
+    "fr": "Développement web",
+    "it": "Sviluppo web",
+    "ja": "Web開発",
+    "ko": "웹 개발",
+    "ru": "Веб-разработка"
+  },
+  "Wiki": {
+    "de": "Wiki",
+    "en": "Wiki",
+    "es": "Wiki",
+    "fr": "Wiki",
+    "it": "Wiki",
+    "ja": "Wiki",
+    "ko": "위키",
+    "ru": "Вики"
+  },
+  "Windows生态": {
+    "de": "Windows-Ökosystem",
+    "en": "Windows Ecosystem",
+    "es": "Ecosistema de Windows",
+    "fr": "Écosystème Windows",
+    "it": "Ecosistema Windows",
+    "ja": "Windowsエコシステム",
+    "ko": "윈도우 생태계",
+    "ru": "Экосистема Windows"
+  },
+  "Windows社区": {
+    "de": "Windows-Community",
+    "en": "Windows Community",
+    "es": "Comunidad Windows",
+    "fr": "Communauté Windows",
+    "it": "Community Windows",
+    "ja": "Windowsコミュニティ",
+    "ko": "윈도우 커뮤니티",
+    "ru": "Сообщество Windows"
+  },
+  "iOS应用": {
+    "de": "iOS-Apps",
+    "en": "iOS Apps",
+    "es": "Aplicaciones para iOS",
+    "fr": "Applications iOS",
+    "it": "App iOS",
+    "ja": "iOSアプリ",
+    "ko": "iOS 앱",
+    "ru": "Приложения для iOS"
+  },
+  "下沉市场": {
+    "de": "Massenmarkt",
+    "en": "Emerging Markets",
+    "es": "Mercado masivo emergente",
+    "fr": "Marchés de masse",
+    "it": "Mercato di massa",
+    "ja": "マス層市場",
+    "ko": "중하위 시장",
+    "ru": "Массовый потребительский сектор"
+  },
+  "专业媒体": {
+    "de": "Fachmedien",
+    "en": "Professional Media",
+    "es": "Medios especializados",
+    "fr": "Médias spécialisés",
+    "it": "Media specializzati",
+    "ja": "専門メディア",
+    "ko": "전문 미디어",
+    "ru": "Отраслевые медиа"
+  },
+  "个人博客": {
+    "de": "Persönliche Blogs",
+    "en": "Personal Blogs",
+    "es": "Blogs personales",
+    "fr": "Blogs personnels",
+    "it": "Blog personali",
+    "ja": "個人ブログ",
+    "ko": "개인 블로그",
+    "ru": "Личные блоги"
+  },
+  "中东": {
+    "de": "Naher Osten",
+    "en": "Middle East",
+    "es": "Oriente Medio",
+    "fr": "Moyen-Orient",
+    "it": "Medio Oriente",
+    "ja": "中東",
+    "ko": "중동",
+    "ru": "Ближний Восток"
+  },
+  "中大型社区": {
+    "de": "Große Communities",
+    "en": "Mid-to-Large Communities",
+    "es": "Comunidades medianas y grandes",
+    "fr": "Grandes communautés",
+    "it": "Community medio-grandi",
+    "ja": "中・大規模コミュニティ",
+    "ko": "중대형 커뮤니티",
+    "ru": "Крупные сообщества"
+  },
+  "中小社区": {
+    "de": "Mittelgroße Communities",
+    "en": "Small \u0026 Medium Communities",
+    "es": "Comunidades pequeñas y medianas",
+    "fr": "Petites et moyennes communautés",
+    "it": "Piccole e medie community",
+    "ja": "中小規模コミュニティ",
+    "ko": "중소형 커뮤니티",
+    "ru": "Малые и средние сообщества"
+  },
+  "中立": {
+    "de": "Neutralität",
+    "en": "Neutrality",
+    "es": "Neutralidad",
+    "fr": "Neutralité",
+    "it": "Neutralità",
+    "ja": "中立",
+    "ko": "중립",
+    "ru": "Нейтральность"
+  },
+  "主机": {
+    "de": "Konsole",
+    "en": "Console",
+    "es": "Consolas",
+    "fr": "Console",
+    "it": "Console",
+    "ja": "コンソール",
+    "ko": "콘솔",
+    "ru": "Консоли"
+  },
+  "主机文化": {
+    "de": "Konsolenkultur",
+    "en": "Console Culture",
+    "es": "Cultura de consolas",
+    "fr": "Culture console",
+    "it": "Cultura delle console",
+    "ja": "家庭用ゲーム文化",
+    "ko": "콘솔 게임 문화",
+    "ru": "Консольная культура"
+  },
+  "主流媒体科技版": {
+    "de": "Technik in Leitmedien",
+    "en": "Mainstream Tech News",
+    "es": "Sección tech de grandes medios",
+    "fr": "Rubriques tech des grands médias",
+    "it": "Pagine tech dei principali media",
+    "ja": "主要メディアのテック欄",
+    "ko": "주요 매체 기술 섹션",
+    "ru": "Техно-разделы ведущих СМИ"
+  },
+  "主流科技版": {
+    "de": "Wichtige Technikspalten",
+    "en": "Mainstream Tech Section",
+    "es": "Sección de tecnología principal",
+    "fr": "Rubrique high-tech",
+    "it": "Sezione tecnologica principale",
+    "ja": "主要テック面",
+    "ko": "메인스트림 테크 섹션",
+    "ru": "Главные новости технологий"
+  },
+  "乐器设备": {
+    "de": "Musikinstrumente \u0026 Equipment",
+    "en": "Musical Gear",
+    "es": "Equipamiento musical",
+    "fr": "Matériel de musique",
+    "it": "Strumenti musicali",
+    "ja": "楽器機材",
+    "ko": "악기/장비",
+    "ru": "Музыкальные инструменты"
+  },
+  "乐队": {
+    "de": "Bands",
+    "en": "Bands",
+    "es": "Bandas de música",
+    "fr": "Groupes de musique",
+    "it": "Gruppi musicali",
+    "ja": "バンド",
+    "ko": "밴드",
+    "ru": "Музыкальные группы"
+  },
+  "书单": {
+    "de": "Bücherlisten",
+    "en": "Book Lists",
+    "es": "Listas de libros",
+    "fr": "Listes de lecture",
+    "it": "Liste di libri",
+    "ja": "ブックリスト",
+    "ko": "도서 목록",
+    "ru": "Списки книг"
+  },
+  "书籍": {
+    "de": "Bücher",
+    "en": "Books",
+    "es": "Libros",
+    "fr": "Livres",
+    "it": "Libri",
+    "ja": "書籍",
+    "ko": "도서",
+    "ru": "Книги"
+  },
+  "书籍推荐": {
+    "de": "Buchempfehlungen",
+    "en": "Book Recommendations",
+    "es": "Recomendaciones literarias",
+    "fr": "Conseils de lecture",
+    "it": "Consigli letterari",
+    "ja": "おすすめ書籍",
+    "ko": "도서 추천",
+    "ru": "Рекомендации по книгам"
+  },
+  "书籍评论": {
+    "de": "Buchrezensionen",
+    "en": "Book Reviews",
+    "es": "Reseñas de libros",
+    "fr": "Critiques littéraires",
+    "it": "Recensioni di libri",
+    "ja": "書評",
+    "ko": "도서 서평",
+    "ru": "Рецензии на книги"
+  },
+  "书评": {
+    "de": "Buchbesprechungen",
+    "en": "Book Reviews",
+    "es": "Crítica literaria",
+    "fr": "Critiques de livres",
+    "it": "Recensioni di libri",
+    "ja": "書評",
+    "ko": "서평",
+    "ru": "Книжные рецензии"
+  },
+  "二手": {
+    "de": "Gebraucht",
+    "en": "Secondhand",
+    "es": "Segunda mano",
+    "fr": "Seconde main",
+    "it": "Usato",
+    "ja": "中古",
+    "ko": "중고",
+    "ru": "Б/У товары"
+  },
+  "互联网": {
+    "de": "Internet",
+    "en": "Internet",
+    "es": "Internet",
+    "fr": "Internet",
+    "it": "Internet",
+    "ja": "インターネット",
+    "ko": "인터넷",
+    "ru": "Интернет"
+  },
+  "互联网生态": {
+    "de": "Internet-Ökosystem",
+    "en": "Internet Ecosystem",
+    "es": "Ecosistema de internet",
+    "fr": "Écosystème Internet",
+    "it": "Ecosistema di Internet",
+    "ja": "インターネットエコシステム",
+    "ko": "인터넷 생태계",
+    "ru": "Интернет-экосистема"
+  },
+  "互联网趋势": {
+    "de": "Internet-Trends",
+    "en": "Internet Trends",
+    "es": "Tendencias de internet",
+    "fr": "Tendances Internet",
+    "it": "Tendenze del web",
+    "ja": "インターネット動向",
+    "ko": "인터넷 트렌드",
+    "ru": "Интернет-тренды"
+  },
+  "亚文化": {
+    "de": "Subkulturen",
+    "en": "Subcultures",
+    "es": "Subculturas",
+    "fr": "Sous-cultures",
+    "it": "Sottoculture",
+    "ja": "サブカルチャー",
+    "ko": "하위문화",
+    "ru": "Субкультуры"
+  },
+  "亚洲": {
+    "de": "Asien",
+    "en": "Asia",
+    "es": "Asia",
+    "fr": "Asie",
+    "it": "Asia",
+    "ja": "アジア",
+    "ko": "아시아",
+    "ru": "Азия"
+  },
+  "付费搜索": {
+    "de": "Bezahlte Suche",
+    "en": "Paid Search",
+    "es": "Búsqueda de pago",
+    "fr": "Recherche payante",
+    "it": "Ricerca a pagamento",
+    "ja": "有料検索",
+    "ko": "유료 검색",
+    "ru": "Платный поиск"
+  },
+  "企业IT": {
+    "de": "Unternehmens-IT",
+    "en": "Enterprise IT",
+    "es": "TI empresarial",
+    "fr": "Informatique d'entreprise",
+    "it": "IT aziendale",
+    "ja": "エンタープライズIT",
+    "ko": "기업 IT",
+    "ru": "Корпоративные ИТ"
+  },
+  "企业级技术": {
+    "de": "Enterprise-Technologie",
+    "en": "Enterprise Tech",
+    "es": "Tecnología para empresas",
+    "fr": "Technologies d'entreprise",
+    "it": "Tecnologie enterprise",
+    "ja": "エンタープライズ技術",
+    "ko": "기업용 기술",
+    "ru": "Корпоративные решения"
+  },
+  "会议视频": {
+    "de": "Konferenzvideos",
+    "en": "Conference Videos",
+    "es": "Vídeos de conferencias",
+    "fr": "Vidéos de conférences",
+    "it": "Video di conferenze",
+    "ja": "カンファレンス動画",
+    "ko": "컨퍼런스 영상",
+    "ru": "Записи конференций"
+  },
+  "传统社区": {
+    "de": "Traditionelle Communities",
+    "en": "Traditional Communities",
+    "es": "Comunidades tradicionales",
+    "fr": "Communautés traditionnelles",
+    "it": "Community tradizionali",
+    "ja": "古参コミュニティ",
+    "ko": "전통 커뮤니티",
+    "ru": "Традиционные сообщества"
+  },
+  "传统论坛": {
+    "de": "Klassische Foren",
+    "en": "Traditional Forums",
+    "es": "Foros tradicionales",
+    "fr": "Forums traditionnels",
+    "it": "Forum tradizionali",
+    "ja": "従来型フォーラム",
+    "ko": "전통 포럼",
+    "ru": "Традиционные форумы"
+  },
+  "体育": {
+    "de": "Sport",
+    "en": "Sports",
+    "es": "Deportes",
+    "fr": "Sport",
+    "it": "Sport",
+    "ja": "スポーツ",
+    "ko": "스포츠",
+    "ru": "Спорт"
+  },
+  "作家专栏": {
+    "de": "Autorenkolumnen",
+    "en": "Author Columns",
+    "es": "Columnas de escritores",
+    "fr": "Chroniques d'auteurs",
+    "it": "Rubriche d'autore",
+    "ja": "作家コラム",
+    "ko": "작가 칼럼",
+    "ru": "Колонки авторов"
+  },
+  "作家访谈": {
+    "de": "Autoreninterviews",
+    "en": "Author Interviews",
+    "es": "Entrevistas a escritores",
+    "fr": "Interviews d'écrivains",
+    "it": "Interviste agli autori",
+    "ja": "作家インタビュー",
+    "ko": "작가 인터뷰",
+    "ru": "Интервью с писателями"
+  },
+  "信息存档": {
+    "de": "Informationsarchivierung",
+    "en": "Information Archiving",
+    "es": "Archivo de información",
+    "fr": "Archivage d'informations",
+    "it": "Archiviazione informazioni",
+    "ja": "情報アーカイブ",
+    "ko": "정보 아카이브",
+    "ru": "Архивация информации"
+  },
+  "健康": {
+    "de": "Gesundheit",
+    "en": "Health",
+    "es": "Salud",
+    "fr": "Santé",
+    "it": "Salute",
+    "ja": "ヘルスケア",
+    "ko": "건강",
+    "ru": "Здоровье"
+  },
+  "健康资讯": {
+    "de": "Gesundheitsnachrichten",
+    "en": "Health News",
+    "es": "Noticias de salud",
+    "fr": "Actualités de la santé",
+    "it": "Notizie di salute",
+    "ja": "健康情報",
+    "ko": "건강 소식",
+    "ru": "Новости здоровья"
+  },
+  "偶像": {
+    "de": "Idols",
+    "en": "Idols",
+    "es": "Ídolos",
+    "fr": "Idoles",
+    "it": "Idol",
+    "ja": "アイドル",
+    "ko": "아이돌",
+    "ru": "Идолы"
+  },
+  "元搜索": {
+    "de": "Metasuche",
+    "en": "Metasearch",
+    "es": "Metabuscador",
+    "fr": "Métarecherche",
+    "it": "Metamotore",
+    "ja": "メタ検索",
+    "ko": "메타 검색",
+    "ru": "Метапоиск"
+  },
+  "元数据": {
+    "de": "Metadaten",
+    "en": "Metadata",
+    "es": "Metadatos",
+    "fr": "Métadonnées",
+    "it": "Metadati",
+    "ja": "メタデータ",
+    "ko": "메타데이터",
+    "ru": "Метаданные"
+  },
+  "先锋": {
+    "de": "Avantgarde",
+    "en": "Avant-Garde",
+    "es": "Vanguardia",
+    "fr": "Avant-garde",
+    "it": "Avanguardia",
+    "ja": "前衛・アバンギャルド",
+    "ko": "아방가르드",
+    "ru": "Авангард"
+  },
+  "免费书籍": {
+    "de": "Kostenlose Bücher",
+    "en": "Free Books",
+    "es": "Libros gratis",
+    "fr": "Livres gratuits",
+    "it": "Libri gratuiti",
+    "ja": "無料書籍",
+    "ko": "무료 도서",
+    "ru": "Бесплатные книги"
+  },
+  "全球政治": {
+    "de": "Weltpolitik",
+    "en": "Global Politics",
+    "es": "Política internacional",
+    "fr": "Politique mondiale",
+    "it": "Politica globale",
+    "ja": "国際政治",
+    "ko": "세계 정치",
+    "ru": "Мировая политика"
+  },
+  "八卦": {
+    "de": "Klatsch",
+    "en": "Gossip",
+    "es": "Cotilleos",
+    "fr": "Potins",
+    "it": "Gossip",
+    "ja": "ゴシップ",
+    "ko": "가십/루머",
+    "ru": "Сплетни"
+  },
+  "公共广播": {
+    "de": "Öffentlich-rechtlicher Rundfunk",
+    "en": "Public Broadcasting",
+    "es": "Radiodifusión pública",
+    "fr": "Audiovisuel public",
+    "it": "Radiotelevisione pubblica",
+    "ja": "公共放送",
+    "ko": "공영 방송",
+    "ru": "Общественное вещание"
+  },
+  "公共领域": {
+    "de": "Gemeinfreiheit",
+    "en": "Public Domain",
+    "es": "Dominio público",
+    "fr": "Domaine public",
+    "it": "Pubblico dominio",
+    "ja": "パブリックドメイン",
+    "ko": "퍼블릭 도메인",
+    "ru": "Общественное достояние"
+  },
+  "内容平台": {
+    "de": "Content-Plattformen",
+    "en": "Content Platforms",
+    "es": "Plataformas de contenido",
+    "fr": "Plateformes de contenu",
+    "it": "Piattaforme di contenuti",
+    "ja": "コンテンツプラットフォーム",
+    "ko": "콘텐츠 플랫폼",
+    "ru": "Контент-платформы"
+  },
+  "写作": {
+    "de": "Schreiben",
+    "en": "Writing",
+    "es": "Escritura",
+    "fr": "Écriture",
+    "it": "Scrittura",
+    "ja": "ライティング",
+    "ko": "글쓰기",
+    "ru": "Писательство"
+  },
+  "军事论坛": {
+    "de": "Militärforen",
+    "en": "Military Forums",
+    "es": "Foros militares",
+    "fr": "Forums militaires",
+    "it": "Forum militari",
+    "ja": "軍事フォーラム",
+    "ko": "군사 포럼",
+    "ru": "Военные форумы"
+  },
+  "出版": {
+    "de": "Verlagswesen",
+    "en": "Publishing",
+    "es": "Editorial",
+    "fr": "Édition",
+    "it": "Editoria",
+    "ja": "出版",
+    "ko": "출판",
+    "ru": "Издательское дело"
+  },
+  "出版业": {
+    "de": "Verlagswirtschaft",
+    "en": "Publishing Industry",
+    "es": "Industria editorial",
+    "fr": "Industrie du livre",
+    "it": "Industria editoriale",
+    "ja": "出版業界",
+    "ko": "출판업",
+    "ru": "Книгоиздание"
+  },
+  "分享": {
+    "de": "Teilen",
+    "en": "Sharing",
+    "es": "Compartir",
+    "fr": "Partage",
+    "it": "Condivisione",
+    "ja": "シェア",
+    "ko": "공유",
+    "ru": "Обмен"
+  },
+  "分析": {
+    "de": "Analysen",
+    "en": "Analysis",
+    "es": "Análisis",
+    "fr": "Analyses",
+    "it": "Analisi",
+    "ja": "分析",
+    "ko": "분석",
+    "ru": "Аналитика"
+  },
+  "创作": {
+    "de": "Kreation",
+    "en": "Creation",
+    "es": "Creación",
+    "fr": "Création",
+    "it": "Creazione",
+    "ja": "創作",
+    "ko": "창작",
+    "ru": "Творчество"
+  },
+  "创作者": {
+    "de": "Kreative",
+    "en": "Creators",
+    "es": "Creadores",
+    "fr": "Créateurs",
+    "it": "Creatori",
+    "ja": "クリエイター",
+    "ko": "창작자",
+    "ru": "Создатели контента"
+  },
+  "创客论坛": {
+    "de": "Maker-Foren",
+    "en": "Maker Forums",
+    "es": "Foros de creadores",
+    "fr": "Forums de makers",
+    "it": "Forum di maker",
+    "ja": "メイカー向け掲示板",
+    "ko": "메이커 포럼",
+    "ru": "Мейкерские форумы"
+  },
+  "创投": {
+    "de": "Venture Capital",
+    "en": "Venture Capital",
+    "es": "Capital de riesgo",
+    "fr": "Capital-risque",
+    "it": "Capitale di rischio",
+    "ja": "ベンチャー投資",
+    "ko": "벤처 투자",
+    "ru": "Стартапы и инвестиции"
+  },
+  "创新": {
+    "de": "Innovation",
+    "en": "Innovation",
+    "es": "Innovación",
+    "fr": "Innovation",
+    "it": "Innovazione",
+    "ja": "イノベーション",
+    "ko": "혁신",
+    "ru": "Инновации"
+  },
+  "初创": {
+    "de": "Start-ups",
+    "en": "Startups",
+    "es": "Startups",
+    "fr": "Start-up",
+    "it": "Startup",
+    "ja": "スタートアップ",
+    "ko": "스타트업",
+    "ru": "Стартапы"
+  },
+  "初创公司": {
+    "de": "Start-up-Unternehmen",
+    "en": "Startup Companies",
+    "es": "Empresas emergentes",
+    "fr": "Jeunes entreprises",
+    "it": "Startup emergenti",
+    "ja": "スタートアップ企業",
+    "ko": "스타트업 기업",
+    "ru": "Стартап-компании"
+  },
+  "初学者友好": {
+    "de": "Einsteigerfreundlich",
+    "en": "Beginner Friendly",
+    "es": "Apto para principiantes",
+    "fr": "Accessible aux débutants",
+    "it": "Adatto ai principianti",
+    "ja": "初心者向け",
+    "ko": "초보자 친화적",
+    "ru": "Для начинающих"
+  },
+  "刷机": {
+    "de": "Firmware flashen",
+    "en": "Flashing Firmware",
+    "es": "Flashear ROM",
+    "fr": "Installation de ROM",
+    "it": "Flash del firmware",
+    "ja": "ROM焼き",
+    "ko": "펌웨어 플래싱",
+    "ru": "Прошивка"
+  },
+  "前沿技术": {
+    "de": "Spitzentechnologie",
+    "en": "Frontier Tech",
+    "es": "Tecnología puntera",
+    "fr": "Technologies de pointe",
+    "it": "Tecnologia d'avanguardia",
+    "ja": "先端技術",
+    "ko": "첨단 기술",
+    "ru": "Передовые технологии"
+  },
+  "前沿物理": {
+    "de": "Moderne Physik",
+    "en": "Cutting-edge Physics",
+    "es": "Física de vanguardia",
+    "fr": "Physique de pointe",
+    "it": "Fisica d'avanguardia",
+    "ja": "先端物理学",
+    "ko": "첨단 물리학",
+    "ru": "Передовая физика"
+  },
+  "前沿科技": {
+    "de": "Zukunftstechnologien",
+    "en": "Cutting-edge Tech",
+    "es": "Tecnología punta",
+    "fr": "Technologies d'avant-garde",
+    "it": "Tecnologia all'avanguardia",
+    "ja": "最先端科学技術",
+    "ko": "첨단 미래기술",
+    "ru": "Инновационные технологии"
+  },
+  "前端": {
+    "de": "Frontend",
+    "en": "Frontend",
+    "es": "Frontend",
+    "fr": "Front-End",
+    "it": "Frontend",
+    "ja": "フロントエンド",
+    "ko": "프론트엔드",
+    "ru": "Фронтенд"
+  },
+  "前端开发": {
+    "de": "Frontend-Entwicklung",
+    "en": "Frontend Development",
+    "es": "Desarrollo frontend",
+    "fr": "Développement Front-End",
+    "it": "Sviluppo frontend",
+    "ja": "フロントエンド開発",
+    "ko": "프론트엔드 개발",
+    "ru": "Фронтенд-разработка"
+  },
+  "动漫": {
+    "de": "Anime",
+    "en": "Anime \u0026 Manga",
+    "es": "Anime",
+    "fr": "Anime",
+    "it": "Anime",
+    "ja": "アニメ",
+    "ko": "애니메이션/만화",
+    "ru": "Аниме"
+  },
+  "动画": {
+    "de": "Animation",
+    "en": "Animation",
+    "es": "Animación",
+    "fr": "Animation",
+    "it": "Animazione",
+    "ja": "アニメーション",
+    "ko": "애니메이션",
+    "ru": "Анимация"
+  },
+  "医疗健康": {
+    "de": "Medizin \u0026 Gesundheit",
+    "en": "Healthcare \u0026 Medicine",
+    "es": "Salud y medicina",
+    "fr": "Santé \u0026 Médecine",
+    "it": "Salute e medicina",
+    "ja": "医療・ヘルスケア",
+    "ko": "의료 및 건강",
+    "ru": "Здравоохранение и медицина"
+  },
+  "匿名版": {
+    "de": "Anonymes Forum",
+    "en": "Anonymous Board",
+    "es": "Tablón anónimo",
+    "fr": "Forum anonyme",
+    "it": "Bacheca anonima",
+    "ja": "匿名掲示板",
+    "ko": "익명 게시판",
+    "ru": "Анонимный имиджборд"
+  },
+  "协作": {
+    "de": "Zusammenarbeit",
+    "en": "Collaboration",
+    "es": "Colaboración",
+    "fr": "Collaboration",
+    "it": "Collaborazione",
+    "ja": "コラボレーション",
+    "ko": "협업",
+    "ru": "Сотрудничество"
+  },
+  "博客聚合": {
+    "de": "Blog-Aggregatoren",
+    "en": "Blog Aggregators",
+    "es": "Agregadores de blogs",
+    "fr": "Agrégateurs de blogs",
+    "it": "Aggregatori di blog",
+    "ja": "ブログアンテナ",
+    "ko": "블로그 모음/메타",
+    "ru": "Агрегаторы блогов"
+  },
+  "印地语": {
+    "de": "Hindi",
+    "en": "Hindi",
+    "es": "Hindi",
+    "fr": "Hindi",
+    "it": "Hindi",
+    "ja": "ヒンディー語",
+    "ko": "힌디어",
+    "ru": "Хинди"
+  },
+  "历史": {
+    "de": "Geschichte",
+    "en": "History",
+    "es": "Historia",
+    "fr": "Histoire",
+    "it": "Storia",
+    "ja": "歴史",
+    "ko": "역사",
+    "ru": "История"
+  },
+  "历史悠久": {
+    "de": "Traditionsreich",
+    "en": "Long-standing",
+    "es": "De larga trayectoria",
+    "fr": "Historique",
+    "it": "Storico",
+    "ja": "歴史ある",
+    "ko": "유구한 역사",
+    "ru": "Историческое наследие"
+  },
+  "原创": {
+    "de": "Originale",
+    "en": "Original Work",
+    "es": "Original",
+    "fr": "Original",
+    "it": "Originale",
+    "ja": "オリジナル",
+    "ko": "오리지널",
+    "ru": "Оригинал"
+  },
+  "去SEO": {
+    "de": "SEO-frei",
+    "en": "De-SEOed",
+    "es": "Sin SEO",
+    "fr": "Sans SEO",
+    "it": "Senza SEO",
+    "ja": "脱SEO",
+    "ko": "탈-SEO",
+    "ru": "Без SEO-спама"
+  },
+  "去中心化": {
+    "de": "Dezentralisierung",
+    "en": "Decentralization",
+    "es": "Descentralización",
+    "fr": "Décentralisation",
+    "it": "Decentralizzazione",
+    "ja": "分散型",
+    "ko": "탈중앙화",
+    "ru": "Децентрализация"
+  },
+  "发烧友": {
+    "de": "Audiophile",
+    "en": "Audiophiles",
+    "es": "Audiófilos",
+    "fr": "Audiophiles",
+    "it": "Audiofili",
+    "ja": "オーディオマニア",
+    "ko": "오디오 마니아",
+    "ru": "Аудиофилы"
+  },
+  "古典文学": {
+    "de": "Klassische Literatur",
+    "en": "Classical Literature",
+    "es": "Literatura clásica",
+    "fr": "Littérature classique",
+    "it": "Letteratura classica",
+    "ja": "古典文学",
+    "ko": "고전 문학",
+    "ru": "Классическая литература"
+  },
+  "古典论坛": {
+    "de": "Klassische Foren",
+    "en": "Classic Forums",
+    "es": "Foros clásicos",
+    "fr": "Forums à l'ancienne",
+    "it": "Forum classici",
+    "ja": "クラシック掲示板",
+    "ko": "고전 웹 포럼",
+    "ru": "Классические веб-форумы"
+  },
+  "合成器": {
+    "de": "Synthesizer",
+    "en": "Synthesizers",
+    "es": "Sintetizadores",
+    "fr": "Synthétiseurs",
+    "it": "Sintetizzatori",
+    "ja": "シンセサイザー",
+    "ko": "신시사이저",
+    "ru": "Синтезаторы"
+  },
+  "同人": {
+    "de": "Dōjin",
+    "en": "Doujin",
+    "es": "Doujin",
+    "fr": "Doujin",
+    "it": "Doujin",
+    "ja": "同人",
+    "ko": "동인",
+    "ru": "Додзинси"
+  },
+  "同人小说": {
+    "de": "Fanfiction",
+    "en": "Fan Fiction",
+    "es": "Fanfiction",
+    "fr": "Fanfiction",
+    "it": "Fanfiction",
+    "ja": "二次創作小説",
+    "ko": "팬픽",
+    "ru": "Фанфики"
+  },
+  "同人文": {
+    "de": "Fanfictions",
+    "en": "Fanfics",
+    "es": "Relatos de fans",
+    "fr": "Récits de fans",
+    "it": "Racconti dei fan",
+    "ja": "二次創作",
+    "ko": "팬픽션",
+    "ru": "Фанфики"
+  },
+  "周边": {
+    "de": "Merchandise",
+    "en": "Merchandise",
+    "es": "Merchandising",
+    "fr": "Produits dérivés",
+    "it": "Merchandising",
+    "ja": "グッズ",
+    "ko": "굿즈",
+    "ru": "Мерч"
+  },
+  "商业分析": {
+    "de": "Geschäftsanalyse",
+    "en": "Business Analysis",
+    "es": "Análisis de negocios",
+    "fr": "Analyse d'affaires",
+    "it": "Analisi di business",
+    "ja": "ビジネス分析",
+    "ko": "비즈니스 분석",
+    "ru": "Бизнес-анализ"
+  },
+  "商业论坛": {
+    "de": "Wirtschaftsforen",
+    "en": "Business Forums",
+    "es": "Foros empresariales",
+    "fr": "Forums professionnels",
+    "it": "Forum aziendali",
+    "ja": "ビジネス掲示板",
+    "ko": "비즈니스 포럼",
+    "ru": "Бизнес-форумы"
+  },
+  "国内": {
+    "de": "Inland",
+    "en": "Domestic",
+    "es": "Nacional",
+    "fr": "National",
+    "it": "Nazionale",
+    "ja": "国内",
+    "ko": "국내",
+    "ru": "Внутренние новости"
+  },
+  "国际": {
+    "de": "International",
+    "en": "International",
+    "es": "Internacional",
+    "fr": "International",
+    "it": "Internazionale",
+    "ja": "国際",
+    "ko": "국제",
+    "ru": "Международное"
+  },
+  "图书排行": {
+    "de": "Bestsellerlisten",
+    "en": "Book Rankings",
+    "es": "Rankings de libros",
+    "fr": "Classements des ventes",
+    "it": "Classifiche libri",
+    "ja": "書籍ランキング",
+    "ko": "도서 랭킹",
+    "ru": "Книжные рейтинги"
+  },
+  "图书推荐": {
+    "de": "Buchempfehlungen",
+    "en": "Book Suggestions",
+    "es": "Recomendaciones de libros",
+    "fr": "Suggestions de livres",
+    "it": "Consigli di lettura",
+    "ja": "書籍推薦",
+    "ko": "도서 추천",
+    "ru": "Подборки книг"
+  },
+  "在线论坛": {
+    "de": "Online-Foren",
+    "en": "Online Forums",
+    "es": "Foros en línea",
+    "fr": "Forums en ligne",
+    "it": "Forum online",
+    "ja": "オンラインフォーラム",
+    "ko": "온라인 포럼",
+    "ru": "Онлайн-форумы"
+  },
+  "地下": {
+    "de": "Underground",
+    "en": "Underground",
+    "es": "Subterráneo",
+    "fr": "Underground",
+    "it": "Underground",
+    "ja": "地下・アングラ",
+    "ko": "언더그라운드",
+    "ru": "Андеграунд"
+  },
+  "地下文化": {
+    "de": "Untergrundkultur",
+    "en": "Underground Culture",
+    "es": "Cultura underground",
+    "fr": "Culture underground",
+    "it": "Cultura underground",
+    "ja": "アンダーグラウンド文化",
+    "ko": "언더그라운드 문화",
+    "ru": "Андеграундная культура"
+  },
+  "埃及": {
+    "de": "Ägypten",
+    "en": "Egypt",
+    "es": "Egipto",
+    "fr": "Égypte",
+    "it": "Egitto",
+    "ja": "エジプト",
+    "ko": "이집트",
+    "ru": "Египет"
+  },
+  "复古": {
+    "de": "Retro",
+    "en": "Retro",
+    "es": "Retro",
+    "fr": "Rétro",
+    "it": "Retrò",
+    "ja": "レトロ",
+    "ko": "레트로",
+    "ru": "Ретро"
+  },
+  "复古网页": {
+    "de": "Retro-Webseiten",
+    "en": "Retro Web",
+    "es": "Páginas web retro",
+    "fr": "Pages web rétro",
+    "it": "Pagine web retrò",
+    "ja": "レトロWeb",
+    "ko": "레트로 웹페이지",
+    "ru": "Ретро-страницы"
+  },
+  "复古论坛": {
+    "de": "Retro-Foren",
+    "en": "Retro Forums",
+    "es": "Foros retro",
+    "fr": "Forums rétro",
+    "it": "Forum retrò",
+    "ja": "レトロ掲示板",
+    "ko": "레트로 포럼",
+    "ru": "Ретро-форумы"
+  },
+  "大众": {
+    "de": "Allgemeinheit",
+    "en": "General Public",
+    "es": "Público general",
+    "fr": "Grand public",
+    "it": "Pubblico generale",
+    "ja": "大衆",
+    "ko": "대중",
+    "ru": "Общество"
+  },
+  "大众科技": {
+    "de": "Verbrauchertechnik",
+    "en": "Consumer Tech",
+    "es": "Tecnología para el público general",
+    "fr": "High-tech grand public",
+    "it": "Tecnologia di largo consumo",
+    "ja": "一般向けテクノロジー",
+    "ko": "대중 테크",
+    "ru": "Массовые технологии"
+  },
+  "大众科普": {
+    "de": "Wissenschaft für alle",
+    "en": "Public Science",
+    "es": "Ciencia para todos",
+    "fr": "Science accessible",
+    "it": "Scienza popolare",
+    "ja": "一般向け科学",
+    "ko": "대중 과학 보급",
+    "ru": "Популярная наука для всех"
+  },
+  "大型论坛": {
+    "de": "Große Foren",
+    "en": "Large Scale Forums",
+    "es": "Foros grandes",
+    "fr": "Grands forums",
+    "it": "Grandi forum",
+    "ja": "大型掲示板",
+    "ko": "대규모 포럼",
+    "ru": "Крупные форумы"
+  },
+  "奇幻": {
+    "de": "Fantasy",
+    "en": "Fantasy",
+    "es": "Fantasía",
+    "fr": "Fantasy",
+    "it": "Fantasy",
+    "ja": "ファンタジー",
+    "ko": "판타지",
+    "ru": "Фэнтези"
+  },
+  "奇幻奇幻": {
+    "de": "High Fantasy",
+    "en": "High Fantasy",
+    "es": "Alta fantasía",
+    "fr": "Haute fantaisie",
+    "it": "High Fantasy",
+    "ja": "ハイファンタジー",
+    "ko": "하이 판타지",
+    "ru": "Фэнтези"
+  },
+  "奇幻独立作者": {
+    "de": "Indie-Fantasy-Autoren",
+    "en": "Indie Fantasy Authors",
+    "es": "Autores independientes de fantasía",
+    "fr": "Auteurs indépendants de fantasy",
+    "it": "Autori indie di fantasy",
+    "ja": "インディーズファンタジー作家",
+    "ko": "독립 판타지 작가",
+    "ru": "Инди-авторы фэнтези"
+  },
+  "女性": {
+    "de": "Frauen",
+    "en": "Women",
+    "es": "Mujeres",
+    "fr": "Femmes",
+    "it": "Donne",
+    "ja": "女性向け",
+    "ko": "여성",
+    "ru": "Женщины"
+  },
+  "女性向": {
+    "de": "Frauenorientiert",
+    "en": "Female-Oriented",
+    "es": "Para público femenino",
+    "fr": "Orienté féminin",
+    "it": "Rivolto al pubblico femminile",
+    "ja": "女性向け",
+    "ko": "여성향",
+    "ru": "Для женской аудитории"
+  },
+  "娱乐": {
+    "de": "Unterhaltung",
+    "en": "Entertainment",
+    "es": "Entretenimiento",
+    "fr": "Divertissement",
+    "it": "Intrattenimento",
+    "ja": "エンタメ",
+    "ko": "엔터테인먼트",
+    "ru": "Развлечения"
+  },
+  "媒体": {
+    "de": "Medien",
+    "en": "Media",
+    "es": "Medios",
+    "fr": "Médias",
+    "it": "Media",
+    "ja": "メディア",
+    "ko": "미디어",
+    "ru": "Медиа"
+  },
+  "学术期刊": {
+    "de": "Wissenschaftliche Zeitschriften",
+    "en": "Academic Journals",
+    "es": "Revistas académicas",
+    "fr": "Revues académiques",
+    "it": "Riviste accademiche",
+    "ja": "学術誌",
+    "ko": "학술 저널",
+    "ru": "Научные журналы"
+  },
+  "宅文化": {
+    "de": "Otaku-Kultur",
+    "en": "Otaku Culture",
+    "es": "Cultura otaku",
+    "fr": "Culture otaku",
+    "it": "Cultura otaku",
+    "ja": "オタク文化",
+    "ko": "오타쿠 문화",
+    "ru": "Отаку-культура"
+  },
+  "安卓": {
+    "de": "Android",
+    "en": "Android",
+    "es": "Android",
+    "fr": "Android",
+    "it": "Android",
+    "ja": "Android",
+    "ko": "안드로이드",
+    "ru": "Android"
+  },
+  "安卓破解": {
+    "de": "Android-Modding",
+    "en": "Android Modding",
+    "es": "Modificaciones de Android",
+    "fr": "Modding Android",
+    "it": "Modding Android",
+    "ja": "Android改造",
+    "ko": "안드로이드 루팅/개조",
+    "ru": "Взлом Android"
+  },
+  "宗教": {
+    "de": "Religion",
+    "en": "Religion",
+    "es": "Religión",
+    "fr": "Religion",
+    "it": "Religione",
+    "ja": "宗教",
+    "ko": "종교",
+    "ru": "Религия"
+  },
+  "实用工具": {
+    "de": "Praktische Hilfsmittel",
+    "en": "Utility Tools",
+    "es": "Herramientas útiles",
+    "fr": "Utilitaires pratiques",
+    "it": "Utility pratiche",
+    "ja": "実用ユーティリティ",
+    "ko": "유용한 도구",
+    "ru": "Полезные утилиты"
+  },
+  "家居": {
+    "de": "Wohnen",
+    "en": "Home Living",
+    "es": "Hogar y decoración",
+    "fr": "Maison \u0026 Déco",
+    "it": "Casa e arredo",
+    "ja": "インテリア・住まい",
+    "ko": "홈/인테리어",
+    "ru": "Дом и интерьер"
+  },
+  "家庭": {
+    "de": "Familie",
+    "en": "Family",
+    "es": "Familia",
+    "fr": "Famille",
+    "it": "Famiglia",
+    "ja": "ファミリー",
+    "ko": "가정",
+    "ru": "Семья"
+  },
+  "宽带网络": {
+    "de": "Breitbandnetze",
+    "en": "Broadband Networks",
+    "es": "Redes de banda ancha",
+    "fr": "Réseaux haut débit",
+    "it": "Banda larga",
+    "ja": "ブロードバンド",
+    "ko": "광대역 통신망",
+    "ru": "Широкополосные сети"
+  },
+  "小众": {
+    "de": "Nische",
+    "en": "Niche",
+    "es": "Nicho",
+    "fr": "Niche",
+    "it": "Nicchia",
+    "ja": "ニッチ",
+    "ko": "틈새/마니아",
+    "ru": "Нишевое"
+  },
+  "小众音乐": {
+    "de": "Nischenmusik",
+    "en": "Niche Music",
+    "es": "Música alternativa",
+    "fr": "Musique de niche",
+    "it": "Musica di nicchia",
+    "ja": "アンダーグラウンド音楽",
+    "ko": "인디/비주류 음악",
+    "ru": "Нишевая музыка"
+  },
+  "小说": {
+    "de": "Romane",
+    "en": "Novels",
+    "es": "Novelas",
+    "fr": "Romans",
+    "it": "Romanzi",
+    "ja": "小説",
+    "ko": "소설",
+    "ru": "Новеллы"
+  },
+  "小说出版": {
+    "de": "Romanveröffentlichung",
+    "en": "Novel Publishing",
+    "es": "Publicación de novelas",
+    "fr": "Édition de romans",
+    "it": "Pubblicazione di romanzi",
+    "ja": "小説出版",
+    "ko": "소설 출판",
+    "ru": "Издание романов"
+  },
+  "工业": {
+    "de": "Industrie",
+    "en": "Industry",
+    "es": "Industria",
+    "fr": "Industrie",
+    "it": "Industria",
+    "ja": "産業・工業",
+    "ko": "산업",
+    "ru": "Промышленность"
+  },
+  "工具": {
+    "de": "Werkzeuge",
+    "en": "Tools",
+    "es": "Herramientas",
+    "fr": "Outils",
+    "it": "Strumenti",
+    "ja": "ツール",
+    "ko": "도구",
+    "ru": "Инструменты"
+  },
+  "工程": {
+    "de": "Ingenieurwesen",
+    "en": "Engineering",
+    "es": "Ingeniería",
+    "fr": "Ingénierie",
+    "it": "Ingegneria",
+    "ja": "工学・エンジニアリング",
+    "ko": "엔지니어링",
+    "ru": "Инженерия"
+  },
+  "左翼": {
+    "de": "Linke",
+    "en": "Left-wing",
+    "es": "Izquierda",
+    "fr": "Gauche",
+    "it": "Sinistra",
+    "ja": "左派",
+    "ko": "좌파",
+    "ru": "Левые"
+  },
+  "巨型档案库": {
+    "de": "Großarchive",
+    "en": "Massive Archives",
+    "es": "Megaarchivos",
+    "fr": "Archives monumentales",
+    "it": "Mega archivi",
+    "ja": "巨大アーカイブ",
+    "ko": "대규모 아카이브",
+    "ru": "Гигантские архивы"
+  },
+  "巨型社区": {
+    "de": "Große Forennetzwerke",
+    "en": "Mega Communities",
+    "es": "Megacomunidades",
+    "fr": "Très grandes communautés",
+    "it": "Mega community",
+    "ja": "巨大コミュニティ",
+    "ko": "초대형 커뮤니티",
+    "ru": "Масштабные сообщества"
+  },
+  "巨型论坛": {
+    "de": "Mega-Foren",
+    "en": "Mega Forums",
+    "es": "Megáforos",
+    "fr": "Forums géants",
+    "it": "Mega forum",
+    "ja": "巨大掲示板",
+    "ko": "대형 포럼",
+    "ru": "Гигантские форумы"
+  },
+  "平台": {
+    "de": "Plattform",
+    "en": "Platform",
+    "es": "Plataforma",
+    "fr": "Plateforme",
+    "it": "Piattaforma",
+    "ja": "プラットフォーム",
+    "ko": "플랫폼",
+    "ru": "Платформа"
+  },
+  "年轻态": {
+    "de": "Jugendkultur",
+    "en": "Youth Culture",
+    "es": "Juvenil",
+    "fr": "Style jeune",
+    "it": "Stile giovanile",
+    "ja": "ユースカルチャー",
+    "ko": "젊은 감각",
+    "ru": "Молодёжный стиль"
+  },
+  "幽默": {
+    "de": "Humor",
+    "en": "Humor",
+    "es": "Humor",
+    "fr": "Humour",
+    "it": "Umorismo",
+    "ja": "ユーモア",
+    "ko": "유머",
+    "ru": "Юмор"
+  },
+  "应用": {
+    "de": "Apps",
+    "en": "Apps",
+    "es": "Aplicaciones",
+    "fr": "Applications",
+    "it": "Applicazioni",
+    "ja": "アプリ",
+    "ko": "앱",
+    "ru": "Приложения"
+  },
+  "应用发现": {
+    "de": "App-Entdeckung",
+    "en": "App Discovery",
+    "es": "Descubrimiento de apps",
+    "fr": "Découverte d'applications",
+    "it": "Scoperta di app",
+    "ja": "アプリ発見",
+    "ko": "앱 탐색",
+    "ru": "Поиск приложений"
+  },
+  "应用评测": {
+    "de": "App-Tests",
+    "en": "App Reviews",
+    "es": "Reseñas de aplicaciones",
+    "fr": "Tests d'applications",
+    "it": "Recensioni di app",
+    "ja": "アプリレビュー",
+    "ko": "앱 평가/리뷰",
+    "ru": "Обзоры приложений"
+  },
+  "建筑": {
+    "de": "Architektur",
+    "en": "Architecture",
+    "es": "Arquitectura",
+    "fr": "Architecture",
+    "it": "Architettura",
+    "ja": "建築",
+    "ko": "건축",
+    "ru": "Архитектура"
+  },
+  "开发者友好": {
+    "de": "Entwicklerfreundlich",
+    "en": "Developer Friendly",
+    "es": "Amigable para desarrolladores",
+    "fr": "Adapté aux développeurs",
+    "it": "A misura di sviluppatore",
+    "ja": "開発者向け",
+    "ko": "개발자 친화적",
+    "ru": "Для разработчиков"
+  },
+  "开发者论坛": {
+    "de": "Entwicklerforen",
+    "en": "Developer Forums",
+    "es": "Foros para desarrolladores",
+    "fr": "Forums pour développeurs",
+    "it": "Forum sviluppatori",
+    "ja": "開発者フォーラム",
+    "ko": "개발자 포럼",
+    "ru": "Форумы разработчиков"
+  },
+  "开源代码": {
+    "de": "Open-Source-Quellcode",
+    "en": "Open Source Code",
+    "es": "Código abierto",
+    "fr": "Code source ouvert",
+    "it": "Codice open source",
+    "ja": "オープンソースコード",
+    "ko": "오픈소스 코드",
+    "ru": "Открытый исходный код"
+  },
+  "开源新闻": {
+    "de": "Open-Source-Nachrichten",
+    "en": "Open Source News",
+    "es": "Noticias de código abierto",
+    "fr": "Actualités de l'open source",
+    "it": "Notizie open source",
+    "ja": "オープンソースニュース",
+    "ko": "오픈소스 뉴스",
+    "ru": "Новости открытого ПО"
+  },
+  "开源生态": {
+    "de": "Open-Source-Ökosystem",
+    "en": "Open Source Ecosystem",
+    "es": "Ecosistema de código abierto",
+    "fr": "Écosystème open source",
+    "it": "Ecosistema open source",
+    "ja": "オープンソースエコシステム",
+    "ko": "오픈소스 생태계",
+    "ru": "Экосистема открытого ПО"
+  },
+  "开源社区": {
+    "de": "Open-Source-Community",
+    "en": "Open Source Community",
+    "es": "Comunidad de código abierto",
+    "fr": "Communauté open source",
+    "it": "Community open source",
+    "ja": "オープンソースコミュニティ",
+    "ko": "오픈소스 커뮤니티",
+    "ru": "Сообщество открытого ПО"
+  },
+  "开源论坛": {
+    "de": "Open-Source-Foren",
+    "en": "Open Source Forums",
+    "es": "Foros de código abierto",
+    "fr": "Forums open source",
+    "it": "Forum open source",
+    "ja": "オープンソース掲示板",
+    "ko": "오픈소스 포럼",
+    "ru": "Форумы с открытым кодом"
+  },
+  "开源软件": {
+    "de": "Open-Source-Software",
+    "en": "Open Source Software",
+    "es": "Software de código abierto",
+    "fr": "Logiciels open source",
+    "it": "Software open source",
+    "ja": "オープンソースソフトウェア",
+    "ko": "오픈소스 소프트웨어",
+    "ru": "ПО с открытым кодом"
+  },
+  "弹幕": {
+    "de": "Danmaku",
+    "en": "Danmaku",
+    "es": "Danmaku",
+    "fr": "Danmaku",
+    "it": "Danmaku",
+    "ja": "弾幕",
+    "ko": "탄막",
+    "ru": "Данмаку"
+  },
+  "当代艺术": {
+    "de": "Zeitgenössische Kunst",
+    "en": "Contemporary Art",
+    "es": "Arte contemporáneo",
+    "fr": "Art contemporain",
+    "it": "Arte contemporanea",
+    "ja": "現代アート",
+    "ko": "현대 미술",
+    "ru": "Современное искусство"
+  },
+  "影视": {
+    "de": "Film \u0026 Fernsehen",
+    "en": "Movies \u0026 TV",
+    "es": "Cine y TV",
+    "fr": "Cinéma \u0026 Télévision",
+    "it": "Cinema e TV",
+    "ja": "映画・ドラマ",
+    "ko": "영화/방송",
+    "ru": "Кино и ТВ"
+  },
+  "影视化": {
+    "de": "Verfilmungen",
+    "en": "Screen Adaptations",
+    "es": "Adaptaciones",
+    "fr": "Adaptations",
+    "it": "Adattamenti cinematografici",
+    "ja": "映像化",
+    "ko": "영상화",
+    "ru": "Экранизации"
+  },
+  "影评": {
+    "de": "Filmkritiken",
+    "en": "Movie Reviews",
+    "es": "Crítica de cine",
+    "fr": "Critiques de films",
+    "it": "Recensioni cinematografiche",
+    "ja": "映画レビュー",
+    "ko": "영화 리뷰",
+    "ru": "Кинокритика"
+  },
+  "影音": {
+    "de": "Audio \u0026 Video",
+    "en": "Audio \u0026 Video",
+    "es": "Audiovisual",
+    "fr": "Audiovisuel",
+    "it": "Audiovisivo",
+    "ja": "オーディオ・ビジュアル",
+    "ko": "음향 영상",
+    "ru": "Аудио и видео"
+  },
+  "御宅族": {
+    "de": "Otaku",
+    "en": "Otaku",
+    "es": "Otaku",
+    "fr": "Otaku",
+    "it": "Otaku",
+    "ja": "オタク",
+    "ko": "오타쿠",
+    "ru": "Отаку"
+  },
+  "微型博客": {
+    "de": "Mikroblogs",
+    "en": "Microblogging",
+    "es": "Microblog",
+    "fr": "Microblogging",
+    "it": "Microblog",
+    "ja": "マイクロブログ",
+    "ko": "마이크로블로그",
+    "ru": "Микроблоги"
+  },
+  "微客": {
+    "de": "Microblogger",
+    "en": "Microbloggers",
+    "es": "Microblogueros",
+    "fr": "Microblogueurs",
+    "it": "Microblogger",
+    "ja": "マイクロブロガー",
+    "ko": "마이크로블로거",
+    "ru": "Микроблогеры"
+  },
+  "微控制器": {
+    "de": "Mikrocontroller",
+    "en": "Microcontrollers",
+    "es": "Microcontroladores",
+    "fr": "Microcontrôleurs",
+    "it": "Microcontrollori",
+    "ja": "マイクロコントローラ",
+    "ko": "마이크로컨트롤러",
+    "ru": "Микроконтроллеры"
+  },
+  "心理学": {
+    "de": "Psychologie",
+    "en": "Psychology",
+    "es": "Psicología",
+    "fr": "Psychologie",
+    "it": "Psicologia",
+    "ja": "心理学",
+    "ko": "심리학",
+    "ru": "Психология"
+  },
+  "思想": {
+    "de": "Denken \u0026 Ideen",
+    "en": "Thought \u0026 Ideas",
+    "es": "Pensamiento",
+    "fr": "Pensées",
+    "it": "Pensiero filosofico",
+    "ja": "思想",
+    "ko": "사상",
+    "ru": "Мысли и идеи"
+  },
+  "思想实验": {
+    "de": "Gedankenexperimente",
+    "en": "Thought Experiments",
+    "es": "Experimentos mentales",
+    "fr": "Expériences de pensée",
+    "it": "Esperimenti mentali",
+    "ja": "思考実験",
+    "ko": "사고실험",
+    "ru": "Мысленные эксперименты"
+  },
+  "情感": {
+    "de": "Beziehungen \u0026 Gefühle",
+    "en": "Relationships \u0026 Emotion",
+    "es": "Relaciones personales",
+    "fr": "Sentiments \u0026 Relations",
+    "it": "Sentimenti e relazioni",
+    "ja": "恋愛・人間関係",
+    "ko": "연애/감정",
+    "ru": "Отношения"
+  },
+  "户外": {
+    "de": "Outdoor",
+    "en": "Outdoors",
+    "es": "Aire libre",
+    "fr": "Plein air",
+    "it": "Attività all'aperto",
+    "ja": "アウトドア",
+    "ko": "아웃도어",
+    "ru": "Активный отдых"
+  },
+  "手机刷机": {
+    "de": "Smartphone-Flashing",
+    "en": "Phone Flashing",
+    "es": "Flasheo de móviles",
+    "fr": "Flashage de smartphones",
+    "it": "Flashing smartphone",
+    "ja": "カスタムROM導入",
+    "ko": "스마트폰 롬 설치",
+    "ru": "Прошивка смартфонов"
+  },
+  "手机评测": {
+    "de": "Smartphone-Tests",
+    "en": "Phone Reviews",
+    "es": "Reseñas de smartphones",
+    "fr": "Tests de téléphones",
+    "it": "Recensioni smartphone",
+    "ja": "スマホ実機レビュー",
+    "ko": "스마트폰 리뷰",
+    "ru": "Обзоры смартфонов"
+  },
+  "手机资讯": {
+    "de": "Smartphone-Nachrichten",
+    "en": "Smartphone News",
+    "es": "Noticias sobre smartphones",
+    "fr": "Actualités smartphones",
+    "it": "Notizie smartphone",
+    "ja": "スマホニュース",
+    "ko": "스마트폰 소식",
+    "ru": "Новости смартфонов"
+  },
+  "技术博客": {
+    "de": "Tech-Blogs",
+    "en": "Tech Blogs",
+    "es": "Blogs de tecnología",
+    "fr": "Blogs techniques",
+    "it": "Blog tecnologici",
+    "ja": "技術ブログ",
+    "ko": "기술 블로그",
+    "ru": "Технические блоги"
+  },
+  "技术文章": {
+    "de": "Technische Artikel",
+    "en": "Tech Articles",
+    "es": "Artículos técnicos",
+    "fr": "Articles techniques",
+    "it": "Articoli tecnici",
+    "ja": "技術記事",
+    "ko": "기술 아티클",
+    "ru": "Технические статьи"
+  },
+  "技术社区": {
+    "de": "Tech-Community",
+    "en": "Tech Community",
+    "es": "Comunidad tecnológica",
+    "fr": "Communauté tech",
+    "it": "Community tech",
+    "ja": "技術コミュニティ",
+    "ko": "기술 커뮤니티",
+    "ru": "Техническое сообщество"
+  },
+  "技术论坛": {
+    "de": "Technik-Foren",
+    "en": "Tech Forums",
+    "es": "Foros de tecnología",
+    "fr": "Forums techniques",
+    "it": "Forum tecnologici",
+    "ja": "技術フォーラム",
+    "ko": "기술 포럼",
+    "ru": "Технические форумы"
+  },
+  "技术门户": {
+    "de": "Technologieportale",
+    "en": "Tech Portals",
+    "es": "Portales tecnológicos",
+    "fr": "Portails technologiques",
+    "it": "Portali tecnologici",
+    "ja": "テクノロジーポータル",
+    "ko": "기술 포털",
+    "ru": "Технические порталы"
+  },
+  "技术问答": {
+    "de": "Technische Q\u0026A",
+    "en": "Technical Q\u0026A",
+    "es": "Preguntas y respuestas técnicas",
+    "fr": "Questions-réponses techniques",
+    "it": "Domande e risposte tecniche",
+    "ja": "技術系Q\u0026A",
+    "ko": "기술 Q\u0026A",
+    "ru": "Технические вопросы и ответы"
+  },
+  "投资": {
+    "de": "Investitionen",
+    "en": "Investing",
+    "es": "Inversión",
+    "fr": "Investissement",
+    "it": "Investimenti",
+    "ja": "投資",
+    "ko": "투자",
+    "ru": "Инвестиции"
+  },
+  "拉美视角": {
+    "de": "Lateinamerikanische Perspektive",
+    "en": "Latin American Perspective",
+    "es": "Perspectiva latinoamericana",
+    "fr": "Perspective latino-américaine",
+    "it": "Prospettiva latinoamericana",
+    "ja": "ラテンアメリカの視点",
+    "ko": "중남미 시각",
+    "ru": "Латиноамериканский взгляд"
+  },
+  "指南": {
+    "de": "Leitfäden",
+    "en": "Guides",
+    "es": "Guías",
+    "fr": "Guides",
+    "it": "Guide",
+    "ja": "ガイド",
+    "ko": "가이드",
+    "ru": "Руководства"
+  },
+  "掌机破解": {
+    "de": "Handheld-Modding",
+    "en": "Handheld Modding",
+    "es": "Modding de consolas portátiles",
+    "fr": "Modding console portable",
+    "it": "Modding console portatili",
+    "ja": "携帯機ハック",
+    "ko": "휴대용 기기 개조",
+    "ru": "Взлом портативных консолей"
+  },
+  "推书": {
+    "de": "Buchtitel-Empfehlungen",
+    "en": "Book Picks",
+    "es": "Sugerencias de libros",
+    "fr": "Recommandations de lectures",
+    "it": "Consigli di libri",
+    "ja": "おすすめ本の紹介",
+    "ko": "도서 픽",
+    "ru": "Книжные рекомендации"
+  },
+  "推荐": {
+    "de": "Empfehlungen",
+    "en": "Recommendations",
+    "es": "Recomendaciones",
+    "fr": "Recommandations",
+    "it": "Consigli",
+    "ja": "おすすめ",
+    "ko": "추천",
+    "ru": "Рекомендации"
+  },
+  "插画": {
+    "de": "Illustration",
+    "en": "Illustration",
+    "es": "Ilustración",
+    "fr": "Illustration",
+    "it": "Illustrazione",
+    "ja": "イラスト",
+    "ko": "일러스트",
+    "ru": "Иллюстрация"
+  },
+  "搞笑": {
+    "de": "Spaß \u0026 Witze",
+    "en": "Comedy \u0026 Fun",
+    "es": "Comedia y humor",
+    "fr": "Humour \u0026 Drôle",
+    "it": "Comicità e divertimento",
+    "ja": "お笑い・ギャグ",
+    "ko": "개그/유머",
+    "ru": "Приколы и юмор"
+  },
+  "播客": {
+    "de": "Podcasts",
+    "en": "Podcasts",
+    "es": "Pódcasts",
+    "fr": "Podcasts",
+    "it": "Podcast",
+    "ja": "ポッドキャスト",
+    "ko": "팟캐스트",
+    "ru": "Подкасты"
+  },
+  "收藏": {
+    "de": "Sammlungen",
+    "en": "Collectibles",
+    "es": "Coleccionismo",
+    "fr": "Collection",
+    "it": "Collezionismo",
+    "ja": "コレクション",
+    "ko": "수집",
+    "ru": "Коллекционирование"
+  },
+  "教育": {
+    "de": "Bildung",
+    "en": "Education",
+    "es": "Educación",
+    "fr": "Éducation",
+    "it": "Educazione",
+    "ja": "教育",
+    "ko": "교육",
+    "ru": "Образование"
+  },
+  "散文": {
+    "de": "Prosa",
+    "en": "Prose",
+    "es": "Prosa",
+    "fr": "Prose",
+    "it": "Prosa",
+    "ja": "散文",
+    "ko": "산문",
+    "ru": "Проза"
+  },
+  "数字化": {
+    "de": "Digitalisierung",
+    "en": "Digitalization",
+    "es": "Digitalización",
+    "fr": "Numérisation",
+    "it": "Digitalizzazione",
+    "ja": "デジタル化",
+    "ko": "디지털화",
+    "ru": "Цифровизация"
+  },
+  "数字媒体": {
+    "de": "Digitale Medien",
+    "en": "Digital Media",
+    "es": "Medios digitales",
+    "fr": "Médias numériques",
+    "it": "Media digitali",
+    "ja": "デジタルメディア",
+    "ko": "디지털 미디어",
+    "ru": "Цифровые медиа"
+  },
+  "数字文化": {
+    "de": "Digitalkultur",
+    "en": "Digital Culture",
+    "es": "Cultura digital",
+    "fr": "Culture numérique",
+    "it": "Cultura digitale",
+    "ja": "デジタル文化",
+    "ko": "디지털 문화",
+    "ru": "Цифровая культура"
+  },
+  "数字权利": {
+    "de": "Digitale Rechte",
+    "en": "Digital Rights",
+    "es": "Derechos digitales",
+    "fr": "Droits numériques",
+    "it": "Diritti digitali",
+    "ja": "デジタル権利",
+    "ko": "디지털 권리",
+    "ru": "Цифровые права"
+  },
+  "数字经济": {
+    "de": "Digitale Wirtschaft",
+    "en": "Digital Economy",
+    "es": "Economía digital",
+    "fr": "Économie numérique",
+    "it": "Economia digitale",
+    "ja": "デジタル経済",
+    "ko": "디지털 경제",
+    "ru": "Цифровая экономика"
+  },
+  "数字营销": {
+    "de": "Digitales Marketing",
+    "en": "Digital Marketing",
+    "es": "Marketing digital",
+    "fr": "Marketing numérique",
+    "it": "Marketing digitale",
+    "ja": "デジタルマーケティング",
+    "ko": "디지털 마케팅",
+    "ru": "Цифровой маркетинг"
+  },
+  "数学": {
+    "de": "Mathematik",
+    "en": "Mathematics",
+    "es": "Matemáticas",
+    "fr": "Mathématiques",
+    "it": "Matematica",
+    "ja": "数学",
+    "ko": "수학",
+    "ru": "Математика"
+  },
+  "数据库": {
+    "de": "Datenbank",
+    "en": "Database",
+    "es": "Base de datos",
+    "fr": "Base de données",
+    "it": "Database",
+    "ja": "データベース",
+    "ko": "데이터베이스",
+    "ru": "База данных"
+  },
+  "数据科学": {
+    "de": "Datenwissenschaft",
+    "en": "Data Science",
+    "es": "Ciencia de datos",
+    "fr": "Science des données",
+    "it": "Scienza dei dati",
+    "ja": "データサイエンス",
+    "ko": "데이터 과학",
+    "ru": "Наука о данных"
+  },
+  "数码生活": {
+    "de": "Digitales Leben",
+    "en": "Digital Life",
+    "es": "Vida digital",
+    "fr": "Vie numérique",
+    "it": "Vita digitale",
+    "ja": "デジタルライフ",
+    "ko": "디지털 라이프",
+    "ru": "Цифровая жизнь"
+  },
+  "数码论坛": {
+    "de": "Digital-Foren",
+    "en": "Digital Tech Forums",
+    "es": "Foros digitales",
+    "fr": "Forums high-tech",
+    "it": "Forum di tecnologia digitale",
+    "ja": "デジタル機器フォーラム",
+    "ko": "디지털 커뮤니티",
+    "ru": "Форумы о цифровой технике"
+  },
+  "数码评测": {
+    "de": "Gadget-Tests",
+    "en": "Digital Product Reviews",
+    "es": "Reseñas de gadgets",
+    "fr": "Tests de gadgets",
+    "it": "Recensioni digitali",
+    "ja": "デジタル機器レビュー",
+    "ko": "디지털 기기 리뷰",
+    "ru": "Обзоры гаджетов"
+  },
+  "数码配件": {
+    "de": "Elektronik-Zubehör",
+    "en": "Digital Accessories",
+    "es": "Accesorios electrónicos",
+    "fr": "Accessoires numériques",
+    "it": "Accessori digitali",
+    "ja": "デジタルアクセサリー",
+    "ko": "디지털 액세서리",
+    "ru": "Аксессуары для гаджетов"
+  },
+  "文化档案": {
+    "de": "Kulturarchive",
+    "en": "Cultural Archives",
+    "es": "Archivos culturales",
+    "fr": "Archives culturelles",
+    "it": "Archivi culturali",
+    "ja": "文化アーカイブ",
+    "ko": "문화 아카이브",
+    "ru": "Архивы культуры"
+  },
+  "文化评论": {
+    "de": "Kulturkommentare",
+    "en": "Cultural Commentary",
+    "es": "Comentario cultural",
+    "fr": "Critique culturelle",
+    "it": "Critica culturale",
+    "ja": "文化評論",
+    "ko": "문화 비평",
+    "ru": "Культурная критика"
+  },
+  "文学分析": {
+    "de": "Literaturanalysen",
+    "en": "Literary Analysis",
+    "es": "Análisis literario",
+    "fr": "Analyse littéraire",
+    "it": "Analisi letteraria",
+    "ja": "文学分析",
+    "ko": "문학 분석",
+    "ru": "Литературный анализ"
+  },
+  "文学动态": {
+    "de": "Literaturnachrichten",
+    "en": "Literary News",
+    "es": "Noticias literarias",
+    "fr": "Actualités littéraires",
+    "it": "Notizie letterarie",
+    "ja": "文学ニュース",
+    "ko": "문학계 동향",
+    "ru": "Литературные новости"
+  },
+  "文学博客": {
+    "de": "Literaturblogs",
+    "en": "Literary Blogs",
+    "es": "Blogs literarios",
+    "fr": "Blogs littéraires",
+    "it": "Blog letterari",
+    "ja": "文学ブログ",
+    "ko": "문학 블로그",
+    "ru": "Литературные блоги"
+  },
+  "文学圈": {
+    "de": "Literarische Kreise",
+    "en": "Literary Circles",
+    "es": "Círculos literarios",
+    "fr": "Milieux littéraires",
+    "it": "Circoli letterari",
+    "ja": "文壇・文学界",
+    "ko": "문학계",
+    "ru": "Литературные круги"
+  },
+  "文学批评": {
+    "de": "Literarische Kritik",
+    "en": "Literary Critique",
+    "es": "Crítica literaria",
+    "fr": "Critique littéraire",
+    "it": "Critica letteraria",
+    "ja": "文学批評",
+    "ko": "문학 비평",
+    "ru": "Литературоведение"
+  },
+  "文学杂志": {
+    "de": "Literaturzeitschriften",
+    "en": "Literary Magazines",
+    "es": "Revistas literarias",
+    "fr": "Revues littéraires",
+    "it": "Riviste letterarie",
+    "ja": "文芸誌",
+    "ko": "문예지",
+    "ru": "Литературные журналы"
+  },
+  "文学社区": {
+    "de": "Literatur-Communitys",
+    "en": "Literary Communities",
+    "es": "Comunidades literarias",
+    "fr": "Communautés littéraires",
+    "it": "Community letterarie",
+    "ja": "文学コミュニティ",
+    "ko": "문학 커뮤니티",
+    "ru": "Литературные сообщества"
+  },
+  "文学访谈": {
+    "de": "Literaturgespräche",
+    "en": "Literary Interviews",
+    "es": "Entrevistas literarias",
+    "fr": "Entretiens littéraires",
+    "it": "Interviste letterarie",
+    "ja": "文芸対談",
+    "ko": "문학 대담",
+    "ru": "Литературные интервью"
+  },
+  "文学评论": {
+    "de": "Literaturkritik",
+    "en": "Literary Criticism",
+    "es": "Crítica literaria",
+    "fr": "Critique littéraire",
+    "it": "Critica letteraria",
+    "ja": "文芸批評",
+    "ko": "문학 비평",
+    "ru": "Литературная критика"
+  },
+  "文学门户": {
+    "de": "Literaturportale",
+    "en": "Literary Portals",
+    "es": "Portales literarios",
+    "fr": "Portails littéraires",
+    "it": "Portali letterari",
+    "ja": "文学ポータル",
+    "ko": "문학 포털",
+    "ru": "Литературные порталы"
+  },
+  "文档": {
+    "de": "Dokumentation",
+    "en": "Documentation",
+    "es": "Documentación",
+    "fr": "Documentation",
+    "it": "Documentazione",
+    "ja": "ドキュメント",
+    "ko": "문서",
+    "ru": "Документация"
+  },
+  "文章": {
+    "de": "Artikel",
+    "en": "Articles",
+    "es": "Artículos",
+    "fr": "Articles",
+    "it": "Articoli",
+    "ja": "記事",
+    "ko": "글/기사",
+    "ru": "Статьи"
+  },
+  "新书速递": {
+    "de": "Buchneuerscheinungen",
+    "en": "New Releases",
+    "es": "Novedades editoriales",
+    "fr": "Parutions récentes",
+    "it": "Nuove uscite letterarie",
+    "ja": "新刊案内",
+    "ko": "신간 소식",
+    "ru": "Книжные новинки"
+  },
+  "新产品": {
+    "de": "Neue Produkte",
+    "en": "New Products",
+    "es": "Nuevos productos",
+    "fr": "Nouveaux produits",
+    "it": "Nuovi prodotti",
+    "ja": "新製品",
+    "ko": "신제품",
+    "ru": "Новые продукты"
+  },
+  "新社区": {
+    "de": "Neue Communities",
+    "en": "New Communities",
+    "es": "Nuevas comunidades",
+    "fr": "Nouvelles communautés",
+    "it": "Nuove community",
+    "ja": "新興コミュニティ",
+    "ko": "신흥 커뮤니티",
+    "ru": "Новые сообщества"
+  },
+  "新闻报道": {
+    "de": "Nachrichtenberichte",
+    "en": "News Coverage",
+    "es": "Cobertura informativa",
+    "fr": "Reportages d'actualités",
+    "it": "Copertura giornalistica",
+    "ja": "ニュース報道",
+    "ko": "뉴스 보도",
+    "ru": "Новостные репортажи"
+  },
+  "新闻聚合": {
+    "de": "Nachrichtenaggregatoren",
+    "en": "News Aggregators",
+    "es": "Agregadores de noticias",
+    "fr": "Agrégateurs d'actualités",
+    "it": "Aggregatori di notizie",
+    "ja": "ニュースアグリゲーター",
+    "ko": "뉴스 애그리게이터",
+    "ru": "Агрегаторы новостей"
+  },
+  "旁遮普": {
+    "de": "Panjabi",
+    "en": "Punjabi",
+    "es": "Panyabí",
+    "fr": "Pendjabi",
+    "it": "Punjabi",
+    "ja": "パンジャーブ語",
+    "ko": "펀자브어",
+    "ru": "Пенджаби"
+  },
+  "旅游": {
+    "de": "Reisen",
+    "en": "Travel",
+    "es": "Viajes",
+    "fr": "Voyages",
+    "it": "Viaggi",
+    "ja": "旅行",
+    "ko": "여행",
+    "ru": "Путешествия"
+  },
+  "无追踪": {
+    "de": "Ohne Tracking",
+    "en": "No Tracking",
+    "es": "Sin rastreo",
+    "fr": "Sans pistage",
+    "it": "Senza tracciamento",
+    "ja": "トラッキング防止",
+    "ko": "추적 방지",
+    "ru": "Без слежения"
+  },
+  "日本动画": {
+    "de": "Japanische Animes",
+    "en": "Japanese Anime",
+    "es": "Animación japonesa",
+    "fr": "Animation japonaise",
+    "it": "Animazione giapponese",
+    "ja": "日本のアニメ",
+    "ko": "일본 애니메이션",
+    "ru": "Японское аниме"
+  },
+  "日记": {
+    "de": "Tagebuch",
+    "en": "Diary",
+    "es": "Diario",
+    "fr": "Journal intime",
+    "it": "Diario",
+    "ja": "日記",
+    "ko": "일기",
+    "ru": "Дневник"
+  },
+  "早期互联网": {
+    "de": "Frühes Internet",
+    "en": "Early Web",
+    "es": "Internet antiguo",
+    "fr": "Web des débuts",
+    "it": "Primo internet",
+    "ja": "黎明期Web",
+    "ko": "초기 인터넷",
+    "ru": "Ранний интернет"
+  },
+  "时事": {
+    "de": "Zeitgeschehen",
+    "en": "Current Affairs",
+    "es": "Actualidad",
+    "fr": "Actualités",
+    "it": "Attualità",
+    "ja": "時事問題",
+    "ko": "시사",
+    "ru": "Текущие события"
+  },
+  "时尚": {
+    "de": "Mode",
+    "en": "Fashion",
+    "es": "Moda",
+    "fr": "Mode",
+    "it": "Moda",
+    "ja": "ファッション",
+    "ko": "패션",
+    "ru": "Мода"
+  },
+  "智能手机": {
+    "de": "Smartphones",
+    "en": "Smartphones",
+    "es": "Teléfonos inteligentes",
+    "fr": "Smartphones",
+    "it": "Smartphone",
+    "ja": "スマートフォン",
+    "ko": "스마트폰",
+    "ru": "Смартфоны"
+  },
+  "智能硬件": {
+    "de": "Smarte Hardware",
+    "en": "Smart Hardware",
+    "es": "Hardware inteligente",
+    "fr": "Matériel intelligent",
+    "it": "Hardware intelligente",
+    "ja": "スマートハードウェア",
+    "ko": "스마트 하드웨어",
+    "ru": "Умные устройства"
+  },
+  "暗网分析": {
+    "de": "Darknet-Analyse",
+    "en": "Darknet Analysis",
+    "es": "Análisis de la Darknet",
+    "fr": "Analyse du Darknet",
+    "it": "Analisi del Darknet",
+    "ja": "ダークウェブ分析",
+    "ko": "다크웹 분석",
+    "ru": "Анализ даркнета"
+  },
+  "期刊": {
+    "de": "Zeitschriften",
+    "en": "Periodicals",
+    "es": "Periódicos y revistas",
+    "fr": "Périodiques",
+    "it": "Periodici",
+    "ja": "定期刊行物",
+    "ko": "정기간행물",
+    "ru": "Периодика"
+  },
+  "本地": {
+    "de": "Lokal",
+    "en": "Local",
+    "es": "Local",
+    "fr": "Local",
+    "it": "Locale",
+    "ja": "ローカル",
+    "ko": "지역",
+    "ru": "Местные новости"
+  },
+  "杂志": {
+    "de": "Magazin",
+    "en": "Magazine",
+    "es": "Revista",
+    "fr": "Magazine",
+    "it": "Rivista",
+    "ja": "雑誌",
+    "ko": "잡지",
+    "ru": "Журналы"
+  },
+  "权威": {
+    "de": "Autoritativ",
+    "en": "Authoritative",
+    "es": "Autorizado",
+    "fr": "Source de référence",
+    "it": "Autorevole",
+    "ja": "権威ある情報",
+    "ko": "권위/공식",
+    "ru": "Авторитетные источники"
+  },
+  "权威信息": {
+    "de": "Verifizierte Fakten",
+    "en": "Verified Information",
+    "es": "Información verificada",
+    "fr": "Informations vérifiées",
+    "it": "Informazioni verificate",
+    "ja": "信頼のおける情報",
+    "ko": "공식 검증 정보",
+    "ru": "Достоверная информация"
+  },
+  "权威新闻": {
+    "de": "Seriöser Journalismus",
+    "en": "Authoritative Journalism",
+    "es": "Periodismo riguroso",
+    "fr": "Actualités de référence",
+    "it": "Giornalismo autorevole",
+    "ja": "権威ある報道",
+    "ko": "공신력 있는 뉴스",
+    "ru": "Авторитетные новости"
+  },
+  "极客博客": {
+    "de": "Geek-Blogs",
+    "en": "Geek Blogs",
+    "es": "Blogs de geeks",
+    "fr": "Blogs de geeks",
+    "it": "Blog per geek",
+    "ja": "ギークブログ",
+    "ko": "긱 블로그",
+    "ru": "Гик-блоги"
+  },
+  "极客文化": {
+    "de": "Geek-Kultur",
+    "en": "Geek Culture",
+    "es": "Cultura geek",
+    "fr": "Culture geek",
+    "it": "Cultura geek",
+    "ja": "ギークカルチャー",
+    "ko": "긱 문화",
+    "ru": "Гик-культура"
+  },
+  "极客社区": {
+    "de": "Geek-Community",
+    "en": "Geek Community",
+    "es": "Comunidad geek",
+    "fr": "Communauté geek",
+    "it": "Community geek",
+    "ja": "ギークコミュニティ",
+    "ko": "긱 커뮤니티",
+    "ru": "Гик-сообщество"
+  },
+  "极客论坛": {
+    "de": "Geek-Foren",
+    "en": "Geek Forums",
+    "es": "Foros para geeks",
+    "fr": "Forums de geeks",
+    "it": "Forum di appassionati di tecnologia",
+    "ja": "ギーク掲示板",
+    "ko": "긱 포럼",
+    "ru": "Гик-форумы"
+  },
+  "极简博客": {
+    "de": "Minimalistische Blogs",
+    "en": "Minimalist Blogs",
+    "es": "Blogs minimalistas",
+    "fr": "Blogs minimalistes",
+    "it": "Blog minimalisti",
+    "ja": "ミニマリストブログ",
+    "ko": "미니멀 블로그",
+    "ru": "Минималистичные блоги"
+  },
+  "架构": {
+    "de": "Software-Architektur",
+    "en": "Architecture",
+    "es": "Arquitectura de software",
+    "fr": "Architecture logicielle",
+    "it": "Architettura software",
+    "ja": "システムアーキテクチャ",
+    "ko": "아키텍처",
+    "ru": "Архитектура систем"
+  },
+  "柏林文化": {
+    "de": "Berliner Kultur",
+    "en": "Berlin Culture",
+    "es": "Cultura berlinesa",
+    "fr": "Culture berlinoise",
+    "it": "Cultura berlinese",
+    "ja": "ベルリン文化",
+    "ko": "베를린 문화",
+    "ru": "Культура Берлина"
+  },
+  "树莓派": {
+    "de": "Raspberry Pi",
+    "en": "Raspberry Pi",
+    "es": "Raspberry Pi",
+    "fr": "Raspberry Pi",
+    "it": "Raspberry Pi",
+    "ja": "Raspberry Pi",
+    "ko": "라즈베리 파이",
+    "ru": "Raspberry Pi"
+  },
+  "校园": {
+    "de": "Campus",
+    "en": "Campus",
+    "es": "Campus",
+    "fr": "Campus",
+    "it": "Campus",
+    "ja": "キャンパス",
+    "ko": "캠퍼스",
+    "ru": "Кампус"
+  },
+  "桌游": {
+    "de": "Brettspiele",
+    "en": "Board Games",
+    "es": "Juegos de mesa",
+    "fr": "Jeux de société",
+    "it": "Giochi da tavolo",
+    "ja": "ボードゲーム",
+    "ko": "보드게임",
+    "ru": "Настольные игры"
+  },
+  "概念艺术": {
+    "de": "Konzeptkunst",
+    "en": "Concept Art",
+    "es": "Arte conceptual",
+    "fr": "Art conceptuel",
+    "it": "Concept Art",
+    "ja": "コンセプトアート",
+    "ko": "컨셉 아트",
+    "ru": "Концепт-арт"
+  },
+  "次文化": {
+    "de": "Subkultur",
+    "en": "Subculture",
+    "es": "Subcultura",
+    "fr": "Sous-culture",
+    "it": "Sottocultura",
+    "ja": "サブカルチャー",
+    "ko": "서브컬처",
+    "ru": "Субкультура"
+  },
+  "武器": {
+    "de": "Waffen",
+    "en": "Weapons",
+    "es": "Armas",
+    "fr": "Armes",
+    "it": "Armi",
+    "ja": "兵器・武器",
+    "ko": "무기",
+    "ru": "Оружие"
+  },
+  "母婴": {
+    "de": "Mutter \u0026 Kind",
+    "en": "Mother \u0026 Baby",
+    "es": "Madre y bebé",
+    "fr": "Mère et bébé",
+    "it": "Mamma e neonato",
+    "ja": "母子・ベビー",
+    "ko": "모자/유아",
+    "ru": "Материнство и детство"
+  },
+  "求职": {
+    "de": "Jobsuche",
+    "en": "Job Hunting",
+    "es": "Búsqueda de empleo",
+    "fr": "Recherche d'emploi",
+    "it": "Lavoro e carriere",
+    "ja": "求人・就活",
+    "ko": "취업/구직",
+    "ru": "Поиск работы"
+  },
+  "汽车": {
+    "de": "Automobil",
+    "en": "Automotive",
+    "es": "Automoción",
+    "fr": "Automobile",
+    "it": "Automobili",
+    "ja": "自動車",
+    "ko": "자동차",
+    "ru": "Автомобили"
+  },
+  "汽车改装": {
+    "de": "Autotuning",
+    "en": "Car Tuning",
+    "es": "Modificación de coches",
+    "fr": "Tuning automobile",
+    "it": "Tuning auto",
+    "ja": "カスタムカー",
+    "ko": "자동차 튜닝",
+    "ru": "Тюнинг авто"
+  },
+  "沙特": {
+    "de": "Saudi-Arabien",
+    "en": "Saudi Arabia",
+    "es": "Arabia Saudita",
+    "fr": "Arabie saoudite",
+    "it": "Arabia Saudita",
+    "ja": "サウジアラビア",
+    "ko": "사우디아라비아",
+    "ru": "Саудовская Аравия"
+  },
+  "法律": {
+    "de": "Recht",
+    "en": "Law",
+    "es": "Derecho",
+    "fr": "Droit",
+    "it": "Diritto",
+    "ja": "法律",
+    "ko": "법률",
+    "ru": "Право"
+  },
+  "泛娱乐": {
+    "de": "Breite Unterhaltung",
+    "en": "General Entertainment",
+    "es": "Entretenimiento general",
+    "fr": "Divertissement général",
+    "it": "Intrattenimento generale",
+    "ja": "総合エンタメ",
+    "ko": "종합 엔터",
+    "ru": "Масс-развлечения"
+  },
+  "泛科技": {
+    "de": "Allgemeine Technik",
+    "en": "General Tech",
+    "es": "Tecnología general",
+    "fr": "Technologie générale",
+    "it": "Tecnologia generale",
+    "ja": "IT・科学全般",
+    "ko": "범용 기술",
+    "ru": "Околотехнологии"
+  },
+  "洋葱网络": {
+    "de": "Tor-Netzwerk",
+    "en": "Tor Network",
+    "es": "Red Tor",
+    "fr": "Réseau Tor",
+    "it": "Rete Tor",
+    "ja": "Torネットワーク",
+    "ko": "토리/양파 네트워크",
+    "ru": "Сеть Tor"
+  },
+  "活动": {
+    "de": "Events",
+    "en": "Events",
+    "es": "Eventos",
+    "fr": "Événements",
+    "it": "Eventi",
+    "ja": "イベント",
+    "ko": "이벤트",
+    "ru": "События"
+  },
+  "流行": {
+    "de": "Trends",
+    "en": "Trending",
+    "es": "Tendencias",
+    "fr": "Tendances",
+    "it": "Tendenze",
+    "ja": "トレンド",
+    "ko": "트렌드",
+    "ru": "Тренды"
+  },
+  "流行文化": {
+    "de": "Popkultur",
+    "en": "Pop Culture",
+    "es": "Cultura pop",
+    "fr": "Culture pop",
+    "it": "Cultura pop",
+    "ja": "ポップカルチャー",
+    "ko": "대중문화",
+    "ru": "Поп-культура"
+  },
+  "测评": {
+    "de": "Produkttests",
+    "en": "Hands-on Reviews",
+    "es": "Pruebas de producto",
+    "fr": "Bancs d'essai",
+    "it": "Test di prodotto",
+    "ja": "製品レビュー",
+    "ko": "실사용 테스트",
+    "ru": "Тестирование"
+  },
+  "海淘评测": {
+    "de": "Auslandsshopping-Tests",
+    "en": "Cross-Border Shopping Reviews",
+    "es": "Reseñas de compras internacionales",
+    "fr": "Tests d'achats à l'étranger",
+    "it": "Recensioni shopping transfrontaliero",
+    "ja": "海外通販レビュー",
+    "ko": "해외 직구 후기",
+    "ru": "Обзоры зарубежных покупок"
+  },
+  "消费数码": {
+    "de": "Verbraucher-Elektronik",
+    "en": "Consumer Tech",
+    "es": "Electrónica personal",
+    "fr": "Appareils numériques",
+    "it": "Tecnologia di consumo",
+    "ja": "デジタル機器",
+    "ko": "소비자용 디지털",
+    "ru": "Потребительская цифровая техника"
+  },
+  "消费电子": {
+    "de": "Unterhaltungselektronik",
+    "en": "Consumer Electronics",
+    "es": "Electrónica de consumo",
+    "fr": "Électronique grand public",
+    "it": "Elettronica di consumo",
+    "ja": "コンシューマー向け家電",
+    "ko": "가전제품",
+    "ru": "Потребительская электроника"
+  },
+  "消费科技": {
+    "de": "Konsumententechnik",
+    "en": "Consumer Technology",
+    "es": "Tecnología de consumo",
+    "fr": "Technologies grand public",
+    "it": "Tecnologia di consumo",
+    "ja": "民生用テクノロジー",
+    "ko": "소비자 기술",
+    "ru": "Потребительские технологии"
+  },
+  "消费者": {
+    "de": "Verbraucher",
+    "en": "Consumers",
+    "es": "Consumidores",
+    "fr": "Consommateurs",
+    "it": "Consumatori",
+    "ja": "消費者",
+    "ko": "소비자",
+    "ru": "Потребители"
+  },
+  "深度乐迷": {
+    "de": "Passionate Musikfans",
+    "en": "Audiophiles \u0026 Music Geeks",
+    "es": "Melómanos empedernidos",
+    "fr": "Mélomanes avertis",
+    "it": "Appassionati di musica",
+    "ja": "熱心な音楽ファン",
+    "ko": "음악 애호가",
+    "ru": "Музыкальные энтузиасты"
+  },
+  "深度书评": {
+    "de": "Ausführliche Buchkritiken",
+    "en": "In-depth Book Reviews",
+    "es": "Reseñas literarias en profundidad",
+    "fr": "Critiques littéraires de fond",
+    "it": "Recensioni letterarie approfondite",
+    "ja": "深層書評",
+    "ko": "심층 서평",
+    "ru": "Развёрнутые книжные обзоры"
+  },
+  "深度分析": {
+    "de": "Tiefenanalyse",
+    "en": "In-depth Analysis",
+    "es": "Análisis exhaustivo",
+    "fr": "Analyse approfondie",
+    "it": "Analisi approfondita",
+    "ja": "詳細分析",
+    "ko": "심층 분석",
+    "ru": "Глубокий анализ"
+  },
+  "深度技术": {
+    "de": "Tiefe technische Einblicke",
+    "en": "In-depth Tech",
+    "es": "Tecnología en profundidad",
+    "fr": "Technologies spécialisées",
+    "it": "Tecnologia specialistica",
+    "ja": "技術深掘り",
+    "ko": "심층 기술",
+    "ru": "Глубокие технологии"
+  },
+  "深度报道": {
+    "de": "Hintergrundberichte",
+    "en": "Investigative Reports",
+    "es": "Reportajes en profundidad",
+    "fr": "Grands reportages",
+    "it": "Inchieste",
+    "ja": "深層リポート",
+    "ko": "심층 보도",
+    "ru": "Глубокие репортажи"
+  },
+  "深度探讨": {
+    "de": "Tiefenanalysen",
+    "en": "Deep Dives",
+    "es": "Discusión a fondo",
+    "fr": "Analyses poussées",
+    "it": "Approfondimenti",
+    "ja": "徹底議論",
+    "ko": "심층 탐구",
+    "ru": "Углубленные дискуссии"
+  },
+  "深度文章": {
+    "de": "Fundierte Artikel",
+    "en": "In-depth Articles",
+    "es": "Artículos en profundidad",
+    "fr": "Articles de fond",
+    "it": "Articoli approfonditi",
+    "ja": "深掘り記事",
+    "ko": "심층 기사",
+    "ru": "Глубокие статьи"
+  },
+  "深度时政": {
+    "de": "Politische Tiefenanalysen",
+    "en": "In-depth Current Affairs",
+    "es": "Política en profundidad",
+    "fr": "Analyses politiques de fond",
+    "it": "Approfondimenti di attualità",
+    "ja": "深層時事解説",
+    "ko": "심층 시사정치",
+    "ru": "Глубокая аналитика политики"
+  },
+  "深度研究": {
+    "de": "Grundlagenforschung",
+    "en": "In-depth Research",
+    "es": "Investigación profunda",
+    "fr": "Recherche approfondie",
+    "it": "Ricerca approfondita",
+    "ja": "詳細研究",
+    "ko": "심층 연구",
+    "ru": "Глубокие исследования"
+  },
+  "深度讨论": {
+    "de": "Tiefgehende Diskussionen",
+    "en": "In-depth Discussions",
+    "es": "Debates en profundidad",
+    "fr": "Débats approfondis",
+    "it": "Discussioni approfondite",
+    "ja": "ディープな議論",
+    "ko": "심층 토론",
+    "ru": "Глубокие обсуждения"
+  },
+  "深度评测": {
+    "de": "Ausführliche Tests",
+    "en": "In-depth Reviews",
+    "es": "Pruebas exhaustivas",
+    "fr": "Analyses approfondies",
+    "it": "Test approfonditi",
+    "ja": "徹底検証",
+    "ko": "심층 리뷰",
+    "ru": "Глубокие тесты"
+  },
+  "深度长文": {
+    "de": "Longform-Artikel",
+    "en": "Long-form Reads",
+    "es": "Artículos de fondo",
+    "fr": "Articles de fond",
+    "it": "Approfondimenti lunghi",
+    "ja": "長文記事",
+    "ko": "장문 심층기사",
+    "ru": "Лонгриды"
+  },
+  "深度阅读": {
+    "de": "Tiefes Lesen",
+    "en": "Deep Reading",
+    "es": "Lectura profunda",
+    "fr": "Lecture approfondie",
+    "it": "Lettura profonda",
+    "ja": "熟読・ディープリーディング",
+    "ko": "심층 독서",
+    "ru": "Вдумчивое чтение"
+  },
+  "深网": {
+    "de": "Deep Web",
+    "en": "Deep Web",
+    "es": "Web profunda",
+    "fr": "Deep Web",
+    "it": "Deep Web",
+    "ja": "ディープウェブ",
+    "ko": "딥웹",
+    "ru": "Глубинный веб"
+  },
+  "深网搜索": {
+    "de": "Deep-Web-Suche",
+    "en": "Deep Web Search",
+    "es": "Búsqueda web profunda",
+    "fr": "Recherche Deep Web",
+    "it": "Ricerca Deep Web",
+    "ja": "ディープウェブ検索",
+    "ko": "딥웹 검색",
+    "ru": "Поиск по глубинному вебу"
+  },
+  "游戏历史": {
+    "de": "Gaming-Geschichte",
+    "en": "Gaming History",
+    "es": "Historia de los videojuegos",
+    "fr": "Histoire du jeu vidéo",
+    "it": "Storia dei videogiochi",
+    "ja": "ゲームの歴史",
+    "ko": "게임 역사",
+    "ru": "История игр"
+  },
+  "游戏数据": {
+    "de": "Spieldaten",
+    "en": "Game Data",
+    "es": "Datos de videojuegos",
+    "fr": "Données de jeu",
+    "it": "Dati di gioco",
+    "ja": "ゲームデータ",
+    "ko": "게임 데이터",
+    "ru": "Игровая статистика"
+  },
+  "游戏文化": {
+    "de": "Gaming-Kultur",
+    "en": "Gaming Culture",
+    "es": "Cultura gamer",
+    "fr": "Culture du jeu vidéo",
+    "it": "Cultura del gaming",
+    "ja": "ゲームカルチャー",
+    "ko": "게임 문화",
+    "ru": "Игровая культура"
+  },
+  "游戏日志": {
+    "de": "Gaming-Logs",
+    "en": "Gaming Logs",
+    "es": "Diarios de juego",
+    "fr": "Journaux de jeu",
+    "it": "Diari di gioco",
+    "ja": "ゲームプレイ記録",
+    "ko": "게임 일지",
+    "ru": "Игровые дневники"
+  },
+  "游戏研究": {
+    "de": "Spielwissenschaft",
+    "en": "Game Studies",
+    "es": "Estudios sobre videojuegos",
+    "fr": "Études sur les jeux vidéo",
+    "it": "Game studies",
+    "ja": "ゲーム研究",
+    "ko": "게임학",
+    "ru": "Исследования игр"
+  },
+  "游戏硬件": {
+    "de": "Gaming-Hardware",
+    "en": "Gaming Hardware",
+    "es": "Hardware gaming",
+    "fr": "Matériel gaming",
+    "it": "Hardware gaming",
+    "ja": "ゲーム用ハードウェア",
+    "ko": "게이밍 하드웨어",
+    "ru": "Игровое железо"
+  },
+  "游戏论坛": {
+    "de": "Gaming-Foren",
+    "en": "Gaming Forums",
+    "es": "Foros de videojuegos",
+    "fr": "Forums de jeux vidéo",
+    "it": "Forum di videogiochi",
+    "ja": "ゲーム掲示板",
+    "ko": "게임 게시판",
+    "ru": "Игровые форумы"
+  },
+  "游戏资料": {
+    "de": "Gaming-Ressourcen",
+    "en": "Game Resources",
+    "es": "Recursos de videojuegos",
+    "fr": "Ressources de jeux",
+    "it": "Risorse per videogiochi",
+    "ja": "ゲーム資料",
+    "ko": "게임 공략/자료",
+    "ru": "База знаний по играм"
+  },
+  "漫画": {
+    "de": "Manga",
+    "en": "Manga",
+    "es": "Manga",
+    "fr": "Manga",
+    "it": "Manga",
+    "ja": "マンガ",
+    "ko": "만화",
+    "ru": "Манга"
+  },
+  "灵感": {
+    "de": "Inspiration",
+    "en": "Inspiration",
+    "es": "Inspiración",
+    "fr": "Inspiration",
+    "it": "Ispirazione",
+    "ja": "インスピレーション",
+    "ko": "영감",
+    "ru": "Вдохновение"
+  },
+  "爆料": {
+    "de": "Leaks \u0026 Enthüllungen",
+    "en": "Leaks \u0026 Scoops",
+    "es": "Filtraciones y exclusivas",
+    "fr": "Fuites et révélations",
+    "it": "Scoop e indiscrezioni",
+    "ja": "リーク・内部告発",
+    "ko": "폭로/루머",
+    "ru": "Утечки и инсайды"
+  },
+  "物理": {
+    "de": "Physik",
+    "en": "Physics",
+    "es": "Física",
+    "fr": "Physique",
+    "it": "Fisica",
+    "ja": "物理学",
+    "ko": "물리학",
+    "ru": "Физика"
+  },
+  "特稿": {
+    "de": "Reportagen \u0026 Features",
+    "en": "Feature Stories",
+    "es": "Reportajes especiales",
+    "fr": "Grands articles",
+    "it": "Articoli speciali",
+    "ja": "特集記事",
+    "ko": "기획 특집",
+    "ru": "Спецрепортажи"
+  },
+  "独立": {
+    "de": "Unabhängig",
+    "en": "Independent",
+    "es": "Independiente",
+    "fr": "Indépendant",
+    "it": "Indipendente",
+    "ja": "インディペンデント",
+    "ko": "독립",
+    "ru": "Независимый"
+  },
+  "独立个人网站": {
+    "de": "Persönliche Indie-Webseiten",
+    "en": "Personal Indie Sites",
+    "es": "Páginas web personales",
+    "fr": "Sites personnels indépendants",
+    "it": "Siti web personali indipendenti",
+    "ja": "個人の独立系サイト",
+    "ko": "개인 독립 웹사이트",
+    "ru": "Личные инди-сайты"
+  },
+  "独立书评": {
+    "de": "Unabhängige Buchrezensionen",
+    "en": "Indie Book Reviews",
+    "es": "Reseñas de libros independientes",
+    "fr": "Critiques littéraires indépendantes",
+    "it": "Recensioni letterarie indipendenti",
+    "ja": "独立系書評",
+    "ko": "독립 서평",
+    "ru": "Независимые книжные обзоры"
+  },
+  "独立作者": {
+    "de": "Indie-Autoren",
+    "en": "Indie Authors",
+    "es": "Autores independientes",
+    "fr": "Auteurs indépendants",
+    "it": "Autori indipendenti",
+    "ja": "インディーズ作家",
+    "ko": "독립 작가",
+    "ru": "Независимые авторы"
+  },
+  "独立写作": {
+    "de": "Unabhängiges Schreiben",
+    "en": "Indie Writing",
+    "es": "Escritura independiente",
+    "fr": "Écriture indépendante",
+    "it": "Scrittura indipendente",
+    "ja": "インディー執筆",
+    "ko": "독립 작술",
+    "ru": "Независимые авторы"
+  },
+  "独立出版": {
+    "de": "Selbstverlag",
+    "en": "Self-Publishing",
+    "es": "Autoedición",
+    "fr": "Auto-édition",
+    "it": "Auto-pubblicazione",
+    "ja": "個人出版",
+    "ko": "독립 출판",
+    "ru": "Самиздат"
+  },
+  "独立创作": {
+    "de": "Indie-Kreation",
+    "en": "Indie Creation",
+    "es": "Creación independiente",
+    "fr": "Création indépendante",
+    "it": "Creazione indipendente",
+    "ja": "インディー制作",
+    "ko": "독립 창작",
+    "ru": "Инди-творчество"
+  },
+  "独立博客": {
+    "de": "Indie-Blogs",
+    "en": "Indie Blogs",
+    "es": "Blogs independientes",
+    "fr": "Blogs indépendants",
+    "it": "Blog indipendenti",
+    "ja": "個人ブログ",
+    "ko": "독립 블로그",
+    "ru": "Инди-блоги"
+  },
+  "独立开发": {
+    "de": "Indie-Entwicklung",
+    "en": "Indie Development",
+    "es": "Desarrollo independiente",
+    "fr": "Développement indépendant",
+    "it": "Sviluppo indipendente",
+    "ja": "個人開発・インディー開発",
+    "ko": "인디 개발",
+    "ru": "Инди-разработка"
+  },
+  "独立思想": {
+    "de": "Freidenkertum",
+    "en": "Independent Thinking",
+    "es": "Pensamiento independiente",
+    "fr": "Pensée libre",
+    "it": "Libero pensiero",
+    "ja": "独自の思想",
+    "ko": "독립적 사고",
+    "ru": "Независимая мысль"
+  },
+  "独立思考": {
+    "de": "Kritisches Denken",
+    "en": "Critical Thinking",
+    "es": "Pensamiento crítico",
+    "fr": "Pensée critique",
+    "it": "Pensiero critico",
+    "ja": "独自の視点",
+    "ko": "독립적 사고",
+    "ru": "Независимое мышление"
+  },
+  "独立播客": {
+    "de": "Indie-Podcasts",
+    "en": "Indie Podcasts",
+    "es": "Pódcasts independientes",
+    "fr": "Podcasts indépendants",
+    "it": "Podcast indipendenti",
+    "ja": "インディーポッドキャスト",
+    "ko": "독립 팟캐스트",
+    "ru": "Инди-подкасты"
+  },
+  "独立文化": {
+    "de": "Indie-Kultur",
+    "en": "Indie Culture",
+    "es": "Cultura indie",
+    "fr": "Culture indie",
+    "it": "Cultura indipendente",
+    "ja": "インディーズ文化",
+    "ko": "독립 문화",
+    "ru": "Инди-культура"
+  },
+  "独立文学": {
+    "de": "Indie-Literatur",
+    "en": "Indie Literature",
+    "es": "Literatura independiente",
+    "fr": "Littérature indépendante",
+    "it": "Letteratura indipendente",
+    "ja": "インディペンデント文学",
+    "ko": "독립 문학",
+    "ru": "Инди-литература"
+  },
+  "独立杂志": {
+    "de": "Indie-Magazine",
+    "en": "Indie Magazines",
+    "es": "Revistas independientes",
+    "fr": "Magazines indépendants",
+    "it": "Riviste indipendenti",
+    "ja": "インディペンデント誌",
+    "ko": "독립 잡지",
+    "ru": "Инди-журналы"
+  },
+  "独立游戏": {
+    "de": "Indie-Spiele",
+    "en": "Indie Games",
+    "es": "Juegos indie",
+    "fr": "Jeux indépendants",
+    "it": "Giochi indie",
+    "ja": "インディーゲーム",
+    "ko": "인디 게임",
+    "ru": "Инди-игры"
+  },
+  "独立电影": {
+    "de": "Indie-Filme",
+    "en": "Indie Cinema",
+    "es": "Cine independiente",
+    "fr": "Cinéma indépendant",
+    "it": "Cinema indipendente",
+    "ja": "インディペンデント映画",
+    "ko": "독립 영화",
+    "ru": "Инди-кино"
+  },
+  "独立研究": {
+    "de": "Unabhängige Forschung",
+    "en": "Independent Research",
+    "es": "Investigación independiente",
+    "fr": "Recherche indépendante",
+    "it": "Ricerca indipendente",
+    "ja": "独立研究",
+    "ko": "독립 연구",
+    "ru": "Независимые исследования"
+  },
+  "独立科技博客": {
+    "de": "Unabhängige Tech-Blogs",
+    "en": "Indie Tech Blogs",
+    "es": "Blogs tecnológicos independientes",
+    "fr": "Blogs tech indépendants",
+    "it": "Blog tecnologici indipendenti",
+    "ja": "個人テクノロジーブログ",
+    "ko": "독립 테크 블로그",
+    "ru": "Независимые техноблоги"
+  },
+  "独立站点": {
+    "de": "Indie-Websites",
+    "en": "Indie Sites",
+    "es": "Sitios indie",
+    "fr": "Sites indés",
+    "it": "Siti indie",
+    "ja": "個人サイト",
+    "ko": "개인 사이트",
+    "ru": "Инди-сайты"
+  },
+  "独立索引": {
+    "de": "Unabhängiger Index",
+    "en": "Independent Index",
+    "es": "Índice independiente",
+    "fr": "Index indépendant",
+    "it": "Indice indipendente",
+    "ja": "独立インデックス",
+    "ko": "독립 색인",
+    "ru": "Независимый индекс"
+  },
+  "独立网站": {
+    "de": "Unabhängige Webseiten",
+    "en": "Indie Websites",
+    "es": "Sitios independientes",
+    "fr": "Sites indépendants",
+    "it": "Siti indipendenti",
+    "ja": "独立系サイト",
+    "ko": "독립 웹사이트",
+    "ru": "Независимые сайты"
+  },
+  "独立网页": {
+    "de": "Indie-Webseiten",
+    "en": "Indie Web",
+    "es": "Web independiente",
+    "fr": "Web indépendant",
+    "it": "Web indipendente",
+    "ja": "インディーWeb",
+    "ko": "인디 웹",
+    "ru": "Инди-веб"
+  },
+  "独立艺术": {
+    "de": "Indie-Kunst",
+    "en": "Indie Art",
+    "es": "Arte independiente",
+    "fr": "Art indépendant",
+    "it": "Arte indipendente",
+    "ja": "インディーアート",
+    "ko": "독립 예술",
+    "ru": "Инди-арт"
+  },
+  "独立调查": {
+    "de": "Unabhängige Recherchen",
+    "en": "Independent Journalism",
+    "es": "Periodismo independiente de investigación",
+    "fr": "Enquêtes indépendantes",
+    "it": "Inchieste indipendenti",
+    "ja": "独自の調査報道",
+    "ko": "독립 탐사보도",
+    "ru": "Независимые расследования"
+  },
+  "独立软件": {
+    "de": "Indie-Software",
+    "en": "Indie Software",
+    "es": "Software independiente",
+    "fr": "Logiciels indépendants",
+    "it": "Software indipendente",
+    "ja": "インディーソフト",
+    "ko": "독립 소프트웨어",
+    "ru": "Инди-софт"
+  },
+  "玩家评论": {
+    "de": "Spielerbewertungen",
+    "en": "Gamer Reviews",
+    "es": "Reseñas de jugadores",
+    "fr": "Avis de joueurs",
+    "it": "Recensioni dei giocatori",
+    "ja": "プレイヤーレビュー",
+    "ko": "유저 리뷰",
+    "ru": "Отзывы игроков"
+  },
+  "现代UI": {
+    "de": "Modernes UI",
+    "en": "Modern UI",
+    "es": "Interfaz moderna",
+    "fr": "Interface moderne",
+    "it": "UI moderna",
+    "ja": "モダンUI",
+    "ko": "현대적 UI",
+    "ru": "Современный интерфейс"
+  },
+  "现代文学": {
+    "de": "Moderne Literatur",
+    "en": "Modern Literature",
+    "es": "Literatura moderna",
+    "fr": "Littérature moderne",
+    "it": "Letteratura moderna",
+    "ja": "現代文学",
+    "ko": "현대 문학",
+    "ru": "Современная литература"
+  },
+  "现代论坛": {
+    "de": "Moderne Foren",
+    "en": "Modern Forums",
+    "es": "Foros modernos",
+    "fr": "Forums modernes",
+    "it": "Forum moderni",
+    "ja": "モダンフォーラム",
+    "ko": "모던 포럼",
+    "ru": "Современные форумы"
+  },
+  "理性主义": {
+    "de": "Rationalismus",
+    "en": "Rationalism",
+    "es": "Racionalismo",
+    "fr": "Rationalisme",
+    "it": "Razionalismo",
+    "ja": "合理主義",
+    "ko": "합리주의",
+    "ru": "Рационализм"
+  },
+  "理性派": {
+    "de": "Rationalisten",
+    "en": "Rationalists",
+    "es": "Racionalistas",
+    "fr": "Rationalistes",
+    "it": "Razionalisti",
+    "ja": "合理主義者",
+    "ko": "이성주의자",
+    "ru": "Рационалисты"
+  },
+  "生产力": {
+    "de": "Produktivität",
+    "en": "Productivity",
+    "es": "Productividad",
+    "fr": "Productivité",
+    "it": "Produttività",
+    "ja": "生産性",
+    "ko": "생산성",
+    "ru": "Продуктивность"
+  },
+  "生活博客": {
+    "de": "Lifestyle-Blogs",
+    "en": "Lifestyle Blogs",
+    "es": "Blogs de vida diaria",
+    "fr": "Blogs art de vivre",
+    "it": "Blog di vita quotidiana",
+    "ja": "ライフスタイルブログ",
+    "ko": "일상 블로그",
+    "ru": "Блоги о жизни"
+  },
+  "生活方式": {
+    "de": "Lifestyle",
+    "en": "Lifestyle",
+    "es": "Estilo de vida",
+    "fr": "Mode de vie",
+    "it": "Stile di vita",
+    "ja": "ライフスタイル",
+    "ko": "라이프스타일",
+    "ru": "Стиль жизни"
+  },
+  "生活经验": {
+    "de": "Lebenserfahrung",
+    "en": "Life Hacks \u0026 Advice",
+    "es": "Consejos prácticos de vida",
+    "fr": "Conseils du quotidien",
+    "it": "Consigli di vita quotidiana",
+    "ja": "生活の知恵",
+    "ko": "생활의 지혜",
+    "ru": "Жизненный опыт"
+  },
+  "生活论坛": {
+    "de": "Alltagsforen",
+    "en": "Life Forums",
+    "es": "Foros de vida cotidiana",
+    "fr": "Forums mode de vie",
+    "it": "Forum di vita quotidiana",
+    "ja": "生活掲示板",
+    "ko": "생활 게시판",
+    "ru": "Форумы о жизни"
+  },
+  "电子": {
+    "de": "Elektronik",
+    "en": "Electronics",
+    "es": "Electrónica",
+    "fr": "Électronique",
+    "it": "Elettronica",
+    "ja": "エレクトロニクス",
+    "ko": "전자",
+    "ru": "Электроника"
+  },
+  "电子书": {
+    "de": "E-Books",
+    "en": "E-books",
+    "es": "Libros electrónicos",
+    "fr": "E-books",
+    "it": "E-book",
+    "ja": "電子書籍",
+    "ko": "전자책",
+    "ru": "Электронные книги"
+  },
+  "电子产品": {
+    "de": "Elektronikprodukte",
+    "en": "Consumer Electronics",
+    "es": "Dispositivos electrónicos",
+    "fr": "Produits électroniques",
+    "it": "Prodotti elettronici",
+    "ja": "家電・電子機器",
+    "ko": "전자제품",
+    "ru": "Электроника"
+  },
+  "电子工程": {
+    "de": "Elektrotechnik",
+    "en": "Electronic Engineering",
+    "es": "Ingeniería electrónica",
+    "fr": "Génie électronique",
+    "it": "Ingegneria elettronica",
+    "ja": "電子工学",
+    "ko": "전자공학",
+    "ru": "Электротехника"
+  },
+  "电子音乐": {
+    "de": "Elektronische Musik",
+    "en": "Electronic Music",
+    "es": "Música electrónica",
+    "fr": "Musique électronique",
+    "it": "Musica elettronica",
+    "ja": "エレクトロニック・ミュージック",
+    "ko": "일렉트로닉 뮤직",
+    "ru": "Электронная музыка"
+  },
+  "电影": {
+    "de": "Filme",
+    "en": "Movies",
+    "es": "Películas",
+    "fr": "Films",
+    "it": "Film",
+    "ja": "映画",
+    "ko": "영화",
+    "ru": "Фильмы"
+  },
+  "电影迷": {
+    "de": "Cineasten",
+    "en": "Cinephiles",
+    "es": "Cinéfilos",
+    "fr": "Cinéphiles",
+    "it": "Cinefili",
+    "ja": "映画ファン",
+    "ko": "영화 애호가",
+    "ru": "Киноманы"
+  },
+  "电竞": {
+    "de": "E-Sport",
+    "en": "Esports",
+    "es": "Esports",
+    "fr": "Esport",
+    "it": "Esport",
+    "ja": "eスポーツ",
+    "ko": "e스포츠",
+    "ru": "Киберспорт"
+  },
+  "电脑超频": {
+    "de": "PC-Übertaktung",
+    "en": "PC Overclocking",
+    "es": "Overclocking de PC",
+    "fr": "Overclocking PC",
+    "it": "Overclock PC",
+    "ja": "PCオーバークロック",
+    "ko": "PC 오버클럭",
+    "ru": "Разгон ПК"
+  },
+  "症状查询": {
+    "de": "Symptom-Checker",
+    "en": "Symptom Checker",
+    "es": "Verificador de síntomas",
+    "fr": "Vérificateur de symptômes",
+    "it": "Controllo dei sintomi",
+    "ja": "症状チェック",
+    "ko": "증상 검색",
+    "ru": "Проверка симптомов"
+  },
+  "百科": {
+    "de": "Enzyklopädie",
+    "en": "Encyclopedia",
+    "es": "Enciclopedia",
+    "fr": "Encyclopédie",
+    "it": "Enciclopedia",
+    "ja": "百科事典",
+    "ko": "백과사전",
+    "ru": "Энциклопедия"
+  },
+  "百科全书": {
+    "de": "Enzyklopädien",
+    "en": "Encyclopedias",
+    "es": "Enciclopedias",
+    "fr": "Encyclopédies",
+    "it": "Enciclopedie",
+    "ja": "大百科事典",
+    "ko": "백과전서",
+    "ru": "Энциклопедии"
+  },
+  "直男社区": {
+    "de": "Männer-Community",
+    "en": "Men's Lifestyle Community",
+    "es": "Comunidad masculina",
+    "fr": "Communauté masculine",
+    "it": "Community maschile",
+    "ja": "男性コミュニティ",
+    "ko": "남성 커뮤니티",
+    "ru": "Мужское сообщество"
+  },
+  "知识": {
+    "de": "Wissen",
+    "en": "Knowledge",
+    "es": "Conocimiento",
+    "fr": "Savoir",
+    "it": "Conoscenza",
+    "ja": "ナレッジ",
+    "ko": "지식",
+    "ru": "Знания"
+  },
+  "知识分享": {
+    "de": "Wissensteilung",
+    "en": "Knowledge Sharing",
+    "es": "Compartir conocimientos",
+    "fr": "Partage des connaissances",
+    "it": "Condivisione della conoscenza",
+    "ja": "知識共有",
+    "ko": "지식 공유",
+    "ru": "Обмен знаниями"
+  },
+  "知识库": {
+    "de": "Wissensdatenbank",
+    "en": "Knowledge Base",
+    "es": "Base de conocimiento",
+    "fr": "Base de connaissances",
+    "it": "Knowledge base",
+    "ja": "ナレッジベース",
+    "ko": "지식 베이스",
+    "ru": "База знаний"
+  },
+  "研究": {
+    "de": "Forschung",
+    "en": "Research",
+    "es": "Investigación",
+    "fr": "Recherche",
+    "it": "Ricerca",
+    "ja": "研究",
+    "ko": "연구",
+    "ru": "Исследования"
+  },
+  "破解": {
+    "de": "Cracking",
+    "en": "Cracking",
+    "es": "Cracking",
+    "fr": "Piratage",
+    "it": "Cracking",
+    "ja": "クラッキング",
+    "ko": "크래킹",
+    "ru": "Взлом"
+  },
+  "硅谷": {
+    "de": "Silicon Valley",
+    "en": "Silicon Valley",
+    "es": "Silicon Valley",
+    "fr": "Silicon Valley",
+    "it": "Silicon Valley",
+    "ja": "シリコンバレー",
+    "ko": "실리콘밸리",
+    "ru": "Кремниевая долина"
+  },
+  "硬件交易": {
+    "de": "Hardware-Marktplatz",
+    "en": "Hardware Marketplace",
+    "es": "Compraventa de hardware",
+    "fr": "Achat-vente matériel",
+    "it": "Compravendita hardware",
+    "ja": "ハードウェア売買",
+    "ko": "하드웨어 장터",
+    "ru": "Торговля железом"
+  },
+  "硬件发烧友": {
+    "de": "Hardware-Enthusiasten",
+    "en": "Hardware Geeks",
+    "es": "Entusiastas del hardware",
+    "fr": "Passionnés de hardware",
+    "it": "Appassionati di hardware",
+    "ja": "自作派ハードウェアマニア",
+    "ko": "하드웨어 마니아",
+    "ru": "Аппаратные энтузиасты"
+  },
+  "硬件开发": {
+    "de": "Hardware-Entwicklung",
+    "en": "Hardware Development",
+    "es": "Desarrollo de hardware",
+    "fr": "Développement matériel",
+    "it": "Sviluppo hardware",
+    "ja": "ハードウェア開発",
+    "ko": "하드웨어 개발",
+    "ru": "Разработка аппаратного обеспечения"
+  },
+  "硬件新闻": {
+    "de": "Hardware-Nachrichten",
+    "en": "Hardware News",
+    "es": "Noticias sobre hardware",
+    "fr": "Actualités hardware",
+    "it": "Notizie hardware",
+    "ja": "ハードウェアニュース",
+    "ko": "하드웨어 뉴스",
+    "ru": "Новости железа"
+  },
+  "硬件社区": {
+    "de": "Hardware-Community",
+    "en": "Hardware Community",
+    "es": "Comunidad de hardware",
+    "fr": "Communauté hardware",
+    "it": "Community hardware",
+    "ja": "ハードウェアコミュニティ",
+    "ko": "하드웨어 커뮤니티",
+    "ru": "Сообщество о железе"
+  },
+  "硬件评测": {
+    "de": "Hardware-Tests",
+    "en": "Hardware Reviews",
+    "es": "Reseñas de hardware",
+    "fr": "Tests matériels",
+    "it": "Recensioni hardware",
+    "ja": "ハードウェアレビュー",
+    "ko": "하드웨어 벤치마크",
+    "ru": "Обзоры железа"
+  },
+  "硬核": {
+    "de": "Hardcore",
+    "en": "Hardcore",
+    "es": "Hardcore",
+    "fr": "Hardcore",
+    "it": "Hardcore",
+    "ja": "ハードコア",
+    "ko": "하드코어",
+    "ru": "Хардкор"
+  },
+  "硬核手工": {
+    "de": "Echtes Handwerk",
+    "en": "Master Craftsmanship",
+    "es": "Artesanía avanzada",
+    "fr": "Artisanat expert",
+    "it": "Artigianato d'eccellenza",
+    "ja": "本格派クラフト",
+    "ko": "정밀 수공예",
+    "ru": "Сложный крафтинг"
+  },
+  "硬核技术": {
+    "de": "Hardcore-Technik",
+    "en": "Hardcore Tech",
+    "es": "Tecnología pura",
+    "fr": "Technologie pointue",
+    "it": "Tecnologia pura",
+    "ja": "ディープテック",
+    "ko": "하드코어 기술",
+    "ru": "Хардкорные технологии"
+  },
+  "硬核数码": {
+    "de": "Hardcore-Gadgets",
+    "en": "Hardcore Digital",
+    "es": "Tecnología digital pura",
+    "fr": "Matériel numérique pointu",
+    "it": "Tecnologia digitale pura",
+    "ja": "玄人向けデジタル機器",
+    "ko": "하드코어 디지털",
+    "ru": "Хардкорная цифровая техника"
+  },
+  "硬核科技": {
+    "de": "Deep Tech",
+    "en": "Deep Tech",
+    "es": "Tecnología avanzada",
+    "fr": "Deep Tech",
+    "it": "Deep Tech",
+    "ja": "ディープテック",
+    "ko": "딥테크",
+    "ru": "Глубокие технологии"
+  },
+  "硬核编程": {
+    "de": "Hardcore-Coding",
+    "en": "Hardcore Programming",
+    "es": "Programación avanzada",
+    "fr": "Programmation avancée",
+    "it": "Programmazione avanzata",
+    "ja": "ディーププログラミング",
+    "ko": "하드코어 프로그래밍",
+    "ru": "Хардкорное программирование"
+  },
+  "硬核评测": {
+    "de": "Hardcore-Tests",
+    "en": "In-depth Benchmarks",
+    "es": "Análisis exhaustivos",
+    "fr": "Tests approfondis",
+    "it": "Recensioni approfondite",
+    "ja": "徹底検証レビュー",
+    "ko": "심층 벤치마크",
+    "ru": "Хардкорные обзоры"
+  },
+  "硬核长文": {
+    "de": "Anspruchsvolle Longreads",
+    "en": "Hardcore Essays",
+    "es": "Ensayos exhaustivos",
+    "fr": "Essais approfondis",
+    "it": "Saggi approfonditi",
+    "ja": "骨太長文コラム",
+    "ko": "전문 심층 장문",
+    "ru": "Хардкорные лонгриды"
+  },
+  "社交": {
+    "de": "Soziales",
+    "en": "Social",
+    "es": "Social",
+    "fr": "Réseaux sociaux",
+    "it": "Social",
+    "ja": "ソーシャル",
+    "ko": "소셜",
+    "ru": "Социальные сети"
+  },
+  "社交新闻": {
+    "de": "Social News",
+    "en": "Social News",
+    "es": "Noticias sociales",
+    "fr": "Actualités communautaires",
+    "it": "Social news",
+    "ja": "ソーシャルニュース",
+    "ko": "소셜 뉴스",
+    "ru": "Социальные новости"
+  },
+  "社会影响": {
+    "de": "Gesellschaftlicher Einfluss",
+    "en": "Social Impact",
+    "es": "Impacto social",
+    "fr": "Impact sociétal",
+    "it": "Impatto sociale",
+    "ja": "社会的影響",
+    "ko": "사회적 영향",
+    "ru": "Общественное влияние"
+  },
+  "社会技术": {
+    "de": "Soziotechnik",
+    "en": "Socio-Technical",
+    "es": "Sociotécnica",
+    "fr": "Sociotechnique",
+    "it": "Sociotecnica",
+    "ja": "社会情報技術",
+    "ko": "사회기술",
+    "ru": "Социотехнические системы"
+  },
+  "社会科学": {
+    "de": "Sozialwissenschaften",
+    "en": "Social Sciences",
+    "es": "Ciencias sociales",
+    "fr": "Sciences sociales",
+    "it": "Scienze sociali",
+    "ja": "社会科学",
+    "ko": "사회과학",
+    "ru": "Общественные науки"
+  },
+  "社会讨论": {
+    "de": "Gesellschaftliche Debatten",
+    "en": "Social Discussions",
+    "es": "Debates sociales",
+    "fr": "Débats de société",
+    "it": "Discussioni sociali",
+    "ja": "社会問題の議論",
+    "ko": "사회 토론",
+    "ru": "Общественные дискуссии"
+  },
+  "社科": {
+    "de": "Sozialwissenschaften",
+    "en": "Social Sciences",
+    "es": "Ciencias sociales",
+    "fr": "Sciences sociales",
+    "it": "Scienze sociali",
+    "ja": "社会科学",
+    "ko": "사회과학",
+    "ru": "Обществознание"
+  },
+  "科学哲学": {
+    "de": "Wissenschaftstheorie",
+    "en": "Philosophy of Science",
+    "es": "Filosofía de la ciencia",
+    "fr": "Philosophie des sciences",
+    "it": "Filosofia della scienza",
+    "ja": "科学哲学",
+    "ko": "과학철학",
+    "ru": "Философия науки"
+  },
+  "科学论坛": {
+    "de": "Wissenschaftsforen",
+    "en": "Science Forums",
+    "es": "Foros científicos",
+    "fr": "Forums scientifiques",
+    "it": "Forum scientifici",
+    "ja": "科学フォーラム",
+    "ko": "과학 포럼",
+    "ru": "Научные форумы"
+  },
+  "科幻": {
+    "de": "Science-Fiction",
+    "en": "Science Fiction",
+    "es": "Ciencia ficción",
+    "fr": "Science-fiction",
+    "it": "Fantascienza",
+    "ja": "SF",
+    "ko": "SF",
+    "ru": "Научная фантастика"
+  },
+  "科幻小说": {
+    "de": "Sci-Fi-Romane",
+    "en": "Sci-Fi Novels",
+    "es": "Novelas de ciencia ficción",
+    "fr": "Romans de science-fiction",
+    "it": "Romanzi di fantascienza",
+    "ja": "SF小説",
+    "ko": "SF 소설",
+    "ru": "Научная фантастика"
+  },
+  "科技前沿": {
+    "de": "Technologie-Frontier",
+    "en": "Tech Frontiers",
+    "es": "Vanguardia tecnológica",
+    "fr": "Frontières technologiques",
+    "it": "Frontiere tecnologiche",
+    "ja": "先端テクノロジー",
+    "ko": "기술의 최전선",
+    "ru": "Передовая науки и техники"
+  },
+  "科技博客": {
+    "de": "Technik-Blogs",
+    "en": "Technology Blogs",
+    "es": "Blogs de tecnología",
+    "fr": "Blogs high-tech",
+    "it": "Blog di tecnologia",
+    "ja": "テクノロジーブログ",
+    "ko": "테크 블로그",
+    "ru": "Техноблоги"
+  },
+  "科技文化": {
+    "de": "Technologiekultur",
+    "en": "Tech Culture",
+    "es": "Cultura tecnológica",
+    "fr": "Culture tech",
+    "it": "Cultura tecnologica",
+    "ja": "テクノロジーカルチャー",
+    "ko": "기술 문화",
+    "ru": "Технокультура"
+  },
+  "科技新闻": {
+    "de": "Tech-Nachrichten",
+    "en": "Tech News",
+    "es": "Noticias de tecnología",
+    "fr": "Actualités high-tech",
+    "it": "Notizie di tecnologia",
+    "ja": "テックニュース",
+    "ko": "기술 뉴스",
+    "ru": "Новости технологий"
+  },
+  "科技深度": {
+    "de": "Technologische Tiefe",
+    "en": "Deep Tech Insights",
+    "es": "Profundidad tecnológica",
+    "fr": "Analyses tech approfondies",
+    "it": "Approfondimento tecnologico",
+    "ja": "ディープな技術解説",
+    "ko": "심층 테크 인사이트",
+    "ru": "Глубокие обзоры технологий"
+  },
+  "科技视角": {
+    "de": "Technik-Perspektive",
+    "en": "Tech Perspective",
+    "es": "Perspectiva tecnológica",
+    "fr": "Perspective technologique",
+    "it": "Prospettiva tecnologica",
+    "ja": "技術的視点",
+    "ko": "기술적 시각",
+    "ru": "Технологический взгляд"
+  },
+  "科技讨论": {
+    "de": "Technik-Diskussionen",
+    "en": "Tech Discussions",
+    "es": "Discusiones tecnológicas",
+    "fr": "Débats technologiques",
+    "it": "Discussioni tecnologiche",
+    "ja": "テクノロジー議論",
+    "ko": "기술 토론",
+    "ru": "Обсуждения технологий"
+  },
+  "科技资讯": {
+    "de": "Technik-News",
+    "en": "Tech News \u0026 Info",
+    "es": "Información técnica",
+    "fr": "Actualités tech",
+    "it": "Notizie di settore tech",
+    "ja": "テック情報",
+    "ko": "테크 소식",
+    "ru": "ИТ-новости и обзоры"
+  },
+  "科普": {
+    "de": "Populärwissenschaft",
+    "en": "Popular Science",
+    "es": "Divulgación científica",
+    "fr": "Vulgarisation scientifique",
+    "it": "Divulgazione scientifica",
+    "ja": "ポピュラーサイエンス",
+    "ko": "대중 과학",
+    "ru": "Научпоп"
+  },
+  "移动开发": {
+    "de": "Mobile-Entwicklung",
+    "en": "Mobile Development",
+    "es": "Desarrollo móvil",
+    "fr": "Développement mobile",
+    "it": "Sviluppo mobile",
+    "ja": "モバイルアプリ開発",
+    "ko": "모바일 개발",
+    "ru": "Мобильная разработка"
+  },
+  "移动科技": {
+    "de": "Mobiltechnologie",
+    "en": "Mobile Tech",
+    "es": "Tecnología móvil",
+    "fr": "Technologies mobiles",
+    "it": "Tecnologia mobile",
+    "ja": "モバイル技術",
+    "ko": "모바일 테크",
+    "ru": "Мобильные технологии"
+  },
+  "移动端": {
+    "de": "Mobil",
+    "en": "Mobile",
+    "es": "Móvil",
+    "fr": "Mobile",
+    "it": "Mobile",
+    "ja": "モバイル",
+    "ko": "모바일",
+    "ru": "Мобильные устройства"
+  },
+  "移动设备": {
+    "de": "Mobilgeräte",
+    "en": "Mobile Devices",
+    "es": "Dispositivos móviles",
+    "fr": "Appareils mobiles",
+    "it": "Dispositivi mobili",
+    "ja": "モバイル端末",
+    "ko": "모바일 기기",
+    "ru": "Мобильные устройства"
+  },
+  "移动通信": {
+    "de": "Mobilfunk",
+    "en": "Mobile Communications",
+    "es": "Comunicaciones móviles",
+    "fr": "Communications mobiles",
+    "it": "Comunicazioni mobili",
+    "ja": "移動体通信",
+    "ko": "이동통신",
+    "ru": "Мобильная связь"
+  },
+  "程序员": {
+    "de": "Entwickler",
+    "en": "Programmers",
+    "es": "Programadores",
+    "fr": "Programmeurs",
+    "it": "Programmatori",
+    "ja": "プログラマー",
+    "ko": "프로그래머",
+    "ru": "Программисты"
+  },
+  "突发": {
+    "de": "Eilmeldungen",
+    "en": "Breaking News",
+    "es": "Última hora",
+    "fr": "Dernière minute",
+    "it": "Ultime notizie",
+    "ja": "速報",
+    "ko": "속보",
+    "ru": "Срочные новости"
+  },
+  "站长": {
+    "de": "Webmaster",
+    "en": "Webmasters",
+    "es": "Webmasters",
+    "fr": "Webmasters",
+    "it": "Webmaster",
+    "ja": "ウェブマスター",
+    "ko": "웹마스터",
+    "ru": "Вебмастера"
+  },
+  "策略游戏": {
+    "de": "Strategiespiele",
+    "en": "Strategy Games",
+    "es": "Juegos de estrategia",
+    "fr": "Jeux de stratégie",
+    "it": "Giochi di strategia",
+    "ja": "ストラテジーゲーム",
+    "ko": "전략 게임",
+    "ru": "Стратегии"
+  },
+  "篮球": {
+    "de": "Basketball",
+    "en": "Basketball",
+    "es": "Baloncesto",
+    "fr": "Basket-ball",
+    "it": "Pallacanestro",
+    "ja": "バスケットボール",
+    "ko": "농구",
+    "ru": "Баскетбол"
+  },
+  "粉丝创作": {
+    "de": "Fan-Kreationen",
+    "en": "Fan Works",
+    "es": "Obras de aficionados",
+    "fr": "Créations de fans",
+    "it": "Opere dei fan",
+    "ja": "ファンアート・ファン創作",
+    "ko": "팬 창작물",
+    "ru": "Фанатское творчество"
+  },
+  "精英社区": {
+    "de": "Elitäre Communities",
+    "en": "Elite Communities",
+    "es": "Comunidades de élite",
+    "fr": "Communautés exclusives",
+    "it": "Community d'élite",
+    "ja": "専門家コミュニティ",
+    "ko": "전문가 커뮤니티",
+    "ru": "Закрытые клубы"
+  },
+  "系统修改": {
+    "de": "Systemanpassung",
+    "en": "System Customization",
+    "es": "Modificación del sistema",
+    "fr": "Personnalisation du système",
+    "it": "Modifica del sistema",
+    "ja": "システム改造",
+    "ko": "시스템 튜닝/개조",
+    "ru": "Модификация системы"
+  },
+  "系统安全": {
+    "de": "Systemsicherheit",
+    "en": "System Security",
+    "es": "Seguridad de sistemas",
+    "fr": "Sécurité des systèmes",
+    "it": "Sicurezza dei sistemi",
+    "ja": "システムセキュリティ",
+    "ko": "시스템 보안",
+    "ru": "Системная безопасность"
+  },
+  "系统管理员": {
+    "de": "Systemadministratoren",
+    "en": "Sysadmins",
+    "es": "Administradores de sistemas",
+    "fr": "Administrateurs système",
+    "it": "Amministratori di sistema",
+    "ja": "システム管理者",
+    "ko": "시스템 관리자",
+    "ru": "Системные администраторы"
+  },
+  "纯人工": {
+    "de": "Handverlesen",
+    "en": "Human Curated",
+    "es": "Curación manual",
+    "fr": "Sélection humaine",
+    "it": "Curato manualmente",
+    "ja": "人力キュレーション",
+    "ko": "수동 큐레이션",
+    "ru": "Ручная модерация"
+  },
+  "纯文学": {
+    "de": "Belletristik",
+    "en": "Belles-Lettres",
+    "es": "Alta literatura",
+    "fr": "Belles-lettres",
+    "it": "Letteratura classica d'autore",
+    "ja": "純文学",
+    "ko": "순수 문학",
+    "ru": "Художественная литература"
+  },
+  "纯文本": {
+    "de": "Reiner Text",
+    "en": "Plain Text",
+    "es": "Texto plano",
+    "fr": "Texte brut",
+    "it": "Testo normale",
+    "ja": "プレーンテキスト",
+    "ko": "일반 텍스트",
+    "ru": "Простой текст"
+  },
+  "经典": {
+    "de": "Klassiker",
+    "en": "Classics",
+    "es": "Clásicos",
+    "fr": "Classiques",
+    "it": "Classici",
+    "ja": "クラシック",
+    "ko": "클래식/고전",
+    "ru": "Классика"
+  },
+  "经济": {
+    "de": "Wirtschaft",
+    "en": "Economy",
+    "es": "Economía",
+    "fr": "Économie",
+    "it": "Economia",
+    "ja": "経済",
+    "ko": "경제",
+    "ru": "Экономика"
+  },
+  "经验": {
+    "de": "Erfahrungen",
+    "en": "Life Experience",
+    "es": "Experiencias",
+    "fr": "Expérience partagée",
+    "it": "Esperienze di vita",
+    "ja": "ノウハウ・経験談",
+    "ko": "경험/노하우",
+    "ru": "Личный опыт"
+  },
+  "维基": {
+    "de": "Wiki",
+    "en": "Wiki",
+    "es": "Wiki",
+    "fr": "Wiki",
+    "it": "Wiki",
+    "ja": "ウィキ",
+    "ko": "위키",
+    "ru": "Вики"
+  },
+  "综合讨论": {
+    "de": "Allgemeine Diskussion",
+    "en": "General Discussion",
+    "es": "Discusión general",
+    "fr": "Discussions générales",
+    "it": "Discussione generale",
+    "ja": "総合雑談",
+    "ko": "종합 토론",
+    "ru": "Общий раздел"
+  },
+  "综合论坛": {
+    "de": "Allgemeine Foren",
+    "en": "General Forums",
+    "es": "Foros generales",
+    "fr": "Forums généralistes",
+    "it": "Forum generali",
+    "ja": "総合掲示板",
+    "ko": "종합 게시판",
+    "ru": "Универсальные форумы"
+  },
+  "编程学习": {
+    "de": "Programmieren lernen",
+    "en": "Learn to Code",
+    "es": "Aprender a programar",
+    "fr": "Apprendre à coder",
+    "it": "Imparare a programmare",
+    "ja": "プログラミング学習",
+    "ko": "프로그래밍 학습",
+    "ru": "Обучение кодингу"
+  },
+  "编程社区": {
+    "de": "Entwickler-Community",
+    "en": "Programming Community",
+    "es": "Comunidad de programación",
+    "fr": "Communauté de programmeurs",
+    "it": "Community di programmatori",
+    "ja": "プログラミングコミュニティ",
+    "ko": "코딩 커뮤니티",
+    "ru": "Сообщество программистов"
+  },
+  "编程资源": {
+    "de": "Programmier-Ressourcen",
+    "en": "Coding Resources",
+    "es": "Recursos de programación",
+    "fr": "Ressources de programmation",
+    "it": "Risorse di programmazione",
+    "ja": "プログラミングリソース",
+    "ko": "코딩 리소스",
+    "ru": "Ресурсы для программирования"
+  },
+  "网文": {
+    "de": "Web-Romane",
+    "en": "Web Novel",
+    "es": "Novelas web",
+    "fr": "Web-roman",
+    "it": "Web novel",
+    "ja": "Web小説",
+    "ko": "웹소설",
+    "ru": "Веб-новеллы"
+  },
+  "网漫": {
+    "de": "Webtoons",
+    "en": "Webtoons",
+    "es": "Webtoons",
+    "fr": "Webtoons",
+    "it": "Webtoon",
+    "ja": "ウェブトゥーン",
+    "ko": "웹툰",
+    "ru": "Вебтуны"
+  },
+  "网络历史": {
+    "de": "Internet-Geschichte",
+    "en": "Internet History",
+    "es": "Historia de internet",
+    "fr": "Histoire du Web",
+    "it": "Storia di internet",
+    "ja": "インターネット史",
+    "ko": "인터넷 역사",
+    "ru": "История интернета"
+  },
+  "网络工具": {
+    "de": "Netzwerk-Tools",
+    "en": "Network Tools",
+    "es": "Herramientas de red",
+    "fr": "Outils réseau",
+    "it": "Strumenti di rete",
+    "ja": "ネットワークツール",
+    "ko": "네트워크 도구",
+    "ru": "Сетевые утилиты"
+  },
+  "网络怀旧": {
+    "de": "Web-Nostalgie",
+    "en": "Web Nostalgia",
+    "es": "Nostalgia de internet",
+    "fr": "Nostalgie du web",
+    "it": "Nostalgia del web",
+    "ja": "ネットノスタルジー",
+    "ko": "웹 노스탤지어",
+    "ru": "Интернет-ностальгия"
+  },
+  "网络技术": {
+    "de": "Netzwerktechnik",
+    "en": "Network Engineering",
+    "es": "Tecnología de redes",
+    "fr": "Technologies réseau",
+    "it": "Tecnologia di rete",
+    "ja": "ネットワーク技術",
+    "ko": "네트워크 기술",
+    "ru": "Сетевые технологии"
+  },
+  "网络文学": {
+    "de": "Online-Literatur",
+    "en": "Web Literature",
+    "es": "Literatura en línea",
+    "fr": "Littérature en ligne",
+    "it": "Letteratura online",
+    "ja": "ネット文学",
+    "ko": "웹 문학",
+    "ru": "Сетевая литература"
+  },
+  "网络老炮": {
+    "de": "Netz-Veteranen",
+    "en": "Web Veterans",
+    "es": "Veteranos de la web",
+    "fr": "Vétérans du web",
+    "it": "Veterani del web",
+    "ja": "古参ネット民",
+    "ko": "인터넷 베테랑",
+    "ru": "Ветераны сети"
+  },
+  "网络迷因": {
+    "de": "Internet-Memes",
+    "en": "Internet Memes",
+    "es": "Memes de internet",
+    "fr": "Mèmes Internet",
+    "it": "Meme di internet",
+    "ja": "ネットミーム",
+    "ko": "인터넷 밈",
+    "ru": "Интернет-мемы"
+  },
+  "美食": {
+    "de": "Essen",
+    "en": "Food",
+    "es": "Gastronomía",
+    "fr": "Gastronomie",
+    "it": "Cibo",
+    "ja": "グルメ",
+    "ko": "맛집/음식",
+    "ru": "Еда"
+  },
+  "群组": {
+    "de": "Gruppen",
+    "en": "Groups",
+    "es": "Grupos",
+    "fr": "Groupes",
+    "it": "Gruppi",
+    "ja": "グループ",
+    "ko": "그룹",
+    "ru": "Группы"
+  },
+  "老派": {
+    "de": "Old School",
+    "en": "Old School",
+    "es": "Vieja escuela",
+    "fr": "Vieille école",
+    "it": "Vecchia scuola",
+    "ja": "オールドスクール",
+    "ko": "올드스쿨",
+    "ru": "Олдскул"
+  },
+  "老派网络": {
+    "de": "Old-School-Web",
+    "en": "Old Web",
+    "es": "Web tradicional",
+    "fr": "Vieux Web",
+    "it": "Web vecchia scuola",
+    "ja": "懐かしのWeb",
+    "ko": "올드스쿨 웹",
+    "ru": "Олдскульный интернет"
+  },
+  "老牌新闻": {
+    "de": "Traditionsmedien",
+    "en": "Legacy Journalism",
+    "es": "Periodismo veterano",
+    "fr": "Journalisme historique",
+    "it": "Giornalismo storico",
+    "ja": "老舗ニュース媒体",
+    "ko": "전통 언론",
+    "ru": "Старейшие издания"
+  },
+  "老牌杂志": {
+    "de": "Traditionsmagazine",
+    "en": "Legacy Magazines",
+    "es": "Revistas consagradas",
+    "fr": "Revues historiques",
+    "it": "Riviste storiche",
+    "ja": "伝統ある雑誌",
+    "ko": "전통 잡지",
+    "ru": "Старейшие журналы"
+  },
+  "老牌社区": {
+    "de": "Etablierte Foren",
+    "en": "Established Communities",
+    "es": "Comunidades veteranas",
+    "fr": "Communautés chevronnées",
+    "it": "Community storiche",
+    "ja": "歴史あるコミュニティ",
+    "ko": "장수 커뮤니티",
+    "ru": "Проверенные временем сообщества"
+  },
+  "老牌站点": {
+    "de": "Traditionswebseiten",
+    "en": "Legacy Sites",
+    "es": "Sitios históricos",
+    "fr": "Sites emblématiques",
+    "it": "Siti storici",
+    "ja": "老舗サイト",
+    "ko": "오랜 전통 사이트",
+    "ru": "Старейшие сайты"
+  },
+  "老牌论坛": {
+    "de": "Etablierte Foren",
+    "en": "Legacy Forums",
+    "es": "Foros veteranos",
+    "fr": "Forums historiques",
+    "it": "Forum storici",
+    "ja": "老舗掲示板",
+    "ko": "전통 명문 포럼",
+    "ru": "Старейшие форумы"
+  },
+  "耳机音频": {
+    "de": "Kopfhörer \u0026 Audio",
+    "en": "Headphone Audio",
+    "es": "Auriculares y sonido",
+    "fr": "Casques \u0026 Audio",
+    "it": "Cuffie e audio",
+    "ja": "ヘッドホン・音響",
+    "ko": "헤드폰/음향",
+    "ru": "Аудио и наушники"
+  },
+  "聊天体小说": {
+    "de": "Chat-Geschichten",
+    "en": "Chat Fiction",
+    "es": "Historias en chat",
+    "fr": "Fictions par messagerie",
+    "it": "Chat fiction",
+    "ja": "チャットノベル",
+    "ko": "채팅 소설",
+    "ru": "Чат-истории"
+  },
+  "联邦宇宙": {
+    "de": "Fediverse",
+    "en": "Fediverse",
+    "es": "Fediverso",
+    "fr": "Fédiverse",
+    "it": "Fediverso",
+    "ja": "フェディバース",
+    "ko": "페디버스",
+    "ru": "Федиверс"
+  },
+  "聚会": {
+    "de": "Meetups",
+    "en": "Meetups",
+    "es": "Encuentros",
+    "fr": "Rencontres",
+    "it": "Incontri",
+    "ja": "オフ会",
+    "ko": "모임",
+    "ru": "Встречи"
+  },
+  "聚合": {
+    "de": "Aggregation",
+    "en": "Aggregation",
+    "es": "Agregador",
+    "fr": "Agrégation",
+    "it": "Aggregazione",
+    "ja": "アグリゲーション",
+    "ko": "애그리게이션",
+    "ru": "Агрегатор"
+  },
+  "育儿": {
+    "de": "Elternschaft",
+    "en": "Parenting",
+    "es": "Crianza",
+    "fr": "Parentalité",
+    "it": "Genitorialità",
+    "ja": "子育て",
+    "ko": "육아",
+    "ru": "Воспитание детей"
+  },
+  "自由言论": {
+    "de": "Freie Meinungsäußerung",
+    "en": "Free Speech",
+    "es": "Libertad de expresión",
+    "fr": "Liberté d'expression",
+    "it": "Libertà di parola",
+    "ja": "言論の自由",
+    "ko": "표현의 자유",
+    "ru": "Свобода слова"
+  },
+  "艺人": {
+    "de": "Prominente",
+    "en": "Celebrities",
+    "es": "Celebridades",
+    "fr": "Célébrités",
+    "it": "Celebrità",
+    "ja": "芸能人",
+    "ko": "연예인",
+    "ru": "Знаменитости"
+  },
+  "艺术": {
+    "de": "Kunst",
+    "en": "Art",
+    "es": "Arte",
+    "fr": "Art",
+    "it": "Arte",
+    "ja": "アート",
+    "ko": "예술",
+    "ru": "Искусство"
+  },
+  "苹果": {
+    "de": "Apple",
+    "en": "Apple",
+    "es": "Apple",
+    "fr": "Apple",
+    "it": "Apple",
+    "ja": "Apple",
+    "ko": "애플",
+    "ru": "Apple"
+  },
+  "苹果生态": {
+    "de": "Apple-Ökosystem",
+    "en": "Apple Ecosystem",
+    "es": "Ecosistema Apple",
+    "fr": "Écosystème Apple",
+    "it": "Ecosistema Apple",
+    "ja": "Appleエコシステム",
+    "ko": "애플 생태계",
+    "ru": "Экосистема Apple"
+  },
+  "菜谱": {
+    "de": "Rezepte",
+    "en": "Recipes",
+    "es": "Recetas",
+    "fr": "Recettes",
+    "it": "Ricette",
+    "ja": "レシピ",
+    "ko": "레시피",
+    "ru": "Рецепты"
+  },
+  "营销": {
+    "de": "Marketing",
+    "en": "Marketing",
+    "es": "Marketing",
+    "fr": "Marketing",
+    "it": "Marketing",
+    "ja": "マーケティング",
+    "ko": "마케팅",
+    "ru": "Маркетинг"
+  },
+  "葡萄牙": {
+    "de": "Portugal",
+    "en": "Portugal",
+    "es": "Portugal",
+    "fr": "Portugal",
+    "it": "Portogallo",
+    "ja": "ポルトガル",
+    "ko": "포르투갈",
+    "ru": "Португалия"
+  },
+  "观点": {
+    "de": "Meinungen",
+    "en": "Opinions",
+    "es": "Opinión",
+    "fr": "Opinions",
+    "it": "Opinioni",
+    "ja": "オピニオン",
+    "ko": "오피니언",
+    "ru": "Мнения"
+  },
+  "视觉小说": {
+    "de": "Visual Novels",
+    "en": "Visual Novels",
+    "es": "Novelas visuales",
+    "fr": "Visual Novels",
+    "it": "Visual novel",
+    "ja": "ビジュアルノベル",
+    "ko": "비주얼 노벨",
+    "ru": "Визуальные новеллы"
+  },
+  "视觉艺术": {
+    "de": "Bildende Kunst",
+    "en": "Visual Arts",
+    "es": "Artes visuales",
+    "fr": "Arts visuels",
+    "it": "Arti visive",
+    "ja": "視覚芸術",
+    "ko": "시각 예술",
+    "ru": "Визуальные искусства"
+  },
+  "视频": {
+    "de": "Video",
+    "en": "Video",
+    "es": "Vídeo",
+    "fr": "Vidéo",
+    "it": "Video",
+    "ja": "動画",
+    "ko": "동영상",
+    "ru": "Видео"
+  },
+  "言情": {
+    "de": "Romantik",
+    "en": "Romance",
+    "es": "Romántica",
+    "fr": "Romance",
+    "it": "Romanzo rosa",
+    "ja": "恋愛小説",
+    "ko": "로맨스",
+    "ru": "Любовные романы"
+  },
+  "计算机新闻": {
+    "de": "Computer-Nachrichten",
+    "en": "Computer News",
+    "es": "Noticias de informática",
+    "fr": "Actualités informatiques",
+    "it": "Notizie di informatica",
+    "ja": "コンピュータニュース",
+    "ko": "컴퓨터 뉴스",
+    "ru": "Компьютерные новости"
+  },
+  "计算机科学": {
+    "de": "Informatik",
+    "en": "Computer Science",
+    "es": "Ciencias de la computación",
+    "fr": "Informatique théorique",
+    "it": "Informatica",
+    "ja": "情報科学・計算機科学",
+    "ko": "컴퓨터 과학",
+    "ru": "Информатика"
+  },
+  "认知科学": {
+    "de": "Kognitionswissenschaft",
+    "en": "Cognitive Science",
+    "es": "Ciencias cognitivas",
+    "fr": "Sciences cognitives",
+    "it": "Scienze cognitive",
+    "ja": "認知科学",
+    "ko": "인지과학",
+    "ru": "Когнитивные науки"
+  },
+  "讨论": {
+    "de": "Diskussionen",
+    "en": "Discussion",
+    "es": "Discusión",
+    "fr": "Discussions",
+    "it": "Discussioni",
+    "ja": "ディスカッション",
+    "ko": "토론",
+    "ru": "Обсуждения"
+  },
+  "访谈": {
+    "de": "Interviews",
+    "en": "Interviews",
+    "es": "Entrevistas",
+    "fr": "Entretiens",
+    "it": "Interviste",
+    "ja": "インタビュー",
+    "ko": "인터뷰",
+    "ru": "Интервью"
+  },
+  "评价": {
+    "de": "Bewertungen",
+    "en": "Reviews",
+    "es": "Reseñas",
+    "fr": "Évaluations",
+    "it": "Recensioni",
+    "ja": "レビュー",
+    "ko": "평가/리뷰",
+    "ru": "Отзывы"
+  },
+  "评分社区": {
+    "de": "Bewertungs-Communitys",
+    "en": "Rating Communities",
+    "es": "Comunidades de votación",
+    "fr": "Communautés de notation",
+    "it": "Community di valutazione",
+    "ja": "評価コミュニティ",
+    "ko": "평점 커뮤니티",
+    "ru": "Сообщества оценок"
+  },
+  "词典": {
+    "de": "Wörterbuch",
+    "en": "Dictionary",
+    "es": "Diccionarios",
+    "fr": "Dictionnaire",
+    "it": "Dizionario",
+    "ja": "辞書",
+    "ko": "사전",
+    "ru": "Словари"
+  },
+  "诗歌": {
+    "de": "Poesie",
+    "en": "Poetry",
+    "es": "Poesía",
+    "fr": "Poésie",
+    "it": "Poesia",
+    "ja": "詩",
+    "ko": "시",
+    "ru": "Поэзия"
+  },
+  "读书": {
+    "de": "Bücher lesen",
+    "en": "Book Reading",
+    "es": "Lectura de libros",
+    "fr": "Lecture de livres",
+    "it": "Lettura",
+    "ja": "読書",
+    "ko": "독서",
+    "ru": "Чтение книг"
+  },
+  "读书俱乐部": {
+    "de": "Buchclubs",
+    "en": "Book Clubs",
+    "es": "Clubes de lectura",
+    "fr": "Clubs de lecture",
+    "it": "Club del libro",
+    "ja": "読書クラブ",
+    "ko": "북클럽",
+    "ru": "Книжные клубы"
+  },
+  "读书生活": {
+    "de": "Leseralltag",
+    "en": "Bookish Life",
+    "es": "Vida lectora",
+    "fr": "Vie de lecteur",
+    "it": "Vita da lettore",
+    "ja": "本のある生活",
+    "ko": "독서 생활",
+    "ru": "Книжная жизнь"
+  },
+  "读书社区": {
+    "de": "Buch-Communitys",
+    "en": "Book Clubs \u0026 Communities",
+    "es": "Comunidades de lectura",
+    "fr": "Communautés de lecteurs",
+    "it": "Community di libri",
+    "ja": "読書コミュニティ",
+    "ko": "독서 커뮤니티",
+    "ru": "Книжные сообщества"
+  },
+  "读书记录": {
+    "de": "Lesetagebuch",
+    "en": "Reading Log",
+    "es": "Registro de lectura",
+    "fr": "Carnet de lecture",
+    "it": "Diario di lettura",
+    "ja": "読書メーター・記録",
+    "ko": "독서 기록",
+    "ru": "Дневник чтения"
+  },
+  "读者书评": {
+    "de": "Leserrezensionen",
+    "en": "Reader Reviews",
+    "es": "Opiniones de lectores",
+    "fr": "Avis de lecteurs",
+    "it": "Recensioni dei lettori",
+    "ja": "読者レビュー",
+    "ko": "독자 리뷰",
+    "ru": "Отзывы читателей"
+  },
+  "读者互动": {
+    "de": "Leserinteraktion",
+    "en": "Reader Interaction",
+    "es": "Interacción con lectores",
+    "fr": "Échanges avec les lecteurs",
+    "it": "Interazione con i lettori",
+    "ja": "読者交流",
+    "ko": "독자 소통",
+    "ru": "Взаимодействие с читателями"
+  },
+  "读者社区": {
+    "de": "Leser-Community",
+    "en": "Reader Community",
+    "es": "Comunidad de lectores",
+    "fr": "Communauté de lecteurs",
+    "it": "Community di lettori",
+    "ja": "読者コミュニティ",
+    "ko": "독자 커뮤니티",
+    "ru": "Сообщество читателей"
+  },
+  "财务": {
+    "de": "Finanzwesen",
+    "en": "Financial Accounting",
+    "es": "Finanzas corporativas",
+    "fr": "Finances",
+    "it": "Contabilità finanziaria",
+    "ja": "財務",
+    "ko": "재무",
+    "ru": "Финансовый учёт"
+  },
+  "购物": {
+    "de": "Shopping",
+    "en": "Shopping",
+    "es": "Compras",
+    "fr": "Achats",
+    "it": "Shopping",
+    "ja": "ショッピング",
+    "ko": "쇼핑",
+    "ru": "Покупки"
+  },
+  "资源": {
+    "de": "Ressourcen",
+    "en": "Resources",
+    "es": "Recursos",
+    "fr": "Ressources",
+    "it": "Risorse",
+    "ja": "リソース",
+    "ko": "리소스/자료",
+    "ru": "Ресурсы"
+  },
+  "资讯": {
+    "de": "Nachrichten \u0026 Infos",
+    "en": "Information \u0026 News",
+    "es": "Información",
+    "fr": "Informations",
+    "it": "Notizie e informazioni",
+    "ja": "情報・ニュース",
+    "ko": "정보/뉴스",
+    "ru": "Новости и инфо"
+  },
+  "超频": {
+    "de": "Overclocking",
+    "en": "Overclocking",
+    "es": "Overclocking",
+    "fr": "Overclocking",
+    "it": "Overclock",
+    "ja": "オーバークロック",
+    "ko": "오버클럭",
+    "ru": "Разгон"
+  },
+  "足球": {
+    "de": "Fußball",
+    "en": "Football",
+    "es": "Fútbol",
+    "fr": "Football",
+    "it": "Calcio",
+    "ja": "サッカー",
+    "ko": "축구",
+    "ru": "Футбол"
+  },
+  "车友": {
+    "de": "Autofreunde",
+    "en": "Motorists",
+    "es": "Aficionados a los coches",
+    "fr": "Passionnés d'autos",
+    "it": "Automobilisti",
+    "ja": "カーマニア",
+    "ko": "차량 동호인",
+    "ru": "Автолюбители"
+  },
+  "车友社区": {
+    "de": "Autofahrer-Community",
+    "en": "Car Enthusiasts",
+    "es": "Comunidad de automovilistas",
+    "fr": "Communauté automobile",
+    "it": "Community automobilistica",
+    "ja": "カーコミュニティ",
+    "ko": "자동차 동호회",
+    "ru": "Автоклубы"
+  },
+  "软件": {
+    "de": "Software",
+    "en": "Software",
+    "es": "Software",
+    "fr": "Logiciels",
+    "it": "Software",
+    "ja": "ソフトウェア",
+    "ko": "소프트웨어",
+    "ru": "Программы"
+  },
+  "软件下载": {
+    "de": "Software-Downloads",
+    "en": "Software Downloads",
+    "es": "Descargas de software",
+    "fr": "Téléchargement de logiciels",
+    "it": "Download software",
+    "ja": "ソフトウェアダウンロード",
+    "ko": "소프트웨어 다운로드",
+    "ru": "Загрузка программ"
+  },
+  "软件开发": {
+    "de": "Softwareentwicklung",
+    "en": "Software Development",
+    "es": "Desarrollo de software",
+    "fr": "Développement logiciel",
+    "it": "Sviluppo software",
+    "ja": "ソフトウェア開発",
+    "ko": "소프트웨어 개발",
+    "ru": "Разработка ПО"
+  },
+  "软硬件": {
+    "de": "Soft- \u0026 Hardware",
+    "en": "Software \u0026 Hardware",
+    "es": "Software y hardware",
+    "fr": "Matériel et logiciels",
+    "it": "Software e hardware",
+    "ja": "ソフトウェアとハードウェア",
+    "ko": "소프트웨어 및 하드웨어",
+    "ru": "Софт и железо"
+  },
+  "轻小说": {
+    "de": "Light Novel",
+    "en": "Light Novel",
+    "es": "Novela ligera",
+    "fr": "Light Novel",
+    "it": "Light Novel",
+    "ja": "ライトノベル",
+    "ko": "라이트 노벨",
+    "ru": "Ранобэ"
+  },
+  "轻量论坛": {
+    "de": "Leichtgewichtige Foren",
+    "en": "Lightweight Forums",
+    "es": "Foros ligeros",
+    "fr": "Forums légers",
+    "it": "Forum leggeri",
+    "ja": "軽量フォーラム",
+    "ko": "경량 포럼",
+    "ru": "Легковесные форумы"
+  },
+  "过滤大站": {
+    "de": "Große Seiten filtern",
+    "en": "Filter Big Sites",
+    "es": "Filtrar sitios grandes",
+    "fr": "Filtrage des grands sites",
+    "it": "Filtro grandi siti",
+    "ja": "大手サイト除外",
+    "ko": "대형 사이트 필터링",
+    "ru": "Фильтрация крупных сайтов"
+  },
+  "连载": {
+    "de": "Fortsetzungsreihe",
+    "en": "Serialization",
+    "es": "Serialización",
+    "fr": "Feuilleton",
+    "it": "Serializzazione",
+    "ja": "連載",
+    "ko": "연재",
+    "ru": "Сериализация"
+  },
+  "连载小说": {
+    "de": "Fortsetzungsromane",
+    "en": "Serialized Novels",
+    "es": "Novelas por entregas",
+    "fr": "Romans-feuilletons",
+    "it": "Romanzi a puntate",
+    "ja": "連載小説",
+    "ko": "연재 소설",
+    "ru": "Серийные романы"
+  },
+  "迷因": {
+    "de": "Memes",
+    "en": "Memes",
+    "es": "Memes",
+    "fr": "Mèmes",
+    "it": "Meme",
+    "ja": "ミーム",
+    "ko": "밈",
+    "ru": "Мемы"
+  },
+  "通信": {
+    "de": "Telekommunikation",
+    "en": "Telecommunications",
+    "es": "Telecomunicaciones",
+    "fr": "Télécommunications",
+    "it": "Telecomunicazioni",
+    "ja": "通信",
+    "ko": "통신",
+    "ru": "Связь"
+  },
+  "通信技术": {
+    "de": "Nachrichtentechnik",
+    "en": "Communications Tech",
+    "es": "Tecnología de comunicaciones",
+    "fr": "Technologies de communication",
+    "it": "Tecnologia delle comunicazioni",
+    "ja": "情報通信技術",
+    "ko": "통신 기술",
+    "ru": "Коммуникационные технологии"
+  },
+  "都市文化": {
+    "de": "Urbane Kultur",
+    "en": "Urban Culture",
+    "es": "Cultura urbana",
+    "fr": "Culture urbaine",
+    "it": "Cultura urbana",
+    "ja": "都市文化",
+    "ko": "도시 문화",
+    "ru": "Городская культура"
+  },
+  "金融": {
+    "de": "Finanzen",
+    "en": "Finance",
+    "es": "Finanzas",
+    "fr": "Finance",
+    "it": "Finanza",
+    "ja": "金融・ファイナンス",
+    "ko": "금융",
+    "ru": "Финансы"
+  },
+  "长尾挖掘": {
+    "de": "Long-Tail-Entdeckung",
+    "en": "Long Tail Discovery",
+    "es": "Búsqueda long tail",
+    "fr": "Découverte longue traîne",
+    "it": "Ricerca long tail",
+    "ja": "ロングテール発掘",
+    "ko": "롱테일 발굴",
+    "ru": "Поиск по длинному хвосту"
+  },
+  "长文": {
+    "de": "Langform-Texte",
+    "en": "Longform",
+    "es": "Textos extensos",
+    "fr": "Formats longs",
+    "it": "Articoli lunghi",
+    "ja": "長文エッセイ",
+    "ko": "장문 기사",
+    "ru": "Лонгриды"
+  },
+  "长篇科普": {
+    "de": "Wissenschafts-Longreads",
+    "en": "Long-form Science",
+    "es": "Divulgación científica extensa",
+    "fr": "Grands récits scientifiques",
+    "it": "Saggi di divulgazione scientifica",
+    "ja": "長編科学解説",
+    "ko": "장편 과학 칼럼",
+    "ru": "Научно-популярные лонгриды"
+  },
+  "门户": {
+    "de": "Portale",
+    "en": "Portals",
+    "es": "Portales",
+    "fr": "Portails",
+    "it": "Portali",
+    "ja": "ポータル",
+    "ko": "포털",
+    "ru": "Порталы"
+  },
+  "阅读": {
+    "de": "Lesen",
+    "en": "Reading",
+    "es": "Lectura",
+    "fr": "Lecture",
+    "it": "Lettura",
+    "ja": "読書",
+    "ko": "독서",
+    "ru": "Чтение"
+  },
+  "阅读推荐": {
+    "de": "Buchempfehlungen",
+    "en": "Reading Recommendations",
+    "es": "Lecturas recomendadas",
+    "fr": "Recommandations de lecture",
+    "it": "Letture consigliate",
+    "ja": "おすすめ本",
+    "ko": "추천 도서",
+    "ru": "Рекомендации книг"
+  },
+  "阅读社区": {
+    "de": "Lesegemeinschaften",
+    "en": "Reading Community",
+    "es": "Comunidad de lectores",
+    "fr": "Clubs de lecture",
+    "it": "Community di lettura",
+    "ja": "読書コミュニティ",
+    "ko": "독서 커뮤니티",
+    "ru": "Клуб читателей"
+  },
+  "隐私": {
+    "de": "Privatsphäre",
+    "en": "Privacy",
+    "es": "Privacidad",
+    "fr": "Confidentialité",
+    "it": "Privacy",
+    "ja": "プライバシー",
+    "ko": "개인정보 보호",
+    "ru": "Конфиденциальность"
+  },
+  "隐私保护": {
+    "de": "Datenschutz",
+    "en": "Privacy Protection",
+    "es": "Protección de privacidad",
+    "fr": "Protection de la vie privée",
+    "it": "Protezione della privacy",
+    "ja": "プライバシー保護",
+    "ko": "프라이버시 보호",
+    "ru": "Защита конфиденциальности"
+  },
+  "青年": {
+    "de": "Jugend",
+    "en": "Youth",
+    "es": "Juventud",
+    "fr": "Jeunesse",
+    "it": "Gioventù",
+    "ja": "青年",
+    "ko": "청년",
+    "ru": "Молодёжь"
+  },
+  "青年文化": {
+    "de": "Jugendkultur",
+    "en": "Youth Culture",
+    "es": "Cultura juvenil",
+    "fr": "Culture jeune",
+    "it": "Cultura giovanile",
+    "ja": "若者文化",
+    "ko": "청년 문화",
+    "ru": "Молодёжная культура"
+  },
+  "静态博客": {
+    "de": "Statische Blogs",
+    "en": "Static Blogs",
+    "es": "Blogs estáticos",
+    "fr": "Blogs statiques",
+    "it": "Blog statici",
+    "ja": "静的ブログ",
+    "ko": "정적 블로그",
+    "ru": "Статические блоги"
+  },
+  "静态网站": {
+    "de": "Statische Webseiten",
+    "en": "Static Websites",
+    "es": "Sitios web estáticos",
+    "fr": "Sites statiques",
+    "it": "Siti statici",
+    "ja": "静的サイト",
+    "ko": "정적 웹사이트",
+    "ru": "Статические сайты"
+  },
+  "非虚构": {
+    "de": "Sachliteratur",
+    "en": "Non-Fiction",
+    "es": "No ficción",
+    "fr": "Non-fiction",
+    "it": "Saggistica",
+    "ja": "ノンフィクション",
+    "ko": "논픽션",
+    "ru": "Нон-фикшн"
+  },
+  "音乐": {
+    "de": "Musik",
+    "en": "Music",
+    "es": "Música",
+    "fr": "Musique",
+    "it": "Musica",
+    "ja": "音楽",
+    "ko": "음악",
+    "ru": "Музыка"
+  },
+  "音乐制作": {
+    "de": "Musikproduktion",
+    "en": "Music Production",
+    "es": "Producción musical",
+    "fr": "Production musicale",
+    "it": "Produzione musicale",
+    "ja": "楽曲制作・DTM",
+    "ko": "음악 제작",
+    "ru": "Создание музыки"
+  },
+  "音乐评论": {
+    "de": "Musikkritiken",
+    "en": "Music Reviews",
+    "es": "Crítica musical",
+    "fr": "Critiques musicales",
+    "it": "Recensioni musicali",
+    "ja": "音楽レビュー",
+    "ko": "음악 리뷰",
+    "ru": "Музыкальные обзоры"
+  },
+  "音频": {
+    "de": "Audio",
+    "en": "Audio",
+    "es": "Audio",
+    "fr": "Audio",
+    "it": "Audio",
+    "ja": "音声",
+    "ko": "오디오",
+    "ru": "Аудио"
+  },
+  "音频技术": {
+    "de": "Tontechnik",
+    "en": "Audio Engineering",
+    "es": "Ingeniería de audio",
+    "fr": "Ingénierie audio",
+    "it": "Tecnologia audio",
+    "ja": "音響技術",
+    "ko": "음향 기술",
+    "ru": "Аудиотехнологии"
+  },
+  "顶级科研": {
+    "de": "Spitzenforschung",
+    "en": "Top Research",
+    "es": "Investigación puntera",
+    "fr": "Recherche de pointe",
+    "it": "Ricerca d'eccellenza",
+    "ja": "最高峰の学術研究",
+    "ko": "최고급 학술연구",
+    "ru": "Передовые научные исследования"
+  },
+  "预印本": {
+    "de": "Preprints",
+    "en": "Preprints",
+    "es": "Preprints",
+    "fr": "Prépublications",
+    "it": "Preprint",
+    "ja": "プレプリント",
+    "ko": "프리프린트",
+    "ru": "Препринты"
+  },
+  "风投": {
+    "de": "Risikokapital",
+    "en": "Venture Capital",
+    "es": "Inversión de riesgo",
+    "fr": "Capital-risque",
+    "it": "Venture capital",
+    "ja": "ベンチャーキャピタル",
+    "ko": "벤처 캐피털",
+    "ru": "Венчурные инвестиции"
+  },
+  "高中生": {
+    "de": "Gymnasiasten",
+    "en": "High School Students",
+    "es": "Estudiantes de secundaria",
+    "fr": "Lycéens",
+    "it": "Studenti superiori",
+    "ja": "高校生",
+    "ko": "고등학생",
+    "ru": "Старшеклассники"
+  },
+  "高性能": {
+    "de": "Hochleistung",
+    "en": "High Performance",
+    "es": "Alto rendimiento",
+    "fr": "Haute performance",
+    "it": "Alte prestazioni",
+    "ja": "ハイパフォーマンス",
+    "ko": "고성능",
+    "ru": "Высокая производительность"
+  },
+  "高科技": {
+    "de": "High-Tech",
+    "en": "High Tech",
+    "es": "Alta tecnología",
+    "fr": "Haute technologie",
+    "it": "Alta tecnologia",
+    "ja": "ハイテク",
+    "ko": "하이테크",
+    "ru": "Высокие технологии"
+  },
+  "高质量": {
+    "de": "Hohe Qualität",
+    "en": "High Quality",
+    "es": "Alta calidad",
+    "fr": "Haute qualité",
+    "it": "Alta qualità",
+    "ja": "高品質",
+    "ko": "고품질",
+    "ru": "Высокое качество"
+  },
+  "高质量讨论": {
+    "de": "Hochwertige Diskussionen",
+    "en": "High Quality Discussions",
+    "es": "Debates de calidad",
+    "fr": "Discussions de qualité",
+    "it": "Discussioni di qualità",
+    "ja": "質の高い議論",
+    "ko": "양질의 토론",
+    "ru": "Качественные дискуссии"
+  },
+  "黑客文化": {
+    "de": "Hacker-Kultur",
+    "en": "Hacker Culture",
+    "es": "Cultura hacker",
+    "fr": "Culture hacker",
+    "it": "Cultura hacker",
+    "ja": "ハッカー文化",
+    "ko": "해커 문화",
+    "ru": "Хакерская культура"
+  }
+}

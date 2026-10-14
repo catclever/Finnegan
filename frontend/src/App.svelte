@@ -499,20 +499,20 @@
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <div class="container" on:click={handleWindowClick}>
-  <OmniBar
-    bind:this={omniBarRef} {availableCommands} {searchSession} {focusedCardId} {cards} {localVaultPool} {capturePending}
-    {isScrolling}
-    bind:isOmnibarFocused onCaptureThought={handleCaptureThought} onCaptureChatLog={handleCaptureChatLog} onFreeSearch={handleFreeSearch}
-    onRevertSearch={revertSearchView} onCommitSearch={commitSearchView}
-    onExecuteCommand={handleExecuteCommand} onSearchLocalCards={SearchLocalCards}
-  />
-
   <CosmicStage
     {cards} {time} buguBeacon={activeBuguBeacon} buguSession={activeBuguSession}
     globalTilt={$globalTilt} scrollExpansion={$scrollExpansion} {focusedCardId} {hoveredCardId} {isOmnibarFocused}
     {lastScrollDirection}
     onToggleFocus={toggleFocus} onHoverCard={(id) => { hoveredCardId = id; resetTideTimer(); }}
     onLeaveCard={() => hoveredCardId = null} onBgClick={handleWindowClick}
+  />
+
+  <OmniBar
+    bind:this={omniBarRef} {availableCommands} {searchSession} {focusedCardId} {cards} {localVaultPool} {capturePending}
+    {isScrolling}
+    bind:isOmnibarFocused onCaptureThought={handleCaptureThought} onCaptureChatLog={handleCaptureChatLog} onFreeSearch={handleFreeSearch}
+    onRevertSearch={revertSearchView} onCommitSearch={commitSearchView}
+    onExecuteCommand={handleExecuteCommand} onSearchLocalCards={SearchLocalCards}
   />
 </div>
 
