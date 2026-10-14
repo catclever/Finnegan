@@ -37,6 +37,7 @@ export interface CosmicCard {
   rotation: number;
   z: number;
   images?: string[];
+  isEnriching?: boolean;     // True when card title/metadata is being derived by LLM
 
   // Lifecycle & Decay properties
   spawnTime: number;         // When entered active stage (ms timestamp)

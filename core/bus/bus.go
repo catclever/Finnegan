@@ -27,11 +27,16 @@ type EventFileData struct {
 }
 
 type EventThoughtCapturedData struct {
-	DocID      string
-	FilePath   string
-	Text       string
-	CapturedAt time.Time
-	Images     []string
+	DocID        string     `json:"DocID"`
+	FilePath     string     `json:"FilePath"`
+	Text         string     `json:"Text"`
+	CapturedAt   time.Time  `json:"CapturedAt"`
+	Images       []string   `json:"Images,omitempty"`
+	Title        string     `json:"Title,omitempty"`
+	Type         string     `json:"Type,omitempty"`
+	Participants []string   `json:"Participants,omitempty"`
+	StartedAt    *time.Time `json:"StartedAt,omitempty"`
+	EndedAt      *time.Time `json:"EndedAt,omitempty"`
 }
 
 type Event struct {

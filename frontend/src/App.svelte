@@ -143,15 +143,113 @@
 
   async function handleCaptureChatLog(text: string, images?: string[]) {
     capturePending = true;
+    const tempId = 'optimistic_chatlog_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+
+    if (latestManualCardId) {
+      const prevVIP = cards.find(c => c.id === latestManualCardId);
+      if (prevVIP && !isProtectedCard({ ...prevVIP, isVIP: false }, cards, activeBuguBeacon?.sourceCardId)) {
+        prevVIP.isVIP = false;
+        prevVIP.decayDuration = BASE_STAGE_DECAY_MS;
+      }
+    }
+    latestManualCardId = tempId;
+
+    const baseCard = toCosmicCard({ 
+      id: tempId, 
+      title: '正在提炼主题...',
+      type: 'chat_log',
+      content: text, 
+      images: images || [],
+      isEnriching: true,
+    }, 'chat_log', 'manual');
+    baseCard.isEnriching = true;
+
+    const stagedCard = stageCandidate(baseCard, true, $scrollExpansion, cards, memoryPool);
+    const newCard = { 
+      ...stagedCard, 
+      images: images || stagedCard.images, 
+      isVIP: true, 
+      decayDuration: 12 * 3600 * 1000, 
+      z: 12, 
+      isEnriching: true 
+    };
+
+    localVaultPool = [newCard, ...localVaultPool.filter(c => c.id !== newCard.id)];
+    if (cards.filter(c => !c.isFadingOut).length >= targetCapacity) {
+      const evictable = cards
+        .filter(c => !isProtectedCard(c, cards, activeBuguBeacon?.sourceCardId) && !c.isFadingOut)
+        .sort((a, b) => (a.spawnTime + a.decayDuration) - (b.spawnTime + b.decayDuration));
+      if (evictable.length > 0) {
+        evictable[0].isFadingOut = true;
+        setTimeout(() => { cards = cards.filter(c => c.id !== evictable[0].id); }, 2500);
+      }
+    }
+    cards = [...cards.filter(c => c.id !== newCard.id), newCard];
+
     try {
+      let res: any;
       if (images && images.length > 0) {
         const payload = images.map(img => (typeof img === 'string' ? { data: img } : img));
-        await CaptureChatLogWithImages(text, payload as any);
+        res = await CaptureChatLogWithImages(text, payload as any);
       } else {
-        await CaptureChatLog(text);
+        res = await CaptureChatLog(text);
       }
+
+      const realId = res?.docId || res?.DocID;
+      const realTitle = res?.title || res?.Title;
+      const realParticipants = res?.participants || res?.Participants;
+      const realStartedAt = res?.startedAt || res?.StartedAt;
+      const realEndedAt = res?.endedAt || res?.EndedAt;
+      const realImages = res?.images || res?.Images || images;
+
+      if (latestManualCardId === tempId && realId) {
+        latestManualCardId = realId;
+      }
+
+      cards = cards.map(c => {
+        if (c.id === tempId || (realId && c.id === realId)) {
+          return {
+            ...c,
+            id: realId || c.id,
+            title: realTitle || c.title,
+            participants: realParticipants || c.participants,
+            startedAt: realStartedAt || c.startedAt,
+            endedAt: realEndedAt || c.endedAt,
+            images: realImages || c.images,
+            isEnriching: false,
+          };
+        }
+        return c;
+      });
+
+      localVaultPool = localVaultPool.map(c => {
+        if (c.id === tempId || (realId && c.id === realId)) {
+          return {
+            ...c,
+            id: realId || c.id,
+            title: realTitle || c.title,
+            participants: realParticipants || c.participants,
+            startedAt: realStartedAt || c.startedAt,
+            endedAt: realEndedAt || c.endedAt,
+            images: realImages || c.images,
+            isEnriching: false,
+          };
+        }
+        return c;
+      });
+
       if (searchSession.isActive) commitSearchView();
-    } finally { capturePending = false; }
+    } catch (err) {
+      console.error("handleCaptureChatLog error:", err);
+      cards = cards.filter(c => c.id !== tempId);
+      localVaultPool = localVaultPool.filter(c => c.id !== tempId);
+      if (latestManualCardId === tempId) {
+        latestManualCardId = null;
+      }
+      throw err;
+    } finally {
+      capturePending = false;
+    }
   }
 
   function finishBuguBeacon() {
@@ -268,6 +366,55 @@
 
     EventsOn("thought:captured", (data: any) => {
       const cardId = data.DocID || ('thought_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7));
+      const images = data.Images || data.images;
+      const isChat = data.Type === 'chat_log' || isChatLogFormat(data.Text);
+      const cardTitle = data.Title || data.title;
+
+      // Check if this card was optimistically staged or already exists on stage
+      const existingCard = cards.find(c => c.id === cardId || (isChat && c.isEnriching));
+      if (existingCard) {
+        cards = cards.map(c => {
+          if (c.id === existingCard.id || c.id === cardId) {
+            return {
+              ...c,
+              id: cardId,
+              title: cardTitle || (c.title === '正在提炼主题...' ? cardTitle || c.title : c.title),
+              type: isChat ? 'chat_log' : c.type,
+              content: data.Text || c.content,
+              images: images || c.images,
+              participants: data.Participants || data.participants || c.participants,
+              startedAt: data.StartedAt || data.startedAt || c.startedAt,
+              endedAt: data.EndedAt || data.endedAt || c.endedAt,
+              isEnriching: false,
+            };
+          }
+          return c;
+        });
+
+        localVaultPool = localVaultPool.map(c => {
+          if (c.id === existingCard.id || c.id === cardId) {
+            return {
+              ...c,
+              id: cardId,
+              title: cardTitle || (c.title === '正在提炼主题...' ? cardTitle || c.title : c.title),
+              type: isChat ? 'chat_log' : c.type,
+              content: data.Text || c.content,
+              images: images || c.images,
+              participants: data.Participants || data.participants || c.participants,
+              startedAt: data.StartedAt || data.startedAt || c.startedAt,
+              endedAt: data.EndedAt || data.endedAt || c.endedAt,
+              isEnriching: false,
+            };
+          }
+          return c;
+        });
+
+        if (latestManualCardId === existingCard.id) {
+          latestManualCardId = cardId;
+        }
+        return;
+      }
+
       if (latestManualCardId) {
         const prevVIP = cards.find(c => c.id === latestManualCardId);
         if (prevVIP && !isProtectedCard({ ...prevVIP, isVIP: false }, cards, activeBuguBeacon?.sourceCardId)) {
@@ -276,10 +423,9 @@
         }
       }
       latestManualCardId = cardId;
-      const images = data.Images || data.images;
-      const isChat = isChatLogFormat(data.Text);
       const baseCard = toCosmicCard({ 
         id: cardId, 
+        title: cardTitle,
         type: isChat ? 'chat_log' : 'thought',
         content: data.Text, 
         images,

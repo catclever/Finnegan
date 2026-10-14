@@ -131,6 +131,7 @@ export function toCosmicCard(
     endedAt: c.endedAt || c.EndedAt || c.ended_at,
     echoOf: c.echoOf || c.EchoOf || c.echo_of || '',
     images,
+    isEnriching: c.isEnriching !== undefined ? c.isEnriching : false,
     x: 0, y: 0, rotation: 0, z: 50,
     spawnTime: Date.now(), decayDuration: BASE_STAGE_DECAY_MS, isFresh: true, isVIP: false, origin,
     macroExpiresAt: ttl ? Date.now() + ttl : undefined

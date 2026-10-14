@@ -33,6 +33,15 @@ type ImagePayload struct {
 	Ext  string `json:"ext,omitempty"`
 }
 
+type ChatLogCaptureResult struct {
+	DocID        string     `json:"docId"`
+	Title        string     `json:"title"`
+	Participants []string   `json:"participants,omitempty"`
+	StartedAt    *time.Time `json:"startedAt,omitempty"`
+	EndedAt      *time.Time `json:"endedAt,omitempty"`
+	Images       []string   `json:"images,omitempty"`
+}
+
 type App struct {
 	ctx         context.Context
 	CardManager *CardManager
@@ -759,16 +768,22 @@ func (a *App) ProcessChatLog(rawText string) (*Card, error) {
 }
 
 // CaptureChatLogWithImages directly parses and saves a chat log card with image attachments to Scattering and assets.
-func (a *App) CaptureChatLogWithImages(rawText string, images []ImagePayload) (string, error) {
+func (a *App) CaptureChatLogWithImages(rawText string, images []ImagePayload) (*ChatLogCaptureResult, error) {
 	parsed, err := chatlog.Parse(rawText)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse chat log: %w", err)
+		return nil, fmt.Errorf("failed to parse chat log: %w", err)
 	}
 
 	titleRes, _ := a.DeriveChatLogTitle(parsed.Coalesced, parsed.Participants)
-	title := titleRes.Title
-	if len(titleRes.Participants) > 0 {
-		parsed.Participants = titleRes.Participants
+	var title string
+	if titleRes != nil {
+		title = titleRes.Title
+		if len(titleRes.Participants) > 0 {
+			parsed.Participants = titleRes.Participants
+		}
+	}
+	if title == "" {
+		title = chatlog.DeriveFallbackTitle(parsed.Coalesced, parsed.Participants)
 	}
 
 	home := a.Home
@@ -780,18 +795,18 @@ func (a *App) CaptureChatLogWithImages(rawText string, images []ImagePayload) (s
 		}
 	}
 	if home == "" {
-		return "", errors.New("home directory not configured")
+		return nil, errors.New("home directory not configured")
 	}
 
 	savedImageNames, err := a.saveAssetImages(images)
 	if err != nil {
-		return "", fmt.Errorf("failed to save asset images: %w", err)
+		return nil, fmt.Errorf("failed to save asset images: %w", err)
 	}
 	parsed.Images = savedImageNames
 
 	targetDir := filepath.Join(home, "Scattering")
 	if err := os.MkdirAll(targetDir, 0755); err != nil {
-		return "", fmt.Errorf("failed to create target directory: %w", err)
+		return nil, fmt.Errorf("failed to create target directory: %w", err)
 	}
 	now := time.Now()
 	slugSrc := title
@@ -814,7 +829,7 @@ func (a *App) CaptureChatLogWithImages(rawText string, images []ImagePayload) (s
 	}
 
 	if targetPath == "" {
-		return "", errors.New("could not find a unique filename")
+		return nil, errors.New("could not find a unique filename")
 	}
 
 	docID := ulid.Make().String()
@@ -822,25 +837,37 @@ func (a *App) CaptureChatLogWithImages(rawText string, images []ImagePayload) (s
 
 	err = watcher.GetWatcher().WriteFile(targetPath, []byte(contentStr), "capture")
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	bus.GetBus().Publish(bus.Event{
 		Type: bus.EventThoughtCaptured,
 		Data: bus.EventThoughtCapturedData{
-			DocID:      docID,
-			FilePath:   targetPath,
-			Text:       parsed.Coalesced,
-			CapturedAt: now,
-			Images:     savedImageNames,
+			DocID:        docID,
+			FilePath:     targetPath,
+			Text:         parsed.Coalesced,
+			CapturedAt:   now,
+			Images:       savedImageNames,
+			Title:        title,
+			Type:         "chat_log",
+			Participants: parsed.Participants,
+			StartedAt:    parsed.StartedAt,
+			EndedAt:      parsed.EndedAt,
 		},
 	})
 
-	return docID, nil
+	return &ChatLogCaptureResult{
+		DocID:        docID,
+		Title:        title,
+		Participants: parsed.Participants,
+		StartedAt:    parsed.StartedAt,
+		EndedAt:      parsed.EndedAt,
+		Images:       savedImageNames,
+	}, nil
 }
 
 // CaptureChatLog directly parses and saves a chat log card as a permanent Markdown file in Scattering.
-func (a *App) CaptureChatLog(rawText string) (string, error) {
+func (a *App) CaptureChatLog(rawText string) (*ChatLogCaptureResult, error) {
 	return a.CaptureChatLogWithImages(rawText, nil)
 }
 

@@ -406,6 +406,14 @@
     const text = omniText.trim();
     const imgs = [...attachedImages];
     if ((!text && imgs.length === 0) || capturePending) return;
+
+    omniText = "";
+    attachedImages = [];
+    deleteHighlightIndex = -1;
+    if (omnibarInputEl) {
+      omnibarInputEl.style.height = 'auto';
+    }
+
     try {
       if (isDialogueFormat) {
         if (imgs.length > 0) {
@@ -430,15 +438,9 @@
         }
         dispatch('captureThought', { text, images: imgs });
       }
-      omniText = "";
-      attachedImages = [];
-      deleteHighlightIndex = -1;
       if (searchSession.isActive) {
         if (onCommitSearch) onCommitSearch();
         dispatch('commitSearch');
-      }
-      if (omnibarInputEl) {
-        omnibarInputEl.style.height = 'auto';
       }
     } catch (err: any) {
       console.error(err);

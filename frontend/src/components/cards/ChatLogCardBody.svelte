@@ -19,6 +19,7 @@
   export let isFocused: boolean = false;
   export let isHovered: boolean = false;
   export let thoughtTime: string = '';
+  export let isEnriching: boolean = false;
 
   export function formatAssetUrl(url: string): string {
     if (!url) return '';
@@ -32,6 +33,12 @@
     return `/api/assets/${cleanName}`;
   }
 
+  function handleImageError(e: Event) {
+    const el = e.currentTarget as HTMLElement | null;
+    if (el) el.style.display = 'none';
+  }
+
+  $: enriching = isEnriching || !!card?.isEnriching;
   $: turns = parseDialogue(card?.content || '');
   $: title = card?.title && card.title !== 'Thought' && card.title !== 'Card' && card.title !== 'Babel Echo' ? card.title : '';
   $: participants = Array.isArray(card?.participants) ? card.participants : [];
@@ -52,7 +59,7 @@
   $: hasImages = images.length > 0;
 </script>
 
-<div class="chat-log-card-body" class:focused={isFocused} class:hovered={isHovered} class:has-images={hasImages}>
+<div class="chat-log-card-body" class:focused={isFocused} class:hovered={isHovered} class:has-images={hasImages} class:enriching={enriching}>
   {#if isFocused}
     <!-- Focused mode: 420x420 Screenplay Layout -->
     <header class="screenplay-header">
@@ -91,8 +98,29 @@
   {:else}
     <!-- Scattering mode: 200x190 Screenplay Preview -->
     <div class="screenplay-preview">
-      {#if title}
-        <div class="preview-title" title={title}>{title}</div>
+      {#if title || hasImages}
+        <div class="preview-header-row">
+          {#if title}
+            <div class="preview-title" title={title}>{title}</div>
+          {/if}
+          {#if hasImages}
+            <div
+              class="polaroid-stamp"
+              class:stacked={images.length > 1}
+              title="{images.length} attachment{images.length > 1 ? 's' : ''}"
+            >
+              <img
+                src={images[0]}
+                alt="Thumbnail"
+                class="stamp-thumb"
+                on:error={handleImageError}
+              />
+              {#if images.length > 1}
+                <span class="stamp-count">{images.length}</span>
+              {/if}
+            </div>
+          {/if}
+        </div>
       {/if}
       <div class="preview-turns">
         {#each turns.slice(0, 3) as turn, i (turn.speaker + i)}
@@ -248,6 +276,19 @@
     text-align: left;
   }
 
+  .preview-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    margin-bottom: 6px;
+    padding: 2px 4px 2px 0;
+    box-sizing: border-box;
+    flex-shrink: 0;
+    min-height: 24px;
+  }
+
   .preview-title {
     font-size: 0.82rem;
     font-weight: 650;
@@ -256,9 +297,111 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    margin-bottom: 6px;
+    margin-bottom: 0;
     letter-spacing: -0.01em;
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* Polaroid Micro Stamp Badge (Option B) */
+  .polaroid-stamp {
+    position: relative;
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    min-height: 22px;
+    padding: 2px;
+    box-sizing: border-box;
+    background: #ffffff;
+    border-radius: 4px;
+    transform: rotate(-3deg);
+    transform-origin: center center;
+    margin-left: auto;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18), 0 0.5px 1px rgba(0, 0, 0, 0.12);
+    transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+    user-select: none;
+    cursor: default;
+  }
+
+  /* Stacked shadow if images.length > 1 */
+  .polaroid-stamp.stacked {
+    box-shadow:
+      1.5px 1.5px 0 0 #ffffff,
+      1.5px 1.5px 0 0.5px rgba(0, 0, 0, 0.14),
+      3px 3px 0 0 #f5f5f5,
+      3px 3px 0 0.5px rgba(0, 0, 0, 0.1),
+      0 2px 4px rgba(0, 0, 0, 0.16);
+  }
+
+  /* Slight elevation on hover */
+  .polaroid-stamp:hover {
+    transform: rotate(-1deg) translateY(-1.5px) scale(1.06);
+    box-shadow: 0 3px 7px rgba(0, 0, 0, 0.22), 0 1px 2px rgba(0, 0, 0, 0.14);
+  }
+
+  .polaroid-stamp.stacked:hover {
+    transform: rotate(-1deg) translateY(-1.5px) scale(1.06);
+    box-shadow:
+      2px 2px 0 0 #ffffff,
+      2px 2px 0 0.5px rgba(0, 0, 0, 0.16),
+      4px 4px 0 0 #f5f5f5,
+      4px 4px 0 0.5px rgba(0, 0, 0, 0.12),
+      0 4px 9px rgba(0, 0, 0, 0.22);
+  }
+
+  .chat-log-card-body.hovered .polaroid-stamp:not(:hover) {
+    transform: rotate(-2deg) translateY(-0.8px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2), 0 0.5px 1.5px rgba(0, 0, 0, 0.12);
+  }
+
+  .chat-log-card-body.hovered .polaroid-stamp.stacked:not(:hover) {
+    transform: rotate(-2deg) translateY(-0.8px);
+    box-shadow:
+      1.5px 1.5px 0 0 #ffffff,
+      1.5px 1.5px 0 0.5px rgba(0, 0, 0, 0.15),
+      3.5px 3.5px 0 0 #f5f5f5,
+      3.5px 3.5px 0 0.5px rgba(0, 0, 0, 0.11),
+      0 3px 6px rgba(0, 0, 0, 0.18);
+  }
+
+  .stamp-thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 2px;
+    display: block;
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+
+  .stamp-count {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 12px;
+    height: 12px;
+    padding: 0 2.5px;
+    background: rgba(20, 20, 20, 0.86);
+    color: #ffffff;
+    font-size: 7.5px;
+    font-weight: 700;
+    line-height: 12px;
+    text-align: center;
+    border-radius: 6px;
+    box-sizing: border-box;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    pointer-events: none;
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
   }
 
   .preview-turns {
@@ -306,5 +449,68 @@
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
+  }
+
+  /* --- Shimmer Animation when isEnriching --- */
+  @keyframes shimmer-sweep {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  @keyframes pulse-subtle {
+    0%, 100% {
+      opacity: 0.75;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
+  .chat-log-card-body.enriching .preview-title,
+  .chat-log-card-body.enriching .screenplay-title {
+    background: linear-gradient(
+      90deg,
+      rgba(70, 70, 70, 0.6) 0%,
+      rgba(15, 15, 15, 0.95) 35%,
+      rgba(130, 130, 130, 0.3) 50%,
+      rgba(15, 15, 15, 0.95) 65%,
+      rgba(70, 70, 70, 0.6) 100%
+    );
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer-sweep 2.2s infinite ease-in-out, pulse-subtle 1.8s infinite ease-in-out;
+  }
+
+  .chat-log-card-body.enriching::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      115deg,
+      transparent 0%,
+      transparent 35%,
+      rgba(255, 255, 255, 0.35) 50%,
+      transparent 65%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer-sweep 2.2s infinite linear;
+    border-radius: 6px;
+  }
+
+  .chat-log-card-body.enriching .preview-turns,
+  .chat-log-card-body.enriching .screenplay-stream {
+    opacity: 0.85;
+    transition: opacity 0.3s ease;
   }
 </style>
