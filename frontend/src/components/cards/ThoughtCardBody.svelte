@@ -95,15 +95,15 @@
   {/if}
 
   {#if isFocused}
-    <!-- Focused mode: Invariant Focus natural scroll and horizontal swipe (Option A) -->
-    {#if hasImages}
-      <CardImageGallery {images} />
-    {/if}
-
+    <!-- Focused mode: Invariant Focus natural scroll and horizontal swipe (Option A: Text first, Images below) -->
     {#if card && card.content}
       <div class="thought-content focused" class:has-images={hasImages}>
         <p>{card.content}</p>
       </div>
+    {/if}
+
+    {#if hasImages}
+      <CardImageGallery {images} />
     {/if}
   {:else}
     <!-- Scattering mode (200x190): 82px stage with Album Glow backdrop and auto-cycling carousel -->
@@ -393,5 +393,9 @@
     overflow: visible;
     text-align: left;
     color: rgba(32, 32, 32, 0.98);
+  }
+
+  .thought-content.focused.has-images p {
+    padding-bottom: 14px;
   }
 </style>
