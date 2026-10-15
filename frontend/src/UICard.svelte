@@ -40,11 +40,15 @@
   export let globalTilt: { rx: number, ry: number } = { rx: 0, ry: 0 };
   export let scrollExpansion: number = 0;
   export let isFocused: boolean = false;
+  export let hasAnyFocused: boolean = false;
   export let isHovered: boolean = false;
   export let onToggleFocus: () => void;
   export let onHover: () => void;
   export let onLeave: () => void;
   export let focusNavDirection: 'prev' | 'next' | null = null;
+
+  let lastNavDir: 'prev' | 'next' | null = null;
+  $: if (!isFocused) lastNavDir = null;
 
   let animSpring = spring({
     x: card.x,
@@ -163,7 +167,8 @@
         z3d: 0
       });
     } else if (isFocused) {
-      if (focusNavDirection) {
+      if (focusNavDirection && focusNavDirection !== lastNavDir) {
+        lastNavDir = focusNavDirection;
         const offset = focusNavDirection === 'next' ? window.innerWidth : -window.innerWidth;
         animSpring.set({
           x: offset,
@@ -179,7 +184,6 @@
           rotY: 0,
           z3d: 160
         }, { hard: true });
-        focusNavDirection = null; // Clear so it only happens once per nav
       }
       animSpring.set({
         x: 0,
@@ -331,6 +335,7 @@
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <div 
   class="card"
+  class:inert={hasAnyFocused && !isFocused}
   class:bugu-echo={isBuguEcho}
   class:temporary={isTemporary}
   class:focused={isFocused}
@@ -352,7 +357,7 @@
                scale({$animSpring.scale});
     opacity: {$animSpring.opacity};
     filter: blur({$animSpring.blur}px) saturate({$animSpring.saturation});
-    z-index: {isFocused ? 1000 : (isHovered ? 999 : Math.round(100 - card.z))};
+    z-index: {isFocused ? 1000 : (isHovered && !hasAnyFocused ? 999 : Math.round(100 - card.z))};
     box-shadow: {dynamicBoxShadow};
     {!isTemporary && auraStage === 3 ? `border: 1.5px solid ${toHsla(latestColor, 0.75)};` : ''}
     --card-text-color: rgba({Math.round($animSpring.textGray || 38)}, {Math.round($animSpring.textGray || 38)}, {Math.round($animSpring.textGray || 38)}, {($animSpring.textOpacity ?? 0.95).toFixed(2)});
@@ -449,6 +454,10 @@
     -webkit-backdrop-filter: blur(22px);
     border: 1px solid rgba(255, 255, 255, 0.65);
     overflow: hidden;
+  }
+
+  .card.inert {
+    pointer-events: none !important;
   }
 
   /* Ephemeral / Temporary Card Aesthetics: Translucent Mist-Blue Base + Dynamic Breathing 灰白 Vignette Rim */

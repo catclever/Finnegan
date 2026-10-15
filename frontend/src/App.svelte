@@ -361,7 +361,12 @@
 
     // If target card is not in current active `cards`, add it to the stage
     if (!cards.find(c => c.id === targetCard.id)) {
-      cards = [...cards, { ...targetCard, isFadingOut: false }];
+      cards = [...cards, {
+        ...targetCard,
+        spawnTime: targetCard.spawnTime || Date.now(),
+        decayDuration: targetCard.decayDuration || 2 * 3600 * 1000,
+        isFadingOut: false
+      }];
     }
 
     focusNavDirection = direction;
@@ -516,6 +521,7 @@
       const now = Date.now();
       memoryPool = memoryPool.filter(c => !c.macroExpiresAt || c.macroExpiresAt > now);
       cards.forEach(c => {
+        if (c.id === focusedCardId) return;
         if (c.isFresh && now - c.spawnTime > 8 * 60 * 1000) c.isFresh = false;
         if (!isProtectedCard(c, cards, activeBuguBeacon?.sourceCardId) && !c.isFadingOut && (now - c.spawnTime > c.decayDuration)) {
           c.isFadingOut = true;

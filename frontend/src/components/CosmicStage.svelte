@@ -200,7 +200,7 @@
       <!-- svelte-ignore a11y-no-static-element-interactions -->
       <div
         class="focus-backdrop"
-        style="transform: translateZ(80px) translateY({scrollExpansion * 300}px);"
+        style="transform: translateZ(112px) translateY({scrollExpansion * 300}px);"
         on:click|stopPropagation={handleWrapperClick}
       ></div>
     {/if}
@@ -213,6 +213,7 @@
         {time}
         {globalTilt}
         {scrollExpansion}
+        hasAnyFocused={focusedCardId !== null}
         focusNavDirection={focusedCardId === card.id ? focusNavDirection : null}
         isFocused={focusedCardId === card.id}
         isHovered={hoveredCardId === card.id}
@@ -276,7 +277,7 @@
     background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    z-index: 90;
+    z-index: 500;
     pointer-events: auto;
     animation: fade-in 0.3s ease-out;
   }
@@ -302,7 +303,7 @@
     justify-content: center;
     align-items: center;
     cursor: pointer;
-    z-index: 150;
+    z-index: 600;
     pointer-events: auto;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
