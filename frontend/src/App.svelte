@@ -28,6 +28,7 @@
   let memoryPool: CosmicCard[] = [], localVaultPool: CosmicCard[] = [], cards: CosmicCard[] = [];
   let latestManualCardId: string | null = null, focusedCardId: string | null = null, hoveredCardId: string | null = null;
   let isOmnibarFocused = false, capturePending = false, time = 0;
+  let focusNavDirection: 'prev' | 'next' | null = null;
   let omniBarRef: OmniBar, availableCommands: CommandDef[] = [];
   let searchSession: SearchSession = { isActive: false, searchId: '', stashedCards: [], rankedResults: [], color: '' };
   let searchDebounceTimer: any = null, tideTimer: any = null;
@@ -328,12 +329,54 @@
   function toggleFocus(id: string) {
     resetTideTimer();
     focusedCardId = focusedCardId === id ? null : id;
+    focusNavDirection = null;
     if (focusedCardId !== null) {
       globalTilt.set({ rx: 0, ry: 0 }, { hard: true });
       omniBarRef?.blurInput();
       omniBarRef?.closeCommandSelect();
       if (searchSession.isActive) { revertSearchView(); omniBarRef?.clearText(); }
     }
+  }
+
+  function navigateFocus(direction: 'prev' | 'next') {
+    if (focusedCardId === null) return;
+
+    // Create an ordered unique list of all available cards
+    const allCardsMap = new Map<string, CosmicCard>();
+    cards.forEach(c => allCardsMap.set(c.id, c));
+    memoryPool.forEach(c => allCardsMap.set(c.id, c));
+    localVaultPool.forEach(c => allCardsMap.set(c.id, c));
+
+    const orderedCards = Array.from(allCardsMap.values());
+    if (orderedCards.length <= 1) return;
+
+    const currentIndex = orderedCards.findIndex(c => c.id === focusedCardId);
+    if (currentIndex === -1) return;
+
+    let targetIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
+    if (targetIndex < 0) targetIndex = orderedCards.length - 1;
+    if (targetIndex >= orderedCards.length) targetIndex = 0;
+
+    const targetCard = orderedCards[targetIndex];
+
+    // If target card is not in current active `cards`, add it to the stage
+    if (!cards.find(c => c.id === targetCard.id)) {
+      cards = [...cards, { ...targetCard, isFadingOut: false }];
+    }
+
+    focusNavDirection = direction;
+    focusedCardId = targetCard.id;
+
+    const oldCard = cards.find(c => c.id === orderedCards[currentIndex].id);
+    if (oldCard && !oldCard.isVIP && oldCard.decayDuration === 0) {
+      setTimeout(() => {
+        if (focusedCardId !== oldCard.id) {
+          cards = cards.filter(c => c.id !== oldCard.id);
+        }
+      }, 500);
+    }
+
+    resetTideTimer();
   }
 
   function handleWindowClick(e: MouseEvent) {
@@ -343,13 +386,17 @@
     omniBarRef?.blurInput();
     omniBarRef?.closeCommandSelect();
     if (searchSession.isActive) { revertSearchView(); omniBarRef?.clearText(); }
-    if (target && !target.closest('.card')) focusedCardId = null;
+    if (target && !target.closest('.card') && !target.closest('.nav-button')) focusedCardId = null;
   }
 
   function handleWindowKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') {
       if (focusedCardId !== null) { focusedCardId = null; return; }
       if (omniBarRef?.handleEscape()) return;
+    }
+    if (focusedCardId !== null) {
+      if (e.key === 'ArrowLeft') { navigateFocus('prev'); return; }
+      if (e.key === 'ArrowRight') { navigateFocus('next'); return; }
     }
     if (e.key === 'Enter') omniBarRef?.handleGlobalEnter();
   }
@@ -501,10 +548,12 @@
 <div class="container" on:click={handleWindowClick}>
   <CosmicStage
     {cards} {time} buguBeacon={activeBuguBeacon} buguSession={activeBuguSession}
+    {focusNavDirection}
     globalTilt={$globalTilt} scrollExpansion={$scrollExpansion} {focusedCardId} {hoveredCardId} {isOmnibarFocused}
     {lastScrollDirection}
     onToggleFocus={toggleFocus} onHoverCard={(id) => { hoveredCardId = id; resetTideTimer(); }}
     onLeaveCard={() => hoveredCardId = null} onBgClick={handleWindowClick}
+    on:navigate={(e) => navigateFocus(e.detail)}
   />
 
   <OmniBar
