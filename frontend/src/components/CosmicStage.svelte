@@ -40,6 +40,7 @@
   export let scrollExpansion: number = 0;
   export let focusedCardId: string | null = null;
   export let hoveredCardId: string | null = null;
+  export let focusNavDirection: 'prev' | 'next' | null = null;
   export let isOmnibarFocused: boolean = false;
   export let buguSession: BuguSession | null = null;
   export let buguBeacon: BuguBeacon | null = null;
@@ -212,6 +213,7 @@
         {time}
         {globalTilt}
         {scrollExpansion}
+        focusNavDirection={focusedCardId === card.id ? focusNavDirection : null}
         isFocused={focusedCardId === card.id}
         isHovered={hoveredCardId === card.id}
         onToggleFocus={() => handleToggleFocus(card.id)}

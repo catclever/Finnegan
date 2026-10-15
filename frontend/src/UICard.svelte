@@ -44,6 +44,7 @@
   export let onToggleFocus: () => void;
   export let onHover: () => void;
   export let onLeave: () => void;
+  export let focusNavDirection: 'prev' | 'next' | null = null;
 
   let animSpring = spring({
     x: card.x,
@@ -162,6 +163,24 @@
         z3d: 0
       });
     } else if (isFocused) {
+      if (focusNavDirection) {
+        const offset = focusNavDirection === 'next' ? window.innerWidth : -window.innerWidth;
+        animSpring.set({
+          x: offset,
+          y: scrollOffsetY,
+          rotation: 0,
+          opacity: 0,
+          scale: 0.8,
+          blur: 0,
+          saturation: 1,
+          textGray: 32,
+          textOpacity: 1,
+          rotX: 0,
+          rotY: 0,
+          z3d: 160
+        }, { hard: true });
+        focusNavDirection = null; // Clear so it only happens once per nav
+      }
       animSpring.set({
         x: 0,
         y: scrollOffsetY,
@@ -470,20 +489,38 @@
 
   .card.bugu-echo {
     box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.25);
-    animation: bugu-breathing 4s ease-in-out infinite;
+  }
+
+  .card.bugu-echo::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: 17px;
+    padding: 1px;
+    background: linear-gradient(90deg, transparent 0%, rgba(245, 158, 11, 0) 40%, rgba(245, 158, 11, 1) 50%, rgba(245, 158, 11, 0) 60%, transparent 100%);
+    background-size: 200% 100%;
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    animation: bugu-breathing 3s linear infinite;
+    opacity: 0.8;
+  }
+
+  .card.bugu-echo.focused::after {
+    display: none;
   }
 
   .card.bugu-echo.focused {
-    animation: none;
     box-shadow: 0 40px 100px rgba(0, 0, 0, 0.16), 0 0 36px rgba(245, 158, 11, 0.10), inset 0 0 24px rgba(255, 250, 240, 0.45);
   }
 
   @keyframes bugu-breathing {
-    0%, 100% {
-      box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.15), 0 0 10px rgba(245, 158, 11, 0.05);
+    from {
+      background-position: 0 0;
     }
-    50% {
-      box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.45), 0 0 16px rgba(245, 158, 11, 0.15);
+    to {
+      background-position: 200% 0;
     }
   }
 

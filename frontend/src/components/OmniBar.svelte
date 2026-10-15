@@ -663,7 +663,7 @@
 </script>
 
 <!-- Omnibar Container with Universal Two-Stage Assembly & Command Badges -->
-<div class="omnibar-container" class:faded={focusedCardId !== null || isScrolling}>
+<div class="omnibar-container" class:faded={focusedCardId !== null || isScrolling} class:hidden={focusedCardId !== null}>
   <!-- Floating Toast Feedback Banner -->
   {#if toastMessage}
     <div class="toast-feedback">
@@ -868,6 +868,12 @@
     filter: blur(10px);
     pointer-events: none;
     transform: scale(0.96);
+  }
+
+  .omnibar-container.hidden {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    visibility: hidden;
   }
 
   .omnibar-box {

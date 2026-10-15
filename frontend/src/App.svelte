@@ -28,6 +28,7 @@
   let memoryPool: CosmicCard[] = [], localVaultPool: CosmicCard[] = [], cards: CosmicCard[] = [];
   let latestManualCardId: string | null = null, focusedCardId: string | null = null, hoveredCardId: string | null = null;
   let isOmnibarFocused = false, capturePending = false, time = 0;
+  let focusNavDirection: 'prev' | 'next' | null = null;
   let omniBarRef: OmniBar, availableCommands: CommandDef[] = [];
   let searchSession: SearchSession = { isActive: false, searchId: '', stashedCards: [], rankedResults: [], color: '' };
   let searchDebounceTimer: any = null, tideTimer: any = null;
@@ -328,6 +329,7 @@
   function toggleFocus(id: string) {
     resetTideTimer();
     focusedCardId = focusedCardId === id ? null : id;
+    focusNavDirection = null;
     if (focusedCardId !== null) {
       globalTilt.set({ rx: 0, ry: 0 }, { hard: true });
       omniBarRef?.blurInput();
@@ -359,10 +361,21 @@
 
     // If target card is not in current active `cards`, add it to the stage
     if (!cards.find(c => c.id === targetCard.id)) {
-      cards = [...cards, { ...targetCard, x: 0, y: $scrollExpansion * 300, isFadingOut: false }];
+      cards = [...cards, { ...targetCard, isFadingOut: false }];
     }
 
+    focusNavDirection = direction;
     focusedCardId = targetCard.id;
+
+    const oldCard = cards.find(c => c.id === orderedCards[currentIndex].id);
+    if (oldCard && !oldCard.isVIP && oldCard.decayDuration === 0) {
+      setTimeout(() => {
+        if (focusedCardId !== oldCard.id) {
+          cards = cards.filter(c => c.id !== oldCard.id);
+        }
+      }, 500);
+    }
+
     resetTideTimer();
   }
 
@@ -535,6 +548,7 @@
 <div class="container" on:click={handleWindowClick}>
   <CosmicStage
     {cards} {time} buguBeacon={activeBuguBeacon} buguSession={activeBuguSession}
+    {focusNavDirection}
     globalTilt={$globalTilt} scrollExpansion={$scrollExpansion} {focusedCardId} {hoveredCardId} {isOmnibarFocused}
     {lastScrollDirection}
     onToggleFocus={toggleFocus} onHoverCard={(id) => { hoveredCardId = id; resetTideTimer(); }}
