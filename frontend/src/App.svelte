@@ -30,7 +30,7 @@
   let isOmnibarFocused = false, capturePending = false, time = 0;
   let focusNavDirection: 'prev' | 'next' | null = null;
   let omniBarRef: OmniBar, availableCommands: CommandDef[] = [];
-  let searchSession: SearchSession = { isActive: false, searchId: '', stashedCards: [], rankedResults: [], color: '' };
+  let searchSession: SearchSession = { isActive: false, isConfirmed: false, searchId: '', stashedCards: [], rankedResults: [], color: '' };
   let searchDebounceTimer: any = null, tideTimer: any = null;
   let activeBuguSession: BuguSession | null = null;
   let activeBuguBeacon: BuguBeacon | null = null, buguBeaconTimer: any = null;
@@ -91,12 +91,15 @@
     if (!searchSession.isActive) {
       searchSession.stashedCards = cards.map(c => ({ ...c }));
       searchSession.isActive = true;
+      searchSession.isConfirmed = false;
+      searchSession.searchId = 'search_' + now;
+      searchSession.color = generateAuraColor(cards, memoryPool);
     }
-    const color = generateAuraColor(cards, memoryPool), searchId = 'search_' + now;
-    searchSession.searchId = searchId;
-    searchSession.color = color;
-    const sCards = transformSearchResults(rawResults, [cards, memoryPool, localVaultPool], searchId, color, now, MACRO_TTL_MS, BASE_STAGE_DECAY_MS);
-    const repulsion = calculateSearchRepulsion(cards, sCards, targetCapacity);
+    const searchId = searchSession.searchId;
+    const color = searchSession.color;
+    const baseCards = searchSession.stashedCards.map(c => ({ ...c }));
+    const sCards = transformSearchResults(rawResults, [baseCards, memoryPool, localVaultPool], searchId, color, now, MACRO_TTL_MS, BASE_STAGE_DECAY_MS);
+    const repulsion = calculateSearchRepulsion(baseCards, sCards, targetCapacity);
     searchSession.rankedResults = repulsion.rankedResults;
     cards = repulsion.stagedCards;
   }
@@ -105,24 +108,58 @@
     if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
     if (!searchSession.isActive) return;
     cards = searchSession.stashedCards.map(c => ({ ...c }));
-    searchSession = { isActive: false, searchId: '', stashedCards: [], rankedResults: [], color: '' };
+    searchSession = { isActive: false, isConfirmed: false, searchId: '', stashedCards: [], rankedResults: [], color: '' };
   }
 
-  function commitSearchView() {
+  function confirmSearchView() {
     if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
     if (!searchSession.isActive) return;
     memoryPool = commitUnallocatedSearchResults(searchSession.rankedResults, cards, memoryPool, MACRO_TTL_MS);
-    searchSession = { isActive: false, searchId: '', stashedCards: [], rankedResults: [], color: '' };
+    searchSession.isConfirmed = true;
+  }
+
+  function finishCaptureSearch() {
+    if (!searchSession.isActive) return;
+    confirmSearchView();
+    searchSession = { isActive: false, isConfirmed: false, searchId: '', stashedCards: [], rankedResults: [], color: '' };
+  }
+
+  function restoreConfirmedSearch() {
+    if (!searchSession.isActive || !searchSession.isConfirmed) return;
+    revertSearchView();
+    omniBarRef?.clearText();
   }
 
   function handleFreeSearch(text: string) {
     if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
     const query = text.trim();
-    if (query.length < 2) return;
+    if (query.length < 2) {
+      if (searchSession.isActive && !searchSession.isConfirmed) {
+        revertSearchView();
+      }
+      return;
+    }
+    // Typing a new query after a confirmed search starts a fresh reversible session.
+    if (searchSession.isActive && searchSession.isConfirmed) {
+      cards = searchSession.stashedCards.map(c => ({ ...c }));
+      searchSession = { isActive: false, isConfirmed: false, searchId: '', stashedCards: [], rankedResults: [], color: '' };
+    }
     searchDebounceTimer = setTimeout(async () => {
       try {
+        if (!searchSession.isActive) {
+          const now = Date.now();
+          searchSession.stashedCards = cards.map(c => ({ ...c }));
+          searchSession.isActive = true;
+          searchSession.isConfirmed = false;
+          searchSession.searchId = 'search_' + now;
+          searchSession.color = generateAuraColor(cards, memoryPool);
+        }
         const results = await SearchLocalCards(query);
-        if (results?.length) applySearchRepulsion(results);
+        if (results?.length) {
+          applySearchRepulsion(results);
+        } else if (searchSession.isActive) {
+          searchSession.rankedResults = [];
+        }
       } catch (err) { console.error("SearchLocalCards error:", err); }
     }, 250);
   }
@@ -138,7 +175,7 @@
       } else {
         await CaptureThought(text);
       }
-      if (searchSession.isActive) commitSearchView();
+      if (searchSession.isActive) finishCaptureSearch();
     } finally { capturePending = false; }
   }
 
@@ -239,7 +276,7 @@
         return c;
       });
 
-      if (searchSession.isActive) commitSearchView();
+      if (searchSession.isActive) finishCaptureSearch();
     } catch (err) {
       console.error("handleCaptureChatLog error:", err);
       cards = cards.filter(c => c.id !== tempId);
@@ -334,7 +371,7 @@
       globalTilt.set({ rx: 0, ry: 0 }, { hard: true });
       omniBarRef?.blurInput();
       omniBarRef?.closeCommandSelect();
-      if (searchSession.isActive) { revertSearchView(); omniBarRef?.clearText(); }
+      if (searchSession.isActive && !searchSession.isConfirmed) { revertSearchView(); omniBarRef?.clearText(); }
     }
   }
 
@@ -390,11 +427,16 @@
     if (target?.closest('.omnibar-container')) return;
     omniBarRef?.blurInput();
     omniBarRef?.closeCommandSelect();
-    if (searchSession.isActive) { revertSearchView(); omniBarRef?.clearText(); }
+    if (searchSession.isActive && !searchSession.isConfirmed) { revertSearchView(); omniBarRef?.clearText(); }
     if (target && !target.closest('.card') && !target.closest('.nav-button')) focusedCardId = null;
   }
 
   function handleWindowKeydown(e: KeyboardEvent) {
+    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'r') {
+      e.preventDefault();
+      restoreConfirmedSearch();
+      return;
+    }
     if (e.key === 'Escape') {
       if (focusedCardId !== null) { focusedCardId = null; return; }
       if (omniBarRef?.handleEscape()) return;
@@ -518,6 +560,7 @@
     });
 
     const metabolicInterval = setInterval(() => {
+      if (searchSession.isActive && !searchSession.isConfirmed) return;
       const now = Date.now();
       memoryPool = memoryPool.filter(c => !c.macroExpiresAt || c.macroExpiresAt > now);
       cards.forEach(c => {
@@ -556,6 +599,7 @@
     {cards} {time} buguBeacon={activeBuguBeacon} buguSession={activeBuguSession}
     {focusNavDirection}
     globalTilt={$globalTilt} scrollExpansion={$scrollExpansion} {focusedCardId} {hoveredCardId} {isOmnibarFocused}
+    isSearchActive={searchSession.isActive}
     {lastScrollDirection}
     onToggleFocus={toggleFocus} onHoverCard={(id) => { hoveredCardId = id; resetTideTimer(); }}
     onLeaveCard={() => hoveredCardId = null} onBgClick={handleWindowClick}
@@ -566,7 +610,7 @@
     bind:this={omniBarRef} {availableCommands} {searchSession} {focusedCardId} {cards} {localVaultPool} {capturePending}
     {isScrolling}
     bind:isOmnibarFocused onCaptureThought={handleCaptureThought} onCaptureChatLog={handleCaptureChatLog} onFreeSearch={handleFreeSearch}
-    onRevertSearch={revertSearchView} onCommitSearch={commitSearchView}
+    onRevertSearch={revertSearchView} onCommitSearch={confirmSearchView} onRestoreSearch={restoreConfirmedSearch}
     onExecuteCommand={handleExecuteCommand} onSearchLocalCards={SearchLocalCards}
   />
 </div>

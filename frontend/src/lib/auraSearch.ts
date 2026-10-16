@@ -94,7 +94,10 @@ export function transformSearchResults(
   return rawResults.map((r: any) => {
     const existing = knownMap.get(r.id);
     const prevTraces = existing?.auraTraces || [];
-    const newTraces: AuraTrace[] = [...prevTraces, createAuraTrace(searchId, searchColor, now)];
+    const newTraces: AuraTrace[] = [
+      ...prevTraces.filter(t => t.searchId !== searchId),
+      createAuraTrace(searchId, searchColor, now)
+    ];
 
     const rawImages = r.images || r.Images;
     const images = rawImages ? (Array.isArray(rawImages) ? rawImages : [rawImages]) : undefined;
@@ -106,6 +109,9 @@ export function transformSearchResults(
         isSearchResult: true,
         auraTraces: newTraces,
         spawnTime: now,
+        decayDuration: (existing.decayDuration && existing.decayDuration > 0) ? existing.decayDuration : baseDecayMs,
+        isFresh: true,
+        isFadingOut: false,
         macroExpiresAt: now + macroTtlMs,
       };
     }

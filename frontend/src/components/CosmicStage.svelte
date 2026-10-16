@@ -42,6 +42,7 @@
   export let hoveredCardId: string | null = null;
   export let focusNavDirection: 'prev' | 'next' | null = null;
   export let isOmnibarFocused: boolean = false;
+  export let isSearchActive: boolean = false;
   export let buguSession: BuguSession | null = null;
   export let buguBeacon: BuguBeacon | null = null;
   export let lastScrollDirection: 'down' | 'up' = 'down';
@@ -190,7 +191,7 @@
   <div 
     class="scene" 
     style="
-      transform: rotateX({globalTilt.rx}deg) rotateY({globalTilt.ry}deg) translateY({-scrollExpansion * 300}px); 
+      transform: rotateX({focusedCardId !== null ? 0 : globalTilt.rx}deg) rotateY({focusedCardId !== null ? 0 : globalTilt.ry}deg) translateY({-scrollExpansion * 300}px); 
       transform-style: preserve-3d;
     "
   >
@@ -201,6 +202,17 @@
       <div
         class="focus-backdrop"
         style="transform: translateZ(112px) translateY({scrollExpansion * 300}px);"
+        on:click|stopPropagation={handleWrapperClick}
+      ></div>
+    {/if}
+
+    <!-- Search Resonance Backdrop: isolates foreground search cards from pushed-back background cards -->
+    {#if isSearchActive && focusedCardId === null}
+      <!-- svelte-ignore a11y-click-events-have-key-events -->
+      <!-- svelte-ignore a11y-no-static-element-interactions -->
+      <div
+        class="search-backdrop"
+        style="transform: translateZ(5px) translateY({scrollExpansion * 300}px);"
         on:click|stopPropagation={handleWrapperClick}
       ></div>
     {/if}
@@ -250,13 +262,10 @@
     z-index: 5;
     -webkit-mask-image: radial-gradient(ellipse at center, black 80%, rgba(0, 0, 0, 0.4) 93%, transparent 100%);
     mask-image: radial-gradient(ellipse at center, black 80%, rgba(0, 0, 0, 0.4) 93%, transparent 100%);
-    transition: -webkit-mask-image 0.25s ease, mask-image 0.25s ease;
   }
 
   .cards-wrapper.elevated {
     z-index: 100; /* Elevated above omnibar-container (z-index 50) */
-    -webkit-mask-image: none;
-    mask-image: none;
   }
 
   .scene {
@@ -270,19 +279,31 @@
 
   .focus-backdrop {
     position: absolute;
-    top: -50vh;
-    left: -50vw;
-    width: 200vw;
-    height: 200vh;
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    top: -100vh;
+    left: -100vw;
+    width: 300vw;
+    height: 300vh;
+    background: rgba(248, 250, 252, 0.72);
     z-index: 500;
     pointer-events: auto;
-    animation: fade-in 0.3s ease-out;
+    animation: focus-fade-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  @keyframes fade-in {
+  .search-backdrop {
+    position: absolute;
+    top: -100vh;
+    left: -100vw;
+    width: 300vw;
+    height: 300vh;
+    background: rgba(242, 245, 249, 0.38);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    z-index: 100;
+    pointer-events: auto;
+    animation: focus-fade-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes focus-fade-in {
     from { opacity: 0; }
     to { opacity: 1; }
   }

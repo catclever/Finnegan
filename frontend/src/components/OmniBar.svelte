@@ -35,6 +35,7 @@
   export let onFreeSearch: ((text: string) => void) | undefined = undefined;
   export let onRevertSearch: (() => void) | undefined = undefined;
   export let onCommitSearch: (() => void) | undefined = undefined;
+  export let onRestoreSearch: (() => void) | undefined = undefined;
   export let onExecuteCommand: ((cmd: CommandDef, card: CosmicCard) => Promise<void> | void) | undefined = undefined;
   export let onSearchLocalCards: ((query: string) => Promise<any[]>) | undefined = undefined;
 
@@ -153,7 +154,7 @@
 
   // Reactive expressions
   $: isDialogueFormat = isChatLogFormat(omniText);
-  $: showTopBanner = (omniText.trim().length > 0) || (attachedImages.length > 0) || commandParamMode || commandSelectMode || searchSession.isActive;
+  $: showTopBanner = (omniText.trim().length > 0) || (attachedImages.length > 0) || commandParamMode || commandSelectMode || (searchSession.isActive && !searchSession.isConfirmed);
 
   $: omnibarPlaceholder = commandParamMode
     ? (selectedCommand?.params?.[0]?.description || "吾道不孤")
@@ -308,6 +309,12 @@
     if (omnibarInputEl) {
       omnibarInputEl.style.height = 'auto';
     }
+  }
+
+  function handleRestoreSearch() {
+    if (onRestoreSearch) onRestoreSearch();
+    omniText = "";
+    if (omnibarInputEl) omnibarInputEl.style.height = 'auto';
   }
 
   async function executeCurrentCommand() {
@@ -582,19 +589,10 @@
       return;
     }
 
-    if (e.key === 'Enter') {
-      if (searchSession.isActive) {
-        // Enter (固化) commits current search view
-        e.preventDefault();
-        if (onCommitSearch) onCommitSearch();
-        dispatch('commitSearch');
-        omniText = "";
-        if (omnibarInputEl) {
-          omnibarInputEl.style.height = 'auto';
-        }
-        return;
-      }
-      // Plain text multiline editing: allow standard newline insertion
+    if (e.key === 'Enter' && e.shiftKey && searchSession.isActive && !searchSession.isConfirmed) {
+      e.preventDefault();
+      handleSolidifySearch();
+      return;
     }
 
     if (e.key === 'Escape') {
@@ -711,23 +709,24 @@
         <span class="banner-sep">·</span>
         <span class="banner-key">Esc</span>
         <span class="banner-action">取消</span>
-      {:else if searchSession.isActive}
+      {:else if searchSession.isActive && !searchSession.isConfirmed}
         <span class="banner-badge search-badge" style="--glow-color: {searchSession.color || 'hsl(180, 95%, 62%)'}">
           <span class="banner-dot"></span> 探针共鸣中
         </span>
-        <!-- svelte-ignore a11y-click-events-have-key-events -->
-        <!-- svelte-ignore a11y-no-static-element-interactions -->
-        <button type="button" class="banner-clickable-action" on:click={handleSolidifySearch} title="按 Enter 固化回声">
-          <span class="banner-key">↵</span>
-          <span class="banner-action">固化回声</span>
+        {#if !searchSession.isConfirmed}
+          <button type="button" class="banner-clickable-action" on:click={handleSolidifySearch} title="按 Shift+Enter 确认搜索">
+            <span class="banner-key">⇧ ↵</span>
+            <span class="banner-action">确认搜索</span>
+          </button>
+          <span class="banner-sep">·</span>
+        {/if}
+        <button type="button" class="banner-clickable-action" on:click={searchSession.isConfirmed ? handleRestoreSearch : handleRevertSearch} title={searchSession.isConfirmed ? '按 Cmd/Ctrl+Shift+R 恢复全部卡片' : '按 Esc 清除并还原'}>
+          <span class="banner-key">{searchSession.isConfirmed ? '⌘ ⇧ R' : 'Esc'}</span>
+          <span class="banner-action">{searchSession.isConfirmed ? '恢复全部' : '清除'}</span>
         </button>
         <span class="banner-sep">·</span>
-        <!-- svelte-ignore a11y-click-events-have-key-events -->
-        <!-- svelte-ignore a11y-no-static-element-interactions -->
-        <button type="button" class="banner-clickable-action" on:click={handleRevertSearch} title="按 Esc 一闪念还原">
-          <span class="banner-key">Esc</span>
-          <span class="banner-action">一闪念还原</span>
-        </button>
+        <span class="banner-key">⌘ ↵</span>
+        <span class="banner-action">录入</span>
       {:else if isDialogueFormat}
         <span class="banner-key">⌘ ↵</span>
         <span class="banner-action">记录对话录</span>

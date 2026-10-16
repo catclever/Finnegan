@@ -118,31 +118,31 @@
     return `conic-gradient(from 0deg, ${stops.join(', ')}, ${colors[0]} 360deg)`;
   })();
 
-  $: isBuguEcho = card.type === 'babel' && card.origin === 'bugu' && Boolean(card.echoOf);
+  $: isBuguEcho = card.type === 'babel' && Boolean(card.echoOf);
   $: isTemporary = card.origin === 'bugu' || card.type === 'babel';
 
   // Dynamic box-shadow accounting for focus, temporary state & aura decay stages
   $: dynamicBoxShadow = (() => {
     if (isFocused) {
       if (hasAura) {
-        return `0 40px 100px rgba(0, 0, 0, 0.22), 0 0 24px ${toHsla(latestColor, 0.7)}, 0 0 0 1px rgba(255, 255, 255, 0.9)`;
+        return `0 0 0 1.5px ${toHsla(latestColor, 0.95)}, 0 0 28px ${toHsla(latestColor, 0.7)}, 0 40px 100px rgba(0, 0, 0, 0.22)`;
       }
       return isBuguEcho
-        ? '0 0 0 2px rgba(245, 158, 11, 0.85), 0 0 12px rgba(245, 158, 11, 0.55), 0 0 26px rgba(245, 158, 11, 0.32), 0 0 55px rgba(245, 158, 11, 0.16), 0 0 90px rgba(245, 158, 11, 0.06), 0 40px 100px rgba(0, 0, 0, 0.22), inset 0 0 24px rgba(255, 248, 235, 0.6), inset 0 0 3px rgba(245, 158, 11, 0.35)'
+        ? '0 0 0 1px rgba(245, 158, 11, 0.9), 0 0 8px rgba(245, 158, 11, 0.55), 0 0 20px rgba(245, 158, 11, 0.35), 0 0 45px rgba(245, 158, 11, 0.18), 0 0 75px rgba(245, 158, 11, 0.06), 0 40px 100px rgba(0, 0, 0, 0.22), inset 0 0 16px rgba(254, 243, 199, 0.4)'
         : '0 40px 100px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.9)';
     }
     if (!hasAura) {
       return '0 8px 24px rgba(0, 0, 0, 0.04)';
     }
     if (auraStage === 1) {
-      // Stage 1 (< 3 min): Bright flowing glow
-      return `0 0 16px ${toHsla(latestColor, 0.85)}, 0 0 30px ${toHsla(latestColor, 0.35)}, 0 8px 24px rgba(0, 0, 0, 0.04)`;
+      // Stage 1 (< 3 min): Bright flowing glow with solid contour ring
+      return `0 0 0 1.5px ${toHsla(latestColor, 0.95)}, 0 0 16px ${toHsla(latestColor, 0.85)}, 0 0 32px ${toHsla(latestColor, 0.4)}, 0 8px 24px rgba(0, 0, 0, 0.04)`;
     } else if (auraStage === 2) {
-      // Stage 2 (3 ~ 30 min): Soft steady border glow
-      return `0 0 10px ${toHsla(latestColor, 0.5)}, 0 0 20px ${toHsla(latestColor, 0.2)}, 0 8px 24px rgba(0, 0, 0, 0.04)`;
+      // Stage 2 (3 ~ 30 min): Soft steady border glow with solid contour ring
+      return `0 0 0 1.2px ${toHsla(latestColor, 0.8)}, 0 0 12px ${toHsla(latestColor, 0.45)}, 0 8px 24px rgba(0, 0, 0, 0.04)`;
     } else {
-      // Stage 3 (> 30 min): Fine crisp border; standard elevation shadow
-      return `0 8px 24px rgba(0, 0, 0, 0.04)`;
+      // Stage 3 (> 30 min): Fine crisp colored border contour
+      return `0 0 0 1px ${toHsla(latestColor, 0.65)}, 0 8px 24px rgba(0, 0, 0, 0.04)`;
     }
   })();
 
@@ -250,10 +250,10 @@
         x: card.x,
         y: card.y,
         rotation: card.rotation + (Math.sin(time * 0.8 + hashId) * 1.5),
-        opacity: baseOpacity,
+        opacity: hasAnyFocused ? baseOpacity * 0.35 : baseOpacity,
         scale: uniformScale,
-        blur: baseBlur,
-        saturation: baseSat,
+        blur: hasAnyFocused ? baseBlur + 10 : baseBlur,
+        saturation: hasAnyFocused ? baseSat * 0.5 : baseSat,
         textGray: targetGray,
         textOpacity: targetTextOp,
         rotX: globalTilt.rx * 0.25,
@@ -357,14 +357,14 @@
                scale({$animSpring.scale});
     opacity: {$animSpring.opacity};
     filter: blur({$animSpring.blur}px) saturate({$animSpring.saturation});
-    z-index: {isFocused ? 1000 : (isHovered && !hasAnyFocused ? 999 : Math.round(100 - card.z))};
-    box-shadow: {dynamicBoxShadow};
-    {!isTemporary && auraStage === 3 ? `border: 1.5px solid ${toHsla(latestColor, 0.75)};` : ''}
+    z-index: {isFocused ? 1000 : (isHovered && !hasAnyFocused ? 999 : (hasAura ? 300 : Math.round(50 - (card.z || 0) * 0.3)))};
+    {dynamicBoxShadow ? `box-shadow: ${dynamicBoxShadow};` : ''}
+    {hasAura ? `border: 1.5px solid ${toHsla(latestColor, auraStage === 1 ? 0.95 : (auraStage === 2 ? 0.8 : 0.65))} !important;` : ''}
     --card-text-color: rgba({Math.round($animSpring.textGray || 38)}, {Math.round($animSpring.textGray || 38)}, {Math.round($animSpring.textGray || 38)}, {($animSpring.textOpacity ?? 0.95).toFixed(2)});
     --card-text-secondary: rgba({Math.min(160, Math.round(($animSpring.textGray || 38) + 24))}, {Math.min(160, Math.round(($animSpring.textGray || 38) + 24))}, {Math.min(160, Math.round(($animSpring.textGray || 38) + 24))}, {($animSpring.textOpacity ?? 0.95).toFixed(2)});
   "
 >
-  <!-- Flowing Light Aura Layers -->
+  <!-- Flowing Light Aura Layers (Search Resonance) -->
   {#if hasAura && auraStage < 3}
     <div class="aura-spinner-container">
       <div 
@@ -374,6 +374,15 @@
       ></div>
     </div>
     <div class="aura-inner-mask" class:focused={isFocused}></div>
+  {:else if isBuguEcho && !isFocused}
+    <!-- Bugu Echo Traveling Border Beam (Scattered State) -->
+    <div class="bugu-beam-container">
+      <div 
+        class="bugu-beam-spinner" 
+        style="animation-delay: -{((card.id ? card.id.charCodeAt(card.id.length - 1) : 0) % 5)}s;"
+      ></div>
+    </div>
+    <div class="bugu-beam-mask"></div>
   {/if}
 
   {#if card.type === 'babel'}
@@ -496,41 +505,66 @@
     }
   }
 
-  .card.bugu-echo {
-    /* No persistent static border in scattered mode - only dynamic beam on ::after */
-  }
-
-  .card.bugu-echo::after {
-    content: "";
-    position: absolute;
-    inset: -1px;
-    border-radius: 17px;
-    padding: 1px;
-    background: linear-gradient(90deg, transparent 0%, rgba(245, 158, 11, 0) 40%, rgba(245, 158, 11, 1) 50%, rgba(245, 158, 11, 0) 60%, transparent 100%);
-    background-size: 200% 100%;
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
-    animation: bugu-breathing 3s linear infinite;
-    opacity: 0.8;
-  }
-
-  .card.bugu-echo.focused::after {
-    display: none;
-  }
-
   .card.bugu-echo.focused {
-    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.85), 0 0 12px rgba(245, 158, 11, 0.55), 0 0 26px rgba(245, 158, 11, 0.32), 0 0 55px rgba(245, 158, 11, 0.16), 0 0 90px rgba(245, 158, 11, 0.06), 0 40px 100px rgba(0, 0, 0, 0.22), inset 0 0 24px rgba(255, 248, 235, 0.6), inset 0 0 3px rgba(245, 158, 11, 0.35);
+    border: 1px solid rgba(245, 158, 11, 0.85) !important;
+    box-shadow: 
+      0 0 0 1px rgba(245, 158, 11, 0.9),
+      0 0 8px rgba(245, 158, 11, 0.55),
+      0 0 20px rgba(245, 158, 11, 0.35),
+      0 0 45px rgba(245, 158, 11, 0.18),
+      0 0 75px rgba(245, 158, 11, 0.06),
+      0 40px 100px rgba(0, 0, 0, 0.22),
+      inset 0 0 16px rgba(254, 243, 199, 0.4) !important;
   }
 
-  @keyframes bugu-breathing {
+  /* Bugu Echo Traveling Border Beam (Scattered State) */
+  .bugu-beam-container {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .bugu-beam-spinner {
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    transform-origin: center center;
+    background: conic-gradient(
+      from 0deg,
+      transparent 0deg,
+      transparent 295deg,
+      rgba(245, 158, 11, 0) 300deg,
+      rgba(245, 158, 11, 0.2) 320deg,
+      rgba(245, 158, 11, 0.7) 345deg,
+      rgba(251, 191, 36, 1) 360deg
+    );
+    animation: bugu-beam-spin 4.6s linear infinite;
+    pointer-events: none;
+  }
+
+  @keyframes bugu-beam-spin {
     from {
-      background-position: 0 0;
+      transform: rotate(0deg);
     }
     to {
-      background-position: 200% 0;
+      transform: rotate(360deg);
     }
+  }
+
+  .bugu-beam-mask {
+    position: absolute;
+    inset: 1px;
+    border-radius: 15px;
+    background: linear-gradient(135deg, rgba(230, 239, 250, 0.94) 0%, rgba(216, 228, 244, 0.90) 100%);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    pointer-events: none;
+    z-index: 0;
   }
 
   /* Flowing Light Aura Animation Layers */
@@ -569,18 +603,20 @@
 
   .aura-inner-mask {
     position: absolute;
-    inset: 1.8px;
-    border-radius: 14.2px;
-    background: rgba(255, 255, 255, 0.88);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    inset: 2px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.90);
     pointer-events: none;
     z-index: 0;
   }
 
   .aura-inner-mask.focused {
-    border-radius: 26.2px;
+    border-radius: 26px;
     background: rgba(255, 255, 255, 0.96);
+  }
+
+  .card.has-aura.temporary::before {
+    display: none;
   }
 
   .babel-header,

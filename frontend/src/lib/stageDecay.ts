@@ -68,6 +68,7 @@ export function isProtectedCard(
   activeBuguSourceId?: string | null
 ): boolean {
   if (card.isVIP) return true;
+  if (card.isSearchResult) return true;
   if (activeBuguSourceId && card.id === activeBuguSourceId) return true;
   return activeCards.some(c => !c.isFadingOut && Boolean(c.echoOf) && c.echoOf === card.id);
 }
@@ -338,7 +339,7 @@ export function replenishStageCandidates({
   }
 
   const remainingNeeded = needed - newCardsToStage.length;
-  if (remainingNeeded > 0) {
+  if (remainingNeeded > 0 && !searchSession?.isActive) {
     const unstagedMemory = getUnstagedMemoryCards(currentMemory, cards).filter(c => !stagingIds.has(c.id));
     if (unstagedMemory.length > 0) {
       const memSlots = remainingNeeded === 1

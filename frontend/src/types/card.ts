@@ -55,6 +55,7 @@ export interface CosmicCard {
 
 export interface SearchSession {
   isActive: boolean;
+  isConfirmed?: boolean;
   searchId: string;
   stashedCards: CosmicCard[];
   rankedResults: CosmicCard[];
