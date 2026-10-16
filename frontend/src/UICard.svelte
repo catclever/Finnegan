@@ -36,7 +36,7 @@
   import ChatLogCardBody from './components/cards/ChatLogCardBody.svelte';
 
   export let card: any;
-  export let time: number = 0;
+
   export let globalTilt: { rx: number, ry: number } = { rx: 0, ry: 0 };
   export let scrollExpansion: number = 0;
   export let isFocused: boolean = false;
@@ -47,8 +47,13 @@
   export let onLeave: () => void;
   export let focusNavDirection: 'prev' | 'next' | null = null;
 
+
   let lastNavDir: 'prev' | 'next' | null = null;
   $: if (!isFocused) lastNavDir = null;
+
+  let isVisible = true;
+  $: isVisible = isFocused || Math.abs(card.y - scrollExpansion * 300) <= 650;
+
 
   let animSpring = spring({
     x: card.x,
@@ -147,9 +152,7 @@
   })();
 
   $: {
-    const hashId = card.id && card.id.length > 0 ? card.id.charCodeAt(0) : 0;
-    // Breathing pulse along Z-axis in pixels
-    const pulseZ = Math.sin(time * 1.2 + hashId * 2.1) * 8;
+
     
     if (card.isFadingOut) {
       animSpring.set({
@@ -230,7 +233,7 @@
       const uniformScale = 1.08 - (zNorm * 0.44);
 
       // 3D displacement: Z = 0 -> +100px; Z = 50 -> +25px; Z = 100 -> -50px
-      const z3dVal = (100 - (card.z || 0)) * 1.5 - 50 + pulseZ;
+      const z3dVal = (100 - (card.z || 0)) * 1.5 - 50;
 
       // 5. Container opacity, blur, and saturation following Z-depth:
       const depthBlur = zNorm > 0.65 ? (zNorm - 0.65) * 6 : 0;
@@ -249,7 +252,7 @@
       animSpring.set({
         x: card.x,
         y: card.y,
-        rotation: card.rotation + (Math.sin(time * 0.8 + hashId) * 1.5),
+        rotation: card.rotation,
         opacity: hasAnyFocused ? baseOpacity * 0.35 : baseOpacity,
         scale: uniformScale,
         blur: hasAnyFocused ? baseBlur + 10 : baseBlur,
@@ -362,8 +365,10 @@
     {hasAura ? `border: 1.5px solid ${toHsla(latestColor, auraStage === 1 ? 0.95 : (auraStage === 2 ? 0.8 : 0.65))} !important;` : ''}
     --card-text-color: rgba({Math.round($animSpring.textGray || 38)}, {Math.round($animSpring.textGray || 38)}, {Math.round($animSpring.textGray || 38)}, {($animSpring.textOpacity ?? 0.95).toFixed(2)});
     --card-text-secondary: rgba({Math.min(160, Math.round(($animSpring.textGray || 38) + 24))}, {Math.min(160, Math.round(($animSpring.textGray || 38) + 24))}, {Math.min(160, Math.round(($animSpring.textGray || 38) + 24))}, {($animSpring.textOpacity ?? 0.95).toFixed(2)});
+    {!isVisible ? 'visibility: hidden; pointer-events: none;' : ''}
   "
 >
+  <div class="card-inner">
   <!-- Flowing Light Aura Layers (Search Resonance) -->
   {#if hasAura && auraStage < 3}
     <div class="aura-spinner-container">
@@ -440,6 +445,7 @@
   {:else}
     <ThoughtCardBody {card} {isFocused} {isHovered} {thoughtTime} />
   {/if}
+  </div>
 </div>
 
 <style>
@@ -468,6 +474,19 @@
   .card.inert {
     pointer-events: none !important;
   }
+  .card-inner {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    border-radius: inherit;
+    animation: card-cosmic-float 4s ease-in-out infinite alternate;
+  }
+
+  @keyframes card-cosmic-float {
+    0% { transform: translate3d(0, -4px, 0); }
+    100% { transform: translate3d(0, 4px, 0); }
+  }
+
 
   /* Ephemeral / Temporary Card Aesthetics: Translucent Mist-Blue Base + Dynamic Breathing 灰白 Vignette Rim */
   .card.temporary {
@@ -475,7 +494,7 @@
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border: 1px solid transparent !important;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+    box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.7), inset 0 0 38px rgba(210, 226, 245, 0.45);
   }
 
   .card.temporary::before {
@@ -497,11 +516,9 @@
   @keyframes temporary-rim-breathe {
     0%, 100% {
       opacity: 0.65;
-      box-shadow: inset 0 0 16px rgba(255, 255, 255, 0.55), inset 0 0 32px rgba(220, 232, 246, 0.35);
     }
     50% {
       opacity: 0.95;
-      box-shadow: inset 0 0 24px rgba(255, 255, 255, 0.9), inset 0 0 44px rgba(200, 220, 245, 0.55);
     }
   }
 
