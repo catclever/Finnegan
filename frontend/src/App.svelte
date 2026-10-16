@@ -27,29 +27,10 @@
   // --- Stage Pools & Selection State ---
   let memoryPool: CosmicCard[] = [], localVaultPool: CosmicCard[] = [], cards: CosmicCard[] = [];
   let latestManualCardId: string | null = null, focusedCardId: string | null = null, hoveredCardId: string | null = null;
-  let isOmnibarFocused = false, capturePending = false, time = 0;
+  let isOmnibarFocused = false, capturePending = false;
   let isWindowFocused = true, isStageSleeping = false;
   let activityIdleTimer: any = null;
   let focusNavDirection: 'prev' | 'next' | null = null;
-  let frame: number;
-  let isRafRunning = false;
-  const loop = () => {
-    time = performance.now() * 0.001;
-    frame = requestAnimationFrame(loop);
-  };
-
-  $: {
-    if (typeof requestAnimationFrame !== "undefined") {
-      const shouldRun = isWindowFocused && !isStageSleeping;
-      if (shouldRun && !isRafRunning) {
-        isRafRunning = true;
-        loop();
-      } else if (!shouldRun && isRafRunning) {
-        isRafRunning = false;
-        cancelAnimationFrame(frame);
-      }
-    }
-  }
   let omniBarRef: OmniBar, availableCommands: CommandDef[] = [];
   let searchSession: SearchSession = { isActive: false, isConfirmed: false, searchId: '', stashedCards: [], rankedResults: [], color: '' };
   let searchDebounceTimer: any = null, tideTimer: any = null;
@@ -630,7 +611,6 @@
 
 
     return () => {
-      cancelAnimationFrame(frame);
       clearInterval(metabolicInterval);
       if (tideTimer) clearTimeout(tideTimer);
       if (scrollIdleTimer) clearTimeout(scrollIdleTimer);

@@ -368,7 +368,6 @@
     {!isVisible ? 'visibility: hidden; pointer-events: none;' : ''}
   "
 >
-  <div class="card-inner">
   <!-- Flowing Light Aura Layers (Search Resonance) -->
   {#if hasAura && auraStage < 3}
     <div class="aura-spinner-container">
@@ -445,7 +444,6 @@
   {:else}
     <ThoughtCardBody {card} {isFocused} {isHovered} {thoughtTime} />
   {/if}
-  </div>
 </div>
 
 <style>
@@ -473,18 +471,6 @@
 
   .card.inert {
     pointer-events: none !important;
-  }
-  .card-inner {
-    width: 100%;
-    height: 100%;
-    position: relative;
-    border-radius: inherit;
-    animation: card-cosmic-float 4s ease-in-out infinite alternate;
-  }
-
-  @keyframes card-cosmic-float {
-    0% { transform: translate3d(0, -4px, 0); }
-    100% { transform: translate3d(0, 4px, 0); }
   }
 
 
