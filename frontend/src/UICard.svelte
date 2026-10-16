@@ -128,11 +128,11 @@
         return `0 40px 100px rgba(0, 0, 0, 0.22), 0 0 24px ${toHsla(latestColor, 0.7)}, 0 0 0 1px rgba(255, 255, 255, 0.9)`;
       }
       return isBuguEcho
-        ? '0 40px 100px rgba(0, 0, 0, 0.16), 0 0 36px rgba(245, 158, 11, 0.10), inset 0 0 24px rgba(255, 250, 240, 0.45)'
+        ? '0 0 0 2px rgba(245, 158, 11, 0.85), 0 0 12px rgba(245, 158, 11, 0.55), 0 0 26px rgba(245, 158, 11, 0.32), 0 0 55px rgba(245, 158, 11, 0.16), 0 0 90px rgba(245, 158, 11, 0.06), 0 40px 100px rgba(0, 0, 0, 0.22), inset 0 0 24px rgba(255, 248, 235, 0.6), inset 0 0 3px rgba(245, 158, 11, 0.35)'
         : '0 40px 100px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.9)';
     }
     if (!hasAura) {
-      return isBuguEcho ? '' : '0 8px 24px rgba(0, 0, 0, 0.04)';
+      return '0 8px 24px rgba(0, 0, 0, 0.04)';
     }
     if (auraStage === 1) {
       // Stage 1 (< 3 min): Bright flowing glow
@@ -497,7 +497,7 @@
   }
 
   .card.bugu-echo {
-    box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.25);
+    /* No persistent static border in scattered mode - only dynamic beam on ::after */
   }
 
   .card.bugu-echo::after {
@@ -521,7 +521,7 @@
   }
 
   .card.bugu-echo.focused {
-    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.16), 0 0 36px rgba(245, 158, 11, 0.10), inset 0 0 24px rgba(255, 250, 240, 0.45);
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.85), 0 0 12px rgba(245, 158, 11, 0.55), 0 0 26px rgba(245, 158, 11, 0.32), 0 0 55px rgba(245, 158, 11, 0.16), 0 0 90px rgba(245, 158, 11, 0.06), 0 40px 100px rgba(0, 0, 0, 0.22), inset 0 0 24px rgba(255, 248, 235, 0.6), inset 0 0 3px rgba(245, 158, 11, 0.35);
   }
 
   @keyframes bugu-breathing {

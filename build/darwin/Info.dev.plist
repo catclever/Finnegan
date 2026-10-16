@@ -59,6 +59,8 @@
           {{end}}
         </array>
         {{end}}
+        <key>NSLocalNetworkUsageDescription</key>
+        <string>Finnegan 需要访问本地网络以连接本地部署的服务（如 SearxNG 知识抓取与搜索）。</string>
         <key>NSAppTransportSecurity</key>
         <dict>
             <key>NSAllowsLocalNetworking</key>
