@@ -35,7 +35,7 @@
 
   // Props
   export let cards: CosmicCard[] = [];
-  export let time: number = 0;
+
   export let globalTilt: { rx: number; ry: number } = { rx: 0, ry: 0 };
   export let scrollExpansion: number = 0;
   export let focusedCardId: string | null = null;
@@ -46,6 +46,9 @@
   export let buguSession: BuguSession | null = null;
   export let buguBeacon: BuguBeacon | null = null;
   export let lastScrollDirection: 'down' | 'up' = 'down';
+  export let isWindowFocused: boolean = true;
+  export let isStageSleeping: boolean = false;
+
   $: void isOmnibarFocused;
 
   // Callbacks
@@ -176,6 +179,7 @@
 <div 
   class="cards-wrapper" 
   class:elevated={focusedCardId !== null} 
+  class:sleeping={isStageSleeping || !isWindowFocused}
   on:click={handleWrapperClick}
 >
   {#if focusedCardId !== null}
@@ -222,7 +226,7 @@
     {#each cards as card (card.id)}
       <UICard 
         {card}
-        {time}
+
         {globalTilt}
         {scrollExpansion}
         hasAnyFocused={focusedCardId !== null}
@@ -250,6 +254,10 @@
 
 <style>
   /* Cards wrapper & 3D Scene */
+  .cards-wrapper.sleeping :global(*) {
+    animation-play-state: paused !important;
+  }
+
   .cards-wrapper {
     position: absolute;
     top: 0;

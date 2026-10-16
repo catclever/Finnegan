@@ -28,7 +28,28 @@
   let memoryPool: CosmicCard[] = [], localVaultPool: CosmicCard[] = [], cards: CosmicCard[] = [];
   let latestManualCardId: string | null = null, focusedCardId: string | null = null, hoveredCardId: string | null = null;
   let isOmnibarFocused = false, capturePending = false, time = 0;
+  let isWindowFocused = true, isStageSleeping = false;
+  let activityIdleTimer: any = null;
   let focusNavDirection: 'prev' | 'next' | null = null;
+  let frame: number;
+  let isRafRunning = false;
+  const loop = () => {
+    time = performance.now() * 0.001;
+    frame = requestAnimationFrame(loop);
+  };
+
+  $: {
+    if (typeof requestAnimationFrame !== "undefined") {
+      const shouldRun = isWindowFocused && !isStageSleeping;
+      if (shouldRun && !isRafRunning) {
+        isRafRunning = true;
+        loop();
+      } else if (!shouldRun && isRafRunning) {
+        isRafRunning = false;
+        cancelAnimationFrame(frame);
+      }
+    }
+  }
   let omniBarRef: OmniBar, availableCommands: CommandDef[] = [];
   let searchSession: SearchSession = { isActive: false, isConfirmed: false, searchId: '', stashedCards: [], rankedResults: [], color: '' };
   let searchDebounceTimer: any = null, tideTimer: any = null;
@@ -61,6 +82,7 @@
   }
 
   function handleWheel(e: WheelEvent) {
+    resetActivityTimer();
     if (focusedCardId !== null) return;
     if (Math.abs(e.deltaY) > 0.5) {
       lastScrollDirection = e.deltaY > 0 ? 'down' : 'up';
@@ -358,6 +380,7 @@
   let globalTilt = spring({ rx: 0, ry: 0 }, { stiffness: 0.04, damping: 0.25 });
 
   function handleMouseMove(e: MouseEvent) {
+    resetActivityTimer();
     resetTideTimer();
     const mX = (e.clientX / window.innerWidth) * 2 - 1, mY = (e.clientY / window.innerHeight) * 2 - 1;
     globalTilt.set(focusedCardId === null ? { rx: mY * 15, ry: -mX * 15 } : { rx: 0, ry: 0 });
@@ -432,6 +455,7 @@
   }
 
   function handleWindowKeydown(e: KeyboardEvent) {
+    resetActivityTimer();
     if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'r') {
       e.preventDefault();
       restoreConfirmedSearch();
@@ -449,7 +473,36 @@
   }
 
   // --- Metabolic Loop & Lifecycle ---
+  function resetActivityTimer() {
+    isStageSleeping = false;
+    if (activityIdleTimer) clearTimeout(activityIdleTimer);
+    activityIdleTimer = setTimeout(() => {
+      if (focusedCardId === null && !searchSession.isActive && !isOmnibarFocused) {
+        isStageSleeping = true;
+      }
+    }, 3000);
+  }
+
+  function handleWindowFocus() {
+    isWindowFocused = true;
+    resetActivityTimer();
+  }
+
+  function handleWindowBlur() {
+    isWindowFocused = false;
+  }
+
+  function handleVisibilityChange() {
+    isWindowFocused = !document.hidden;
+    if (isWindowFocused) resetActivityTimer();
+  }
+
   onMount(() => {
+    window.addEventListener('focus', handleWindowFocus);
+    window.addEventListener('blur', handleWindowBlur);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    resetActivityTimer();
+
     GetRegisteredCommands().then(cmds => { if (Array.isArray(cmds)) availableCommands = cmds; }).catch(console.warn);
 
     Promise.all([LoadLocalCards(), GetTempCards()]).then(([localCards, tempCards]) => {
@@ -574,9 +627,7 @@
       replenishStage();
     }, 2000);
 
-    let frame: number;
-    const loop = () => { time = performance.now() * 0.001; frame = requestAnimationFrame(loop); };
-    loop();
+
 
     return () => {
       cancelAnimationFrame(frame);
@@ -586,6 +637,10 @@
       if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
       if (babelQueueTimer) clearTimeout(babelQueueTimer);
       if (buguBeaconTimer) clearTimeout(buguBeaconTimer);
+      window.removeEventListener('focus', handleWindowFocus);
+      window.removeEventListener('blur', handleWindowBlur);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (activityIdleTimer) clearTimeout(activityIdleTimer);
     };
   });
 </script>
@@ -596,10 +651,10 @@
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <div class="container" on:click={handleWindowClick}>
   <CosmicStage
-    {cards} {time} buguBeacon={activeBuguBeacon} buguSession={activeBuguSession}
+    {cards} buguBeacon={activeBuguBeacon} buguSession={activeBuguSession}
     {focusNavDirection}
     globalTilt={$globalTilt} scrollExpansion={$scrollExpansion} {focusedCardId} {hoveredCardId} {isOmnibarFocused}
-    isSearchActive={searchSession.isActive}
+    isSearchActive={searchSession.isActive} {isStageSleeping} {isWindowFocused}
     {lastScrollDirection}
     onToggleFocus={toggleFocus} onHoverCard={(id) => { hoveredCardId = id; resetTideTimer(); }}
     onLeaveCard={() => hoveredCardId = null} onBgClick={handleWindowClick}
