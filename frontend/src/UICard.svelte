@@ -52,7 +52,7 @@
   $: if (!isFocused) lastNavDir = null;
 
   let isVisible = true;
-  $: isVisible = isFocused || Math.abs(card.y - scrollExpansion * 300) <= 650;
+  $: isVisible = isFocused || Math.abs(card.y - scrollExpansion * 300) <= 850;
 
 
   let animSpring = spring({

@@ -40,7 +40,7 @@
 
   // --- Gravitational Tide (Multi-Screen Y-Axis Expansion) ---
   let scrollTarget = 0;
-  let scrollExpansion = spring(0, { stiffness: 0.08, damping: 0.45 });
+  let scrollExpansion = spring(0, { stiffness: 0.16, damping: 0.72 });
   let isScrolling = false;
   let scrollIdleTimer: any = null;
   let lastScrollDirection: 'down' | 'up' = 'down';
@@ -74,7 +74,18 @@
       isScrolling = false;
     }, 450);
 
-    scrollTarget = computeNextScrollTarget(scrollTarget, e.deltaY, e.deltaMode, cards);
+    // Dynamic reversal anchoring:
+    // If user reverses scroll direction, immediately anchor baseTarget to the live spring value ($scrollExpansion)
+    // to eliminate latency and prevent having to scroll through accumulated overshoot buffer.
+    const currentExp = $scrollExpansion;
+    let baseTarget = scrollTarget;
+    if (e.deltaY < 0 && baseTarget > currentExp) {
+      baseTarget = currentExp;
+    } else if (e.deltaY > 0 && baseTarget < currentExp) {
+      baseTarget = currentExp;
+    }
+
+    scrollTarget = computeNextScrollTarget(baseTarget, e.deltaY, e.deltaMode, cards);
     scrollExpansion.set(scrollTarget);
     resetTideTimer();
     if (e.deltaY > 0) replenishStage();

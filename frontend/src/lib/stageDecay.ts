@@ -77,14 +77,16 @@ export function isProtectedCard(
  * Supports at least 2.2 screens of scroll depth, scaling up to 3.5 when deep cards exist.
  */
 export function getMaxScrollExpansion(activeCards: CosmicCard[] = []): number {
-  const solidCards = activeCards.filter(c => !c.isFadingOut);
+  const solidCards = activeCards.filter(c => !c.isFadingOut && typeof c.y === 'number' && !isNaN(c.y));
   if (solidCards.length === 0) return 2.2;
   const maxCardY = Math.max(...solidCards.map(c => c.y));
+  if (!isFinite(maxCardY)) return 2.2;
   return Math.max(2.2, Math.min(3.5, (maxCardY - 120) / TIDE_OFFSET_PX));
 }
 
 /**
- * Normalizes wheel deltaMode, soft-clamps impulse, and accumulates onto `currentTarget`.
+ * Normalizes wheel deltaMode, soft-clamps impulse with asymmetric responsiveness, and accumulates onto `currentTarget`.
+ * Returning to top (upward gesture, deltaY < 0) has higher impulse capacity and sensitivity to smoothly reach Screen 1 in 1-2 gestures.
  */
 export function computeNextScrollTarget(
   currentTarget: number,
@@ -93,7 +95,10 @@ export function computeNextScrollTarget(
   activeCards: CosmicCard[] = []
 ): number {
   const normDelta = deltaMode === 1 ? deltaY * 28 : deltaMode === 2 ? deltaY * 300 : deltaY;
-  const clampedImpulse = Math.max(-160, Math.min(160, normDelta)) * 0.0016;
+  const isUpward = normDelta < 0;
+  const maxImpulse = isUpward ? 360 : 260;
+  const impulseFactor = isUpward ? 0.0032 : 0.0022;
+  const clampedImpulse = Math.max(-maxImpulse, Math.min(maxImpulse, normDelta)) * impulseFactor;
   const maxScroll = getMaxScrollExpansion(activeCards);
   return Math.max(0, Math.min(maxScroll, currentTarget + clampedImpulse));
 }
