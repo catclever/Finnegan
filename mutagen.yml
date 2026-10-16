@@ -16,6 +16,7 @@ sync:
         - "*~"
         - ".agent/"
         - ".gemini/"
+        - ".codex/"
         - "*.log"
         - "tmp/"
         - "temp/"
