@@ -322,11 +322,15 @@
     const diffSec = Math.floor((now - d.getTime()) / 1000);
     if (diffSec < 60) return '刚刚';
     if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m 前`;
-    if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h 前`;
+    const currentYear = new Date().getFullYear();
+    const year = d.getFullYear();
     const m = d.getMonth() + 1;
     const day = d.getDate();
     const h = String(d.getHours()).padStart(2, '0');
     const min = String(d.getMinutes()).padStart(2, '0');
+    if (year !== currentYear) {
+      return `${year}/${m}/${day}`;
+    }
     return `${m}/${day} ${h}:${min}`;
   }
 

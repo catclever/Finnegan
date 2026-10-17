@@ -720,8 +720,8 @@
           </button>
           <span class="banner-sep">·</span>
         {/if}
-        <button type="button" class="banner-clickable-action" on:click={searchSession.isConfirmed ? handleRestoreSearch : handleRevertSearch} title={searchSession.isConfirmed ? '按 Cmd/Ctrl+Shift+R 恢复全部卡片' : '按 Esc 清除并还原'}>
-          <span class="banner-key">{searchSession.isConfirmed ? '⌘ ⇧ R' : 'Esc'}</span>
+        <button type="button" class="banner-clickable-action" on:click={searchSession.isConfirmed ? handleRestoreSearch : handleRevertSearch} title="按 Esc 还原全部卡片">
+          <span class="banner-key">Esc</span>
           <span class="banner-action">{searchSession.isConfirmed ? '恢复全部' : '清除'}</span>
         </button>
         <span class="banner-sep">·</span>

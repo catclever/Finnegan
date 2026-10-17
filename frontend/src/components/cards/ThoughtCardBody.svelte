@@ -88,13 +88,13 @@
 </script>
 
 <div class="thought-card-body" class:focused={isFocused} class:has-images={hasImages}>
-  {#if thoughtTime && isFocused}
-    <div class="thought-header">
-      <span class="card-time">{thoughtTime}</span>
-    </div>
-  {/if}
-
   {#if isFocused}
+    {#if thoughtTime}
+      <div class="thought-header">
+        <span class="card-time">{thoughtTime}</span>
+      </div>
+    {/if}
+
     <!-- Focused mode: Invariant Focus natural scroll and horizontal swipe (Option A: Text first, Images below) -->
     {#if card && card.content}
       <div class="thought-content focused" class:has-images={hasImages}>
@@ -165,6 +165,12 @@
         <p>{card.content}</p>
       </div>
     {/if}
+
+    {#if thoughtTime}
+      <div class="thought-footer">
+        <span class="card-time">{thoughtTime}</span>
+      </div>
+    {/if}
   {/if}
 </div>
 
@@ -205,6 +211,18 @@
     margin-bottom: 6px;
     width: 100%;
     flex-shrink: 0;
+  }
+
+  .thought-footer {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    width: 100%;
+    margin-top: auto;
+    padding-top: 4px;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 2;
   }
 
   .card-time {
@@ -335,7 +353,8 @@
 
   .thought-content:not(.has-images) {
     justify-content: center;
-    height: 100%;
+    flex: 1;
+    min-height: 0;
     overflow: hidden;
   }
 
@@ -364,7 +383,7 @@
   }
 
   .thought-content:not(.has-images) p {
-    -webkit-line-clamp: 6;
+    -webkit-line-clamp: 5;
   }
 
   .thought-content.has-images p {

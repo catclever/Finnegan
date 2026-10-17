@@ -463,13 +463,22 @@
 
   function handleWindowKeydown(e: KeyboardEvent) {
     resetActivityTimer();
-    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'r') {
+    const isMetaOrCtrl = e.metaKey || e.ctrlKey;
+    const key = e.key.toLowerCase();
+
+    // 1. Force refresh / Hard reload (Cmd+R, Cmd+Shift+R, Ctrl+R, Ctrl+Shift+R, F5)
+    if ((isMetaOrCtrl && key === 'r') || e.key === 'F5') {
       e.preventDefault();
-      restoreConfirmedSearch();
+      window.location.reload();
       return;
     }
+
     if (e.key === 'Escape') {
       if (focusedCardId !== null) { focusedCardId = null; return; }
+      if (searchSession.isActive && searchSession.isConfirmed) {
+        restoreConfirmedSearch();
+        return;
+      }
       if (omniBarRef?.handleEscape()) return;
     }
     if (focusedCardId !== null) {
