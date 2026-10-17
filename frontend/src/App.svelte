@@ -466,8 +466,8 @@
     const isMetaOrCtrl = e.metaKey || e.ctrlKey;
     const key = e.key.toLowerCase();
 
-    // 1. Force refresh / Hard reload (Cmd+R, Cmd+Shift+R, Ctrl+R, Ctrl+Shift+R, F5)
-    if ((isMetaOrCtrl && key === 'r') || e.key === 'F5') {
+    // 1. Force refresh / Hard reload (Strictly requires Shift: Cmd+Shift+R, Ctrl+Shift+R, Shift+F5)
+    if ((isMetaOrCtrl && e.shiftKey && key === 'r') || (e.shiftKey && e.key === 'F5')) {
       e.preventDefault();
       window.location.reload();
       return;
