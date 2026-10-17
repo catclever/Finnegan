@@ -76,14 +76,13 @@ export function isProtectedCard(
 }
 
 /**
- * Supports at least 2.2 screens of scroll depth, scaling up to 3.5 when deep cards exist.
+ * Supports at least 2.2 screens of scroll depth, scaling up to 5.0 when deep cards or pool cards exist.
  */
-export function getMaxScrollExpansion(activeCards: CosmicCard[] = []): number {
+export function getMaxScrollExpansion(activeCards: CosmicCard[] = [], totalAvailable: number = 0): number {
   const solidCards = activeCards.filter(c => !c.isFadingOut && typeof c.y === 'number' && !isNaN(c.y));
-  if (solidCards.length === 0) return 2.2;
-  const maxCardY = Math.max(...solidCards.map(c => c.y));
-  if (!isFinite(maxCardY)) return 2.2;
-  return Math.max(2.2, Math.min(3.5, (maxCardY - 120) / TIDE_OFFSET_PX));
+  const cardBasedMax = solidCards.length === 0 ? 2.2 : Math.max(2.2, Math.min(5.0, (Math.max(...solidCards.map(c => c.y)) - 120) / TIDE_OFFSET_PX));
+  const poolBasedMax = totalAvailable > 10 ? Math.min(5.0, 2.2 + (totalAvailable - 10) * 0.12) : 2.2;
+  return Math.min(5.0, Math.max(cardBasedMax, poolBasedMax));
 }
 
 /**
@@ -94,14 +93,15 @@ export function computeNextScrollTarget(
   currentTarget: number,
   deltaY: number,
   deltaMode: number = 0,
-  activeCards: CosmicCard[] = []
+  activeCards: CosmicCard[] = [],
+  totalAvailable: number = 0
 ): number {
   const normDelta = deltaMode === 1 ? deltaY * 28 : deltaMode === 2 ? deltaY * 300 : deltaY;
   const isUpward = normDelta < 0;
   const maxImpulse = isUpward ? 360 : 260;
   const impulseFactor = isUpward ? 0.0032 : 0.0022;
   const clampedImpulse = Math.max(-maxImpulse, Math.min(maxImpulse, normDelta)) * impulseFactor;
-  const maxScroll = getMaxScrollExpansion(activeCards);
+  const maxScroll = getMaxScrollExpansion(activeCards, totalAvailable);
   return Math.max(0, Math.min(maxScroll, currentTarget + clampedImpulse));
 }
 
@@ -182,7 +182,9 @@ export function calculateSpatialPlacement(
   const solidCards = activeCards.filter(c => !c.isFadingOut);
 
   const viewCenterY = explicitTargetY !== undefined ? explicitTargetY : Math.round(_scrollExpansion * 300);
-  const screenZones = getDynamicScreenZones(viewCenterY);
+  const screenZones = explicitTargetY !== undefined
+    ? [{ minY: explicitTargetY - 240, maxY: explicitTargetY + 240, centerY: explicitTargetY }]
+    : getDynamicScreenZones(viewCenterY);
 
   const SAMPLES_PER_ZONE = 28;
   let chosenPoint: { x: number; y: number } | null = null;
@@ -232,7 +234,7 @@ export function calculateSpatialPlacement(
   }
 
   // Fallback to the globally best candidate if all zones were crowded
-  const finalPoint = chosenPoint || globalBestPoint || { x: Math.random() < 0.5 ? -380 : 380, y: 0 };
+  const finalPoint = chosenPoint || globalBestPoint || { x: Math.random() < 0.5 ? -380 : 380, y: viewCenterY };
   const finalX = Math.round(finalPoint.x);
   const finalY = Math.round(finalPoint.y);
   const rotation = Number(((Math.random() - 0.5) * 50).toFixed(1));
@@ -308,7 +310,8 @@ export function stageCandidate(
   let updatedMemoryPool = [...memoryPool];
 
   const activeSolidCards = currentActiveCards.filter(c => !c.isFadingOut);
-  if (activeSolidCards.length > 30) {
+  const maxSafeActive = Math.max(36, Math.round(BASE_CAPACITY * (1 + scrollExpansion * 0.6)) + 4);
+  if (activeSolidCards.length > maxSafeActive) {
      const toEvict = activeSolidCards
         .filter(c => !isProtectedCard(c, currentActiveCards, activeBuguSourceId))
         .sort((a, b) => (a.z - b.z) || (a.spawnTime - b.spawnTime));

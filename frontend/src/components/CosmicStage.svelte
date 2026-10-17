@@ -48,6 +48,7 @@
   export let lastScrollDirection: 'down' | 'up' = 'down';
   export let isWindowFocused: boolean = true;
   export let isStageSleeping: boolean = false;
+  export let totalAvailableCards: number = 0;
 
   $: void isOmnibarFocused;
 
@@ -65,7 +66,7 @@
   let prevScrollDir: 'down' | 'up' = 'down';
 
   // Track max scroll depth and boundaries
-  $: maxScroll = getMaxScrollExpansion(cards);
+  $: maxScroll = getMaxScrollExpansion(cards, totalAvailableCards);
   $: isNearBottom = scrollExpansion >= (maxScroll - 0.22);
   $: isNearTop = scrollExpansion <= 0.08;
 

@@ -85,7 +85,8 @@
       baseTarget = currentExp;
     }
 
-    scrollTarget = computeNextScrollTarget(baseTarget, e.deltaY, e.deltaMode, cards);
+    const totalAvailable = cards.length + memoryPool.length + localVaultPool.length;
+    scrollTarget = computeNextScrollTarget(baseTarget, e.deltaY, e.deltaMode, cards, totalAvailable);
     scrollExpansion.set(scrollTarget);
     resetTideTimer();
     if (e.deltaY > 0) replenishStage();
@@ -96,7 +97,7 @@
     if (res.updatedMemoryPool) memoryPool = res.updatedMemoryPool;
     if (res.remainingRankedResults !== undefined) searchSession.rankedResults = res.remainingRankedResults;
     if (res.updatedCards) {
-      cards = [...res.updatedCards.filter(c => !res.newCardsToStage.find(n => n.id === c.id)), ...res.newCardsToStage];
+      cards = res.updatedCards;
     } else if (res.newCardsToStage.length > 0) {
       cards = [...cards, ...res.newCardsToStage];
     }
@@ -324,16 +325,19 @@
     buguBabelCount = 0;
 
     // Check if mother card is visible, if not, summon it to the current screen
-    const motherCard = cards.find(c => c.id === sourceCardId);
+    const isAlreadyOnStage = cards.some(c => c.id === sourceCardId);
+    let motherCard = cards.find(c => c.id === sourceCardId) ||
+      localVaultPool.find(c => c.id === sourceCardId) ||
+      memoryPool.find(c => c.id === sourceCardId);
     const viewportY = Math.round($scrollExpansion * 300);
 
-    if (motherCard && Math.abs(motherCard.y - viewportY) > 260) {
-      // Mother card is out of screen. Remove it temporarily.
+    if (motherCard && (!isAlreadyOnStage || Math.abs(motherCard.y - viewportY) > 260)) {
+      // Mother card is out of screen or resting in pool. Summon to the current screen.
       let currentCards = cards.filter(c => c.id !== sourceCardId);
       const { stagedCard, updatedActiveCards, updatedMemoryPool } = stageCandidate(motherCard, false, $scrollExpansion, currentCards, memoryPool, sourceCardId, viewportY);
       if (updatedMemoryPool) memoryPool = updatedMemoryPool;
       cards = [...updatedActiveCards.filter(c => c.id !== stagedCard.id), { ...stagedCard, isVIP: true, decayDuration: Math.max(stagedCard.decayDuration, 12 * 3600 * 1000) }];
-    } else {
+    } else if (motherCard) {
       cards = cards.map(c => c.id === sourceCardId ? { ...c, isVIP: true, decayDuration: Math.max(c.decayDuration, 12 * 3600 * 1000) } : c);
     }
 
@@ -646,7 +650,9 @@
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <div class="container" on:click={handleWindowClick}>
   <CosmicStage
-    {cards} buguBeacon={activeBuguBeacon} buguSession={activeBuguSession}
+    {cards}
+    totalAvailableCards={cards.length + memoryPool.length + localVaultPool.length}
+    buguBeacon={activeBuguBeacon} buguSession={activeBuguSession}
     {focusNavDirection}
     globalTilt={$globalTilt} scrollExpansion={$scrollExpansion} {focusedCardId} {hoveredCardId} {isOmnibarFocused}
     isSearchActive={searchSession.isActive} {isStageSleeping} {isWindowFocused}
