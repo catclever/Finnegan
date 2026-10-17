@@ -42,7 +42,7 @@ export interface StageCoordinates {
   z: number;
 }
 
-export const OMNIBAR_DEADZONE = { halfWidth: 290, halfHeight: 28 };
+export const OMNIBAR_DEADZONE = { halfWidth: 290, halfHeight: 32 };
 export const CARD_CLEARANCE = { dx: 220, dy: 200 };
 export const COMFORT_NORM_DIST = 1.15; // Minimum safe distance threshold for comfortable placement
 
@@ -52,12 +52,14 @@ export interface ScreenZone {
   centerY: number;
 }
 
-export const SCREEN_ZONES: ScreenZone[] = [
-  { minY: -260, maxY: 260, centerY: 0 },     // Screen 1 (centered at Y = 0)
-  { minY: 300, maxY: 700, centerY: 480 },    // Screen 2 (centered at Y = 480)
-  { minY: 740, maxY: 1140, centerY: 940 },   // Screen 3 (centered at Y = 940)
-  { minY: 1180, maxY: 1580, centerY: 1380 }  // Screen 4 (deep fallback)
-];
+export function getDynamicScreenZones(targetY: number): ScreenZone[] {
+  return [
+    { minY: targetY - 240, maxY: targetY + 240, centerY: targetY },
+    { minY: targetY + 280, maxY: targetY + 720, centerY: targetY + 480 },
+    { minY: targetY + 760, maxY: targetY + 1160, centerY: targetY + 960 },
+    { minY: targetY + 1200, maxY: targetY + 1600, centerY: targetY + 1440 }
+  ];
+}
 
 /**
  * Protects VIP cards, active Bugu radar source card, and any Mother card of an active stage echo.
@@ -174,16 +176,20 @@ export function calculateSpatialPlacement(
   activeCards: CosmicCard[] = [],
   _scrollExpansion: number = 0,
   isNewlyCreated: boolean = false,
-  _origin?: string
+  _origin?: string,
+  explicitTargetY?: number
 ): StageCoordinates {
   const solidCards = activeCards.filter(c => !c.isFadingOut);
+
+  const viewCenterY = explicitTargetY !== undefined ? explicitTargetY : Math.round(_scrollExpansion * 300);
+  const screenZones = getDynamicScreenZones(viewCenterY);
 
   const SAMPLES_PER_ZONE = 28;
   let chosenPoint: { x: number; y: number } | null = null;
   let globalBestPoint: { x: number; y: number } | null = null;
   let globalMaxDistance = -Infinity;
 
-  for (const zone of SCREEN_ZONES) {
+  for (const zone of screenZones) {
     let zoneBestPoint: { x: number; y: number } | null = null;
     let zoneMaxDistance = -Infinity;
 
@@ -240,23 +246,83 @@ export function calculateSpatialPlacement(
 /**
  * Stages a candidate card into active 3D coordinates on stage.
  */
+export interface StageResult {
+  stagedCard: CosmicCard;
+  updatedActiveCards: CosmicCard[];
+  updatedMemoryPool?: CosmicCard[];
+}
+
 export function stageCandidate(
   candidate: CosmicCard,
   isNewlyCreated: boolean = false,
   scrollExpansion: number = 0,
   activeCards: CosmicCard[] = [],
-  memoryPool: CosmicCard[] = []
-): CosmicCard {
-  const coords = calculateSpatialPlacement(activeCards, scrollExpansion, isNewlyCreated, candidate.origin);
+  memoryPool: CosmicCard[] = [],
+  activeBuguSourceId?: string | null,
+  explicitTargetY?: number
+): StageResult {
+  const targetY = explicitTargetY !== undefined ? explicitTargetY : Math.round(scrollExpansion * 300);
+
+  let currentActiveCards = [...activeCards];
+
+  function applyCascade(cascadeTargetY: number) {
+    const screenSolidCards = currentActiveCards.filter(c =>
+      !c.isFadingOut && c.y >= cascadeTargetY - 240 && c.y <= cascadeTargetY + 240
+    );
+
+    if (screenSolidCards.length >= 6) {
+      const evictable = screenSolidCards
+        .filter(c => !isProtectedCard(c, currentActiveCards, activeBuguSourceId))
+        .sort((a, b) => a.spawnTime - b.spawnTime);
+
+      if (evictable.length > 0) {
+        const victim = evictable[0];
+        const nextTargetY = cascadeTargetY + 480;
+
+        const newCoords = calculateSpatialPlacement(currentActiveCards.filter(c => c.id !== victim.id), scrollExpansion, false, victim.origin, nextTargetY);
+
+        currentActiveCards = currentActiveCards.map(c =>
+          c.id === victim.id ? { ...c, x: newCoords.x, y: newCoords.y, z: newCoords.z } : c
+        );
+
+        applyCascade(nextTargetY);
+      }
+    }
+  }
+
+  applyCascade(targetY);
+
+  const coords = calculateSpatialPlacement(currentActiveCards, scrollExpansion, isNewlyCreated, candidate.origin, targetY);
   const z = candidate.z !== undefined ? candidate.z : coords.z;
   const spawnTime = Date.now();
-  const decayDuration = calculateDecayDuration(candidate.origin, z, candidate.isVIP, activeCards, memoryPool);
+  const decayDuration = calculateDecayDuration(candidate.origin, z, candidate.isVIP, currentActiveCards, memoryPool);
 
-  return {
+  const stagedCard = {
     ...candidate,
     x: coords.x, y: coords.y, rotation: coords.rotation, z,
     spawnTime, decayDuration, isFresh: isNewlyCreated, isFadingOut: false
   };
+
+  currentActiveCards.push(stagedCard);
+
+  let updatedMemoryPool = [...memoryPool];
+
+  const activeSolidCards = currentActiveCards.filter(c => !c.isFadingOut);
+  if (activeSolidCards.length > 30) {
+     const toEvict = activeSolidCards
+        .filter(c => !isProtectedCard(c, currentActiveCards, activeBuguSourceId))
+        .sort((a, b) => (a.z - b.z) || (a.spawnTime - b.spawnTime));
+
+     if (toEvict.length > 0) {
+        const victim = toEvict[0];
+        currentActiveCards = currentActiveCards.map(c =>
+           c.id === victim.id ? { ...c, isFadingOut: true } : c
+        );
+        updatedMemoryPool = [{ ...victim, isFadingOut: false, isVIP: false, macroExpiresAt: Date.now() + MACRO_TTL_MS }, ...updatedMemoryPool.filter(c => c.id !== victim.id)];
+     }
+  }
+
+  return { stagedCard, updatedActiveCards: currentActiveCards, updatedMemoryPool };
 }
 
 export function getUnstagedMemoryCards(
@@ -313,6 +379,7 @@ export interface ReplenishResult {
   newCardsToStage: CosmicCard[];
   updatedMemoryPool: CosmicCard[];
   remainingRankedResults?: CosmicCard[];
+  updatedCards?: CosmicCard[];
 }
 
 export function replenishStageCandidates({
@@ -327,6 +394,7 @@ export function replenishStageCandidates({
   const newCardsToStage: CosmicCard[] = [];
   const stagingIds = new Set<string>();
   let currentMemory = [...memoryPool];
+  let currentCards = [...cards];
   let remainingRanked = searchSession?.rankedResults ? [...searchSession.rankedResults] : undefined;
 
   if (searchSession?.isActive && remainingRanked && remainingRanked.length > 0) {
@@ -335,11 +403,13 @@ export function replenishStageCandidates({
     remainingRanked = remainingRanked.slice(takeCount);
 
     for (const ac of auraBatch) {
-      if (stagingIds.has(ac.id) || cards.some(c => c.id === ac.id)) continue;
-      const staged = stageCandidate(ac, true, scrollExpansion, [...cards, ...newCardsToStage], currentMemory);
-      staged.z = 15 + Math.random() * 25;
-      newCardsToStage.push(staged);
-      stagingIds.add(staged.id);
+      if (stagingIds.has(ac.id) || currentCards.some(c => c.id === ac.id)) continue;
+      const { stagedCard, updatedActiveCards, updatedMemoryPool } = stageCandidate(ac, true, scrollExpansion, currentCards, currentMemory);
+      stagedCard.z = 15 + Math.random() * 25;
+      newCardsToStage.push(stagedCard);
+      stagingIds.add(stagedCard.id);
+      currentCards = updatedActiveCards;
+      if (updatedMemoryPool) currentMemory = updatedMemoryPool;
     }
   }
 
@@ -355,37 +425,45 @@ export function replenishStageCandidates({
       const shuffledMemory = [...unstagedMemory].sort(() => Math.random() - 0.5);
       for (let i = 0; i < memSlots && i < shuffledMemory.length; i++) {
         const item = shuffledMemory[i];
-        if (!stagingIds.has(item.id) && !cards.some(c => c.id === item.id)) {
-          const staged = stageCandidate(item, false, scrollExpansion, [...cards, ...newCardsToStage], currentMemory);
-          newCardsToStage.push(staged);
-          stagingIds.add(staged.id);
+        if (!stagingIds.has(item.id) && !currentCards.some(c => c.id === item.id)) {
+          const { stagedCard, updatedActiveCards, updatedMemoryPool } = stageCandidate(item, false, scrollExpansion, currentCards, currentMemory);
+          newCardsToStage.push(stagedCard);
+          stagingIds.add(stagedCard.id);
+          currentCards = updatedActiveCards;
+          if (updatedMemoryPool) currentMemory = updatedMemoryPool;
         }
       }
 
       for (let i = 0; i < newSlots; i++) {
-        const { card: fetched, updatedMemoryPool } = fetchNewCardIntoMemory(localVaultPool, currentMemory, cards, stagingIds);
-        currentMemory = updatedMemoryPool;
+        const { card: fetched, updatedMemoryPool: fetchMemPool } = fetchNewCardIntoMemory(localVaultPool, currentMemory, cards, stagingIds);
+        currentMemory = fetchMemPool;
         if (fetched) {
-          const staged = stageCandidate(fetched, true, scrollExpansion, [...cards, ...newCardsToStage], currentMemory);
-          newCardsToStage.push(staged);
-          stagingIds.add(staged.id);
+          const { stagedCard, updatedActiveCards, updatedMemoryPool } = stageCandidate(fetched, true, scrollExpansion, currentCards, currentMemory);
+          newCardsToStage.push(stagedCard);
+          stagingIds.add(stagedCard.id);
+          currentCards = updatedActiveCards;
+          if (updatedMemoryPool) currentMemory = updatedMemoryPool;
         } else {
-          const backup = shuffledMemory.find(m => !stagingIds.has(m.id) && !cards.some(c => c.id === m.id));
+          const backup = shuffledMemory.find(m => !stagingIds.has(m.id) && !currentCards.some(c => c.id === m.id));
           if (backup) {
-            const staged = stageCandidate(backup, false, scrollExpansion, [...cards, ...newCardsToStage], currentMemory);
-            newCardsToStage.push(staged);
-            stagingIds.add(staged.id);
+            const { stagedCard, updatedActiveCards, updatedMemoryPool } = stageCandidate(backup, false, scrollExpansion, currentCards, currentMemory);
+            newCardsToStage.push(stagedCard);
+            stagingIds.add(stagedCard.id);
+            currentCards = updatedActiveCards;
+            if (updatedMemoryPool) currentMemory = updatedMemoryPool;
           }
         }
       }
     } else {
       for (let i = 0; i < remainingNeeded; i++) {
-        const { card: fetched, updatedMemoryPool } = fetchNewCardIntoMemory(localVaultPool, currentMemory, cards, stagingIds);
-        currentMemory = updatedMemoryPool;
+        const { card: fetched, updatedMemoryPool: fetchMemPool } = fetchNewCardIntoMemory(localVaultPool, currentMemory, cards, stagingIds);
+        currentMemory = fetchMemPool;
         if (fetched) {
-          const staged = stageCandidate(fetched, true, scrollExpansion, [...cards, ...newCardsToStage], currentMemory);
-          newCardsToStage.push(staged);
-          stagingIds.add(staged.id);
+          const { stagedCard, updatedActiveCards, updatedMemoryPool } = stageCandidate(fetched, true, scrollExpansion, currentCards, currentMemory);
+          newCardsToStage.push(stagedCard);
+          stagingIds.add(stagedCard.id);
+          currentCards = updatedActiveCards;
+          if (updatedMemoryPool) currentMemory = updatedMemoryPool;
         } else {
           break;
         }
@@ -393,5 +471,5 @@ export function replenishStageCandidates({
     }
   }
 
-  return { newCardsToStage, updatedMemoryPool: currentMemory, remainingRankedResults: remainingRanked };
+  return { newCardsToStage, updatedMemoryPool: currentMemory, remainingRankedResults: remainingRanked, updatedCards: currentCards };
 }

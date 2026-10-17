@@ -95,7 +95,11 @@
     const res = replenishStageCandidates({ targetCapacity, cards, memoryPool, localVaultPool, searchSession, scrollExpansion: $scrollExpansion });
     if (res.updatedMemoryPool) memoryPool = res.updatedMemoryPool;
     if (res.remainingRankedResults !== undefined) searchSession.rankedResults = res.remainingRankedResults;
-    if (res.newCardsToStage.length > 0) cards = [...cards, ...res.newCardsToStage];
+    if (res.updatedCards) {
+      cards = [...res.updatedCards.filter(c => !res.newCardsToStage.find(n => n.id === c.id)), ...res.newCardsToStage];
+    } else if (res.newCardsToStage.length > 0) {
+      cards = [...cards, ...res.newCardsToStage];
+    }
   }
 
   // --- Aura Search Delegators ---
@@ -216,7 +220,8 @@
     }, 'chat_log', 'manual');
     baseCard.isEnriching = true;
 
-    const stagedCard = stageCandidate(baseCard, true, $scrollExpansion, cards, memoryPool);
+    const { stagedCard, updatedActiveCards, updatedMemoryPool } = stageCandidate(baseCard, true, $scrollExpansion, cards, memoryPool, activeBuguBeacon?.sourceCardId);
+    if (updatedMemoryPool) memoryPool = updatedMemoryPool;
     const newCard = { 
       ...stagedCard, 
       images: images || stagedCard.images, 
@@ -227,16 +232,7 @@
     };
 
     localVaultPool = [newCard, ...localVaultPool.filter(c => c.id !== newCard.id)];
-    if (cards.filter(c => !c.isFadingOut).length >= targetCapacity) {
-      const evictable = cards
-        .filter(c => !isProtectedCard(c, cards, activeBuguBeacon?.sourceCardId) && !c.isFadingOut)
-        .sort((a, b) => (a.spawnTime + a.decayDuration) - (b.spawnTime + b.decayDuration));
-      if (evictable.length > 0) {
-        evictable[0].isFadingOut = true;
-        setTimeout(() => { cards = cards.filter(c => c.id !== evictable[0].id); }, 2500);
-      }
-    }
-    cards = [...cards.filter(c => c.id !== newCard.id), newCard];
+    cards = [...updatedActiveCards.filter(c => c.id !== newCard.id), newCard];
 
     try {
       let res: any;
@@ -321,9 +317,26 @@
     }, 90000);
   }
 
+  let buguBabelCount = 0;
+
   function startBuguRadar(sourceCardId: string) {
     radarBackendFinished = false;
-    cards = cards.map(c => c.id === sourceCardId ? { ...c, isVIP: true, decayDuration: Math.max(c.decayDuration, 12 * 3600 * 1000) } : c);
+    buguBabelCount = 0;
+
+    // Check if mother card is visible, if not, summon it to the current screen
+    const motherCard = cards.find(c => c.id === sourceCardId);
+    const viewportY = Math.round($scrollExpansion * 300);
+
+    if (motherCard && Math.abs(motherCard.y - viewportY) > 260) {
+      // Mother card is out of screen. Remove it temporarily.
+      let currentCards = cards.filter(c => c.id !== sourceCardId);
+      const { stagedCard, updatedActiveCards, updatedMemoryPool } = stageCandidate(motherCard, false, $scrollExpansion, currentCards, memoryPool, sourceCardId, viewportY);
+      if (updatedMemoryPool) memoryPool = updatedMemoryPool;
+      cards = [...updatedActiveCards.filter(c => c.id !== stagedCard.id), { ...stagedCard, isVIP: true, decayDuration: Math.max(stagedCard.decayDuration, 12 * 3600 * 1000) }];
+    } else {
+      cards = cards.map(c => c.id === sourceCardId ? { ...c, isVIP: true, decayDuration: Math.max(c.decayDuration, 12 * 3600 * 1000) } : c);
+    }
+
     activeBuguBeacon = { sourceCardId, status: 'scanning' };
     resetBeaconSafetyTimer(sourceCardId);
   }
@@ -332,18 +345,16 @@
     const newCard = toCosmicCard(c, 'babel', 'bugu', MACRO_TTL_MS);
     const substantive = (newCard.content || newCard.originalText || newCard.translatedText || '').trim();
     if (!substantive) return;
+
+    buguBabelCount++;
+    const viewportY = Math.round($scrollExpansion * 300);
+    const targetY = buguBabelCount <= 2 ? viewportY : viewportY + 480;
+
     memoryPool = [newCard, ...memoryPool.filter(m => m.id !== newCard.id)];
-    const staged = stageCandidate(newCard, true, $scrollExpansion, cards, memoryPool);
-    if (cards.filter(card => !card.isFadingOut).length >= BASE_CAPACITY * 3) {
-      const evictable = cards
-        .filter(card => !isProtectedCard(card, cards, activeBuguBeacon?.sourceCardId) && !card.isFadingOut)
-        .sort((a, b) => (a.spawnTime + a.decayDuration) - (b.spawnTime + b.decayDuration));
-      if (evictable.length > 0) {
-        evictable[0].isFadingOut = true;
-        setTimeout(() => { cards = cards.filter(card => card.id !== evictable[0].id); }, 2500);
-      }
-    }
-    cards = [...cards.filter(card => card.id !== staged.id), staged];
+    const { stagedCard, updatedActiveCards, updatedMemoryPool } = stageCandidate(newCard, true, $scrollExpansion, cards, memoryPool, activeBuguBeacon?.sourceCardId, targetY);
+    if (updatedMemoryPool) memoryPool = updatedMemoryPool;
+
+    cards = [...updatedActiveCards.filter(card => card.id !== stagedCard.id), stagedCard];
   }
 
   function processBabelQueue() {
@@ -572,19 +583,11 @@
         startedAt: data.StartedAt || data.startedAt,
         endedAt: data.EndedAt || data.endedAt,
       }, isChat ? 'chat_log' : 'thought', 'manual');
-      const stagedCard = stageCandidate(baseCard, true, $scrollExpansion, cards, memoryPool);
+      const { stagedCard, updatedActiveCards, updatedMemoryPool } = stageCandidate(baseCard, true, $scrollExpansion, cards, memoryPool, activeBuguBeacon?.sourceCardId);
+      if (updatedMemoryPool) memoryPool = updatedMemoryPool;
       const newCard = { ...stagedCard, images: data.Images || data.images || stagedCard.images, isVIP: true, decayDuration: 12 * 3600 * 1000, z: 12 };
       localVaultPool = [newCard, ...localVaultPool.filter(c => c.id !== newCard.id)];
-      if (cards.filter(c => !c.isFadingOut).length >= targetCapacity) {
-        const evictable = cards
-          .filter(c => !isProtectedCard(c, cards, activeBuguBeacon?.sourceCardId) && !c.isFadingOut)
-          .sort((a, b) => (a.spawnTime + a.decayDuration) - (b.spawnTime + b.decayDuration));
-        if (evictable.length > 0) {
-          evictable[0].isFadingOut = true;
-          setTimeout(() => { cards = cards.filter(c => c.id !== evictable[0].id); }, 2500);
-        }
-      }
-      cards = [...cards.filter(c => c.id !== newCard.id), newCard];
+      cards = [...updatedActiveCards.filter(c => c.id !== newCard.id), newCard];
     });
 
     EventsOn("chatlog:card_spawned", (c: any) => {
@@ -608,6 +611,7 @@
       if (searchSession.isActive && !searchSession.isConfirmed) return;
       const now = Date.now();
       memoryPool = memoryPool.filter(c => !c.macroExpiresAt || c.macroExpiresAt > now);
+
       cards.forEach(c => {
         if (c.id === focusedCardId) return;
         if (c.isFresh && now - c.spawnTime > 8 * 60 * 1000) c.isFresh = false;
