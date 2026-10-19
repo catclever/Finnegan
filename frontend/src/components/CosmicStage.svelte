@@ -31,7 +31,7 @@
   import type { CosmicCard } from '../types/card';
   import BuguRayNetwork from '../modules/bugu/BuguRayNetwork.svelte';
   import type { BuguBeacon, BuguSession } from '../modules/bugu/types';
-  import { getMaxScrollExpansion } from '../lib/stageDecay';
+  import { getMaxScrollExpansion } from '../lib/stageCoords';
 
   // Props
   export let cards: CosmicCard[] = [];
