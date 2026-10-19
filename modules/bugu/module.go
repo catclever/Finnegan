@@ -246,7 +246,11 @@ func (b *BuguModule) RunRadarForDoc(docID string, intent string) api.RadarRespon
 			Error:  "Bugu configuration is not loaded",
 		}
 	}
-	return api.ExecuteRadar(b.RadarTargets, b.Router, b.MyConfig.SearxngURL, b.MyConfig.JinaAPIKey, b.MyConfig.MaxConcurrency, intent, b.MyConfig.TargetLanguage, docID)
+	var kw map[string][]string
+	if docID != "" {
+		kw = api.ExtractKeywordsForDoc(docID)
+	}
+	return api.ExecuteRadar(b.RadarTargets, b.Router, b.MyConfig.SearxngURL, b.MyConfig.JinaAPIKey, b.MyConfig.MaxConcurrency, intent, b.MyConfig.TargetLanguage, docID, kw)
 }
 
 func (b *BuguModule) RunRadar(intent string) api.RadarResponse {

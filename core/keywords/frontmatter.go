@@ -1,0 +1,187 @@
+package keywords
+
+import (
+	"bytes"
+	"fmt"
+	"strings"
+
+	"gopkg.in/yaml.v3"
+)
+
+// CleanProfile filters out dimensions with empty keyword arrays or empty strings.
+func CleanProfile(profile KeywordsProfile) KeywordsProfile {
+	clean := make(KeywordsProfile)
+	for k, list := range profile {
+		var items []string
+		for _, item := range list {
+			trimmed := strings.TrimSpace(item)
+			if trimmed != "" {
+				items = append(items, trimmed)
+			}
+		}
+		if len(items) > 0 {
+			clean[k] = items
+		}
+	}
+	return clean
+}
+
+// ExtractKeywordsFromMarkdown extracts the keywords mapping from a Markdown file's YAML frontmatter.
+func ExtractKeywordsFromMarkdown(rawContent []byte) (KeywordsProfile, error) {
+	strContent := string(rawContent)
+	if !strings.HasPrefix(strContent, "---\n") && !strings.HasPrefix(strContent, "---\r\n") {
+		return make(KeywordsProfile), nil
+	}
+	parts := strings.SplitN(strContent, "---", 3)
+	if len(parts) < 3 {
+		return make(KeywordsProfile), nil
+	}
+
+	var meta struct {
+		Keywords KeywordsProfile `yaml:"keywords"`
+	}
+	if err := yaml.Unmarshal([]byte(parts[1]), &meta); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal frontmatter: %w", err)
+	}
+	if meta.Keywords == nil {
+		return make(KeywordsProfile), nil
+	}
+	return CleanProfile(meta.Keywords), nil
+}
+
+// MergeKeywordsToMarkdown merges the given KeywordsProfile into the YAML frontmatter of rawContent.
+// Existing frontmatter fields (id, type, created, updated, source, tags, images, etc.) and markdown
+// body are preserved losslessly.
+func MergeKeywordsToMarkdown(rawContent []byte, profile KeywordsProfile) ([]byte, error) {
+	strContent := string(rawContent)
+	cleanProfile := CleanProfile(profile)
+
+	hasFrontmatter := strings.HasPrefix(strContent, "---\n") || strings.HasPrefix(strContent, "---\r\n")
+	var yamlStr string
+	var body string
+
+	if hasFrontmatter {
+		parts := strings.SplitN(strContent, "---", 3)
+		if len(parts) >= 3 {
+			yamlStr = parts[1]
+			body = parts[2]
+		} else {
+			hasFrontmatter = false
+			body = strContent
+		}
+	} else {
+		body = strContent
+	}
+
+	var root yaml.Node
+	if hasFrontmatter && strings.TrimSpace(yamlStr) != "" {
+		if err := yaml.Unmarshal([]byte(yamlStr), &root); err != nil {
+			return nil, fmt.Errorf("failed to parse existing frontmatter: %w", err)
+		}
+	} else {
+		root = yaml.Node{
+			Kind: yaml.DocumentNode,
+			Content: []*yaml.Node{
+				{
+					Kind: yaml.MappingNode,
+					Tag:  "!!map",
+				},
+			},
+		}
+	}
+
+	if len(root.Content) == 0 {
+		root.Content = []*yaml.Node{
+			{
+				Kind: yaml.MappingNode,
+				Tag:  "!!map",
+			},
+		}
+	}
+
+	mappingNode := root.Content[0]
+	if mappingNode.Kind != yaml.MappingNode {
+		mappingNode = &yaml.Node{
+			Kind: yaml.MappingNode,
+			Tag:  "!!map",
+		}
+		root.Content[0] = mappingNode
+	}
+
+	// Prepare keywords YAML node
+	var kwNode *yaml.Node
+	if len(cleanProfile) == 0 {
+		kwNode = &yaml.Node{
+			Kind: yaml.MappingNode,
+			Tag:  "!!map",
+		}
+	} else {
+		kwBytes, err := yaml.Marshal(cleanProfile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal keywords profile: %w", err)
+		}
+		var kwDoc yaml.Node
+		if err := yaml.Unmarshal(kwBytes, &kwDoc); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal keywords doc: %w", err)
+		}
+		if len(kwDoc.Content) > 0 {
+			kwNode = kwDoc.Content[0]
+		} else {
+			kwNode = &yaml.Node{
+				Kind: yaml.MappingNode,
+				Tag:  "!!map",
+			}
+		}
+	}
+
+	// Find or insert keywords field
+	foundIndex := -1
+	for i := 0; i < len(mappingNode.Content); i += 2 {
+		if mappingNode.Content[i].Value == "keywords" {
+			foundIndex = i
+			break
+		}
+	}
+
+	if foundIndex != -1 {
+		mappingNode.Content[foundIndex+1] = kwNode
+	} else {
+		keyNode := &yaml.Node{
+			Kind:  yaml.ScalarNode,
+			Tag:   "!!str",
+			Value: "keywords",
+		}
+		mappingNode.Content = append(mappingNode.Content, keyNode, kwNode)
+	}
+
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(2)
+	if err := enc.Encode(&root); err != nil {
+		return nil, fmt.Errorf("failed to encode frontmatter: %w", err)
+	}
+	updatedYAML := buf.String()
+
+	var sb strings.Builder
+	sb.WriteString("---\n")
+	sb.WriteString(updatedYAML)
+	if !strings.HasSuffix(updatedYAML, "\n") {
+		sb.WriteString("\n")
+	}
+	sb.WriteString("---")
+
+	if hasFrontmatter {
+		sb.WriteString(body)
+	} else {
+		if body != "" {
+			if !strings.HasPrefix(body, "\n") && !strings.HasPrefix(body, "\r\n") {
+				sb.WriteString("\n\n")
+			}
+			sb.WriteString(body)
+		} else {
+			sb.WriteString("\n")
+		}
+	}
+
+	return []byte(sb.String()), nil
+}

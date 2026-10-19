@@ -16,6 +16,7 @@ import (
 	"Finnegan/core/bus"
 	"Finnegan/core/chatlog"
 	"Finnegan/core/config"
+	"Finnegan/core/keywords"
 	"Finnegan/core/module"
 	"Finnegan/core/search"
 	"Finnegan/core/watcher"
@@ -43,17 +44,26 @@ type ChatLogCaptureResult struct {
 }
 
 type App struct {
-	ctx         context.Context
-	CardManager *CardManager
-	buguModule  *bugu.BuguModule
-	Home        string
+	ctx           context.Context
+	CardManager   *CardManager
+	buguModule    *bugu.BuguModule
+	KeywordEngine *keywords.KeywordEngine
+	Home          string
 }
 
 func NewApp() *App {
 	a := &App{}
-	_, home, err := config.LoadConfig()
+	cfg, home, err := config.LoadConfig()
 	if err == nil {
 		a.Home = home
+		llmCfg := a.getLLMConfig()
+		kwCfg := keywords.DefaultConfig()
+		if cfg != nil {
+			if node, exists := cfg.RawModules["keywords"]; exists {
+				_ = node.Decode(&kwCfg)
+			}
+		}
+		a.KeywordEngine = keywords.NewKeywordEngine(llmCfg, kwCfg)
 	}
 	return a
 }
@@ -214,9 +224,55 @@ func (a *App) startup(ctx context.Context) {
 			runtime.EventsEmit(a.ctx, "bugu:radar_completed", event.Data)
 		}
 	}()
+
+	// Initialize / refresh KeywordEngine
+	llmCfg := a.getLLMConfig()
+	kwCfg := keywords.DefaultConfig()
+	if cfg != nil {
+		if node, exists := cfg.RawModules["keywords"]; exists {
+			_ = node.Decode(&kwCfg)
+		}
+	}
+	if a.KeywordEngine == nil {
+		a.KeywordEngine = keywords.NewKeywordEngine(llmCfg, kwCfg)
+	} else {
+		a.KeywordEngine.LLMConfig = llmCfg
+		a.KeywordEngine.Config = kwCfg
+	}
+
+	kwThoughtCh := bus.GetBus().Subscribe(bus.EventThoughtCaptured, "keyword-engine")
+	go func() {
+		for event := range kwThoughtCh {
+			if data, ok := event.Data.(bus.EventThoughtCapturedData); ok {
+				if a.KeywordEngine != nil && data.FilePath != "" && data.DocID != "" {
+					a.KeywordEngine.ProcessCard(data.FilePath, data.DocID, data.Text)
+				}
+			}
+		}
+	}()
+
+	kwExtractedCh := bus.GetBus().Subscribe(bus.EventKeywordsExtracted, "wails-frontend")
+	go func() {
+		for event := range kwExtractedCh {
+			runtime.EventsEmit(a.ctx, "keywords:extracted", event.Data)
+		}
+	}()
+}
+
+func (a *App) GetKeywordEngine() *keywords.KeywordEngine {
+	return a.KeywordEngine
+}
+
+func (a *App) ExtractCardKeywords(filePath string, docID string, text string) {
+	if a.KeywordEngine != nil {
+		a.KeywordEngine.ProcessCard(filePath, docID, text)
+	}
 }
 
 func (a *App) shutdown(ctx context.Context) {
+	if a.CardManager != nil {
+		a.CardManager.Close()
+	}
 	watcher.GetWatcher().Close()
 	bus.GetBus().Close()
 }
@@ -569,6 +625,13 @@ func (a *App) GetNote(id string) (string, error) {
 
 func (a *App) ClearTempCards() {
 	a.CardManager.ClearTempCards()
+}
+
+func (a *App) EvictTempCard(cardID string) bool {
+	if a.CardManager == nil {
+		return false
+	}
+	return a.CardManager.EvictTempCard(cardID)
 }
 
 // SearchLocalCards loads local cards and temporary cards, runs fuzzy search, and returns sorted results.

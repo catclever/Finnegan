@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 
 	"Finnegan/modules/bugu/config"
@@ -26,7 +27,109 @@ func NewRouter(cfg *config.Config, llmCfg module.LLMConfig) *Router {
 	}
 }
 
+// FormatKeywordsProfile formats a structured keywords profile into a deterministic bulleted list.
+func FormatKeywordsProfile(keywords map[string][]string) string {
+	if len(keywords) == 0 {
+		return ""
+	}
+	keys := make([]string, 0, len(keywords))
+	for k, list := range keywords {
+		if len(list) > 0 {
+			keys = append(keys, k)
+		}
+	}
+	sort.Strings(keys)
+	if len(keys) == 0 {
+		return ""
+	}
+
+	var sb strings.Builder
+	for _, k := range keys {
+		sb.WriteString(fmt.Sprintf("- %s: %s\n", k, strings.Join(keywords[k], ", ")))
+	}
+	return sb.String()
+}
+
+// BuildFacetSearchPlanPrompt builds the comprehensive LLM prompt for search plan routing.
+func BuildFacetSearchPlanPrompt(intent string, catalog string, keywords map[string][]string) string {
+	kwProfile := FormatKeywordsProfile(keywords)
+
+	var facetSection string
+	if kwProfile != "" {
+		facetSection = fmt.Sprintf(`
+KEYWORDS PROFILE:
+%s
+DIMENSION-BASED FACET MATCHING & TIME RANGE STRATEGY:
+When a Keywords Profile is present, match target sites and time_range values based on dimension facets:
+- event / symptom: Prioritize real-time discussion platforms (HN, Reddit, V2EX, GitHub Issues/Discussions). Set time_range to "month" or "week" to capture fresh and active community discourse.
+- entity: Match technical documentation, GitHub repositories, and specialized domain communities. Set time_range to "year".
+- judgment / methodology: Match long-form analytical blogs, Substack, LessWrong, and reflective essays. Set time_range to "year" or "" (unlimited).
+- emotion / metaphor: Match reflective essays, humanities platforms, personal indie blogs, and cultural forums. Set time_range to "" (unlimited/timeless).
+`, kwProfile)
+	}
+
+	return fmt.Sprintf(`You are an elite cyber-ethnographer and search architect.
+Your goal is to translate the user's intent into a highly targeted multilingual search plan.
+You have access to a curated catalog of global web targets.
+
+CURRENT YEAR: 2026 (Ensure all queries, temporal reasoning, and freshness expectations are grounded in 2026)
+
+USER INTENT: %s
+%s
+TARGET CATALOG:
+%s
+
+INSTRUCTIONS:
+1. Select 8 to 10 highly relevant target IDs from the catalog that match the intent and facet characteristics.
+   - Cross-Language Diversity is MANDATORY: Select a balanced mix of targets across multiple global languages (e.g. at least 2-3 English targets, 1-2 Chinese targets, and 2-4 foreign/minor language targets like ru, fr, de, ja, es if matching targets exist).
+2. Formulate 1 or 2 high-precision, natural search queries for EACH selected target's language code:
+   - For EVERY selected target, you MUST provide search queries in its primary language code (e.g. if you select a Russian target, you MUST provide "ru": ["..."] in native Russian; for French, "fr": ["..."] in native French).
+   - ALWAYS provide "en" queries as universal baseline.
+   - Use standard ISO 639-1 language codes as keys: "en", "zh", "ru", "fr", "de", "ja", "es", "it", etc.
+3. Determine appropriate time_range values:
+   - SearxNG native time_range supports "day", "week", "month", "year", or "" (empty string for unlimited/all).
+   - Set "default_time_range" as the baseline time range for this search session.
+   - Set "target_time_ranges" mapping each selected target ID to its specific time_range based on dimension characteristics (e.g., "month" or "week" for real-time forums, "year" for tech docs, "" for deep essays/timeless thoughts).
+4. Do NOT include site: operators in the queries; the system will append them automatically.
+5. Output strict JSON matching this exact structure:
+{
+  "selected_target_ids": ["id1", "id2"],
+  "search_queries": {
+    "ru": ["запрос 1", "запрос 2"],
+    "en": ["query 1"],
+    "zh": ["查询 1"]
+  },
+  "default_time_range": "year",
+  "target_time_ranges": {
+    "id1": "month",
+    "id2": "year"
+  }
+}`, intent, facetSection, catalog)
+}
+
+// ParseSearchPlanJSON parses and validates the LLM JSON response into an LLMSearchPlan.
+func ParseSearchPlanJSON(rawJSON string) (*models.LLMSearchPlan, error) {
+	cleaned := strings.TrimPrefix(rawJSON, "```json\n")
+	cleaned = strings.TrimPrefix(cleaned, "```json")
+	cleaned = strings.TrimSuffix(cleaned, "\n```")
+	cleaned = strings.TrimSuffix(cleaned, "```")
+	cleaned = strings.TrimSpace(cleaned)
+
+	var plan models.LLMSearchPlan
+	if err := json.Unmarshal([]byte(cleaned), &plan); err != nil {
+		return nil, fmt.Errorf("failed to parse LLM JSON: %w\nRaw string: %s", err, rawJSON)
+	}
+
+	return &plan, nil
+}
+
+// GenerateSearchPlan provides backward compatibility for intent-only search routing.
 func (r *Router) GenerateSearchPlan(intent string) (*models.LLMSearchPlan, error) {
+	return r.GenerateFacetSearchPlan(intent, nil)
+}
+
+// GenerateFacetSearchPlan generates a search plan with structured keywords and facet routing.
+func (r *Router) GenerateFacetSearchPlan(intent string, keywords map[string][]string) (*models.LLMSearchPlan, error) {
 	if r.LLM.APIKey == "" {
 		return nil, fmt.Errorf("LLM API Key is not configured")
 	}
@@ -44,36 +147,9 @@ func (r *Router) GenerateSearchPlan(intent string) (*models.LLMSearchPlan, error
 	}
 	model := client.GenerativeModel(modelName)
 	model.ResponseMIMEType = "application/json"
-	// Ensure we parse to standard output
 
 	catalog := r.Config.GetTargetCatalog()
-
-	prompt := fmt.Sprintf(`You are an elite cyber-ethnographer and search architect.
-Your goal is to translate the user's intent into a highly targeted multilingual search plan.
-You have access to a curated catalog of global web targets.
-
-USER INTENT: %s
-
-TARGET CATALOG:
-%s
-
-INSTRUCTIONS:
-1. Select 8 to 10 highly relevant target IDs from the catalog that match the intent.
-   - Cross-Language Diversity is MANDATORY: Select a balanced mix of targets across multiple global languages (e.g. at least 2-3 English targets, 1-2 Chinese targets, and 2-4 foreign/minor language targets like ru, fr, de, ja, es if matching targets exist).
-2. Formulate 1 or 2 high-precision, natural search queries for EACH selected target's language code:
-   - For EVERY selected target, you MUST provide search queries in its primary language code (e.g. if you select a Russian target, you MUST provide "ru": ["..."] in native Russian; for French, "fr": ["..."] in native French).
-   - ALWAYS provide "en" queries as universal baseline.
-   - Use standard ISO 639-1 language codes as keys: "en", "zh", "ru", "fr", "de", "ja", "es", "it", etc.
-3. Do NOT include site: operators in the queries; the system will append them automatically.
-4. Output strict JSON matching this exact structure:
-{
-  "selected_target_ids": ["id1", "id2"],
-  "search_queries": {
-    "ru": ["запрос 1", "запрос 2"],
-    "en": ["query 1"],
-    "zh": ["查询 1"]
-  }
-}`, intent, catalog)
+	prompt := BuildFacetSearchPlanPrompt(intent, catalog, keywords)
 
 	resp, err := model.GenerateContent(ctx, genai.Text(prompt))
 	if err != nil {
@@ -91,15 +167,7 @@ INSTRUCTIONS:
 		return nil, fmt.Errorf("unexpected LLM response format")
 	}
 
-	rawJSON = strings.TrimPrefix(rawJSON, "```json\n")
-	rawJSON = strings.TrimSuffix(rawJSON, "\n```")
-
-	var plan models.LLMSearchPlan
-	if err := json.Unmarshal([]byte(rawJSON), &plan); err != nil {
-		return nil, fmt.Errorf("failed to parse LLM JSON: %w\nRaw string: %s", err, rawJSON)
-	}
-
-	return &plan, nil
+	return ParseSearchPlanJSON(rawJSON)
 }
 
 // TranslateTags uses Gemini to translate a list of tags into 8 global languages for the i18n target catalog.

@@ -458,3 +458,10 @@ func (w *GlobalWatcher) WriteFile(filePath string, content []byte, origin string
 	
 	return nil
 }
+
+// GetPathForID returns the mapped file path for a docID, or empty string if not found.
+func (w *GlobalWatcher) GetPathForID(id string) string {
+	w.globalMutex.Lock()
+	defer w.globalMutex.Unlock()
+	return w.idToPath[id]
+}

@@ -18,6 +18,8 @@ export function ClearTempCards():Promise<void>;
 
 export function DeriveChatLogTitle(arg1:string,arg2:Array<string>):Promise<chatlog.TitleResult>;
 
+export function EvictTempCard(arg1:string):Promise<boolean>;
+
 export function ExecuteModuleCommand(arg1:string,arg2:Record<string, any>):Promise<any>;
 
 export function GetNote(arg1:string):Promise<string>;

@@ -3,10 +3,15 @@ package api
 import (
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 
 	"Finnegan/core/bus"
+	coreconfig "Finnegan/core/config"
+	"Finnegan/core/keywords"
+	"Finnegan/core/watcher"
 	"Finnegan/modules/bugu/config"
 	"Finnegan/modules/bugu/fetcher"
 	"Finnegan/modules/bugu/llm"
@@ -114,8 +119,98 @@ func resolveTargetQueries(target models.Target, searchQueries map[string][]strin
 	return nil
 }
 
-func ExecuteRadar(cfg *config.Config, router *llm.Router, searxURL, jinaKey string, maxConcurrency int, intent string, targetLanguage string, docID string) RadarResponse {
-	log.Printf("[Bugu Module] Processing intent: %s (docID: %s)\n", intent, docID)
+// FindCardFilePath locates the local Markdown file on disk corresponding to a docID.
+func FindCardFilePath(docID string) string {
+	if docID == "" {
+		return ""
+	}
+
+	// 1. Direct file path check
+	if fi, err := os.Stat(docID); err == nil && !fi.IsDir() {
+		return docID
+	}
+
+	// 2. GlobalWatcher registry lookup
+	if w := watcher.GetWatcher(); w != nil {
+		if path := w.GetPathForID(docID); path != "" {
+			if fi, err := os.Stat(path); err == nil && !fi.IsDir() {
+				return path
+			}
+		}
+	}
+
+	// 3. Search directory locations (configured dataDir, standard Scattering/Weaving paths)
+	var searchDirs []string
+	if _, dataDir, err := coreconfig.LoadConfig(); err == nil && dataDir != "" {
+		searchDirs = append(searchDirs,
+			filepath.Join(dataDir, "Scattering"),
+			filepath.Join(dataDir, "Weaving"),
+		)
+	}
+	home := os.Getenv("HOME")
+	if home != "" {
+		searchDirs = append(searchDirs,
+			filepath.Join(home, "Documents", "Finnegan", "Scattering"),
+			filepath.Join(home, "Documents", "Finnegan", "Weaving"),
+		)
+	}
+	searchDirs = append(searchDirs, "Scattering", "Weaving")
+
+	for _, dir := range searchDirs {
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			continue
+		}
+		for _, e := range entries {
+			if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") {
+				continue
+			}
+			path := filepath.Join(dir, e.Name())
+			if strings.Contains(e.Name(), docID) {
+				return path
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				continue
+			}
+			if strings.Contains(string(data), docID) {
+				return path
+			}
+		}
+	}
+	return ""
+}
+
+// ExtractKeywordsForDoc extracts stored keywords profile from the markdown card corresponding to docID.
+func ExtractKeywordsForDoc(docID string) map[string][]string {
+	if docID == "" {
+		return nil
+	}
+	path := FindCardFilePath(docID)
+	if path == "" {
+		return nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil
+	}
+	profile, err := keywords.ExtractKeywordsFromMarkdown(data)
+	if err != nil || len(profile) == 0 {
+		return nil
+	}
+	return map[string][]string(profile)
+}
+
+func ExecuteRadar(cfg *config.Config, router *llm.Router, searxURL, jinaKey string, maxConcurrency int, intent string, targetLanguage string, docID string, keywordsOpt ...map[string][]string) RadarResponse {
+	var kw map[string][]string
+	if len(keywordsOpt) > 0 && keywordsOpt[0] != nil {
+		kw = keywordsOpt[0]
+	}
+	if len(kw) == 0 && docID != "" {
+		kw = ExtractKeywordsForDoc(docID)
+	}
+
+	log.Printf("[Bugu Module] Processing intent: %s (docID: %s, keywords count: %d)\n", intent, docID, len(kw))
 
 	eventBus := bus.GetBus()
 	defer func() {
@@ -131,14 +226,14 @@ func ExecuteRadar(cfg *config.Config, router *llm.Router, searxURL, jinaKey stri
 	jinaClient := fetcher.NewJinaClient(jinaKey)
 	redditClient := fetcher.NewRedditClient()
 
-	// 1. Ask LLM for the plan
-	plan, err := router.GenerateSearchPlan(intent)
+	// 1. Ask LLM for the plan using facet routing
+	plan, err := router.GenerateFacetSearchPlan(intent, kw)
 	if err != nil {
 		log.Printf("[ERROR] LLM routing failed: %v", err)
 		return RadarResponse{Status: "error", Error: err.Error()}
 	}
 
-	log.Printf("[LLM Plan] Selected Targets: %v", plan.SelectedTargetIDs)
+	log.Printf("[LLM Plan] Selected Targets: %v (default_time_range: %s, target_time_ranges: %v)", plan.SelectedTargetIDs, plan.DefaultTimeRange, plan.TargetTimeRanges)
 
 	// 2. Fetch results concurrently via SearxNG and stream unique items immediately to itemChan
 	var wgSearx sync.WaitGroup
@@ -158,11 +253,18 @@ func ExecuteRadar(cfg *config.Config, router *llm.Router, searxURL, jinaKey stri
 			continue
 		}
 
+		timeRange := plan.DefaultTimeRange
+		if plan.TargetTimeRanges != nil {
+			if tr, ok := plan.TargetTimeRanges[target.ID]; ok && tr != "" {
+				timeRange = tr
+			}
+		}
+
 		for _, query := range queries {
 			wgSearx.Add(1)
-			go func(q string, t models.Target) {
+			go func(q string, t models.Target, tr string) {
 				defer wgSearx.Done()
-				items, err := searxClient.Search(q, t)
+				items, err := searxClient.Search(q, t, tr)
 				if err != nil {
 					log.Printf("[SearxNG Error] %s: %v", t.ID, err)
 					return
@@ -180,7 +282,7 @@ func ExecuteRadar(cfg *config.Config, router *llm.Router, searxURL, jinaKey stri
 					seenMu.Unlock()
 					itemChan <- item
 				}
-			}(query, target)
+			}(query, target, timeRange)
 		}
 	}
 

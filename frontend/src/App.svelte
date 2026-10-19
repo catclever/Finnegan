@@ -16,7 +16,7 @@
   import { spring } from 'svelte/motion';
   import OmniBar from './components/OmniBar.svelte';
   import CosmicStage from './components/CosmicStage.svelte';
-  import { CaptureThought, CaptureThoughtWithImages, CaptureChatLog, CaptureChatLogWithImages, GetTempCards, LoadLocalCards, SearchLocalCards, GetRegisteredCommands, ExecuteModuleCommand } from '../wailsjs/go/main/App.js';
+  import { CaptureThought, CaptureThoughtWithImages, CaptureChatLog, CaptureChatLogWithImages, GetTempCards, LoadLocalCards, SearchLocalCards, GetRegisteredCommands, ExecuteModuleCommand, EvictTempCard } from '../wailsjs/go/main/App.js';
   import { EventsOn } from '../wailsjs/runtime/runtime.js';
   import type { CosmicCard, SearchSession, CommandDef } from './types/card';
   import type { BuguSession, BuguBeacon } from './modules/bugu/types';
@@ -623,7 +623,15 @@
     const metabolicInterval = setInterval(() => {
       if (searchSession.isActive && !searchSession.isConfirmed) return;
       const now = Date.now();
-      memoryPool = memoryPool.filter(c => !c.macroExpiresAt || c.macroExpiresAt > now);
+      const expiredCards = memoryPool.filter(c => c.macroExpiresAt && c.macroExpiresAt <= now);
+      if (expiredCards.length > 0) {
+        memoryPool = memoryPool.filter(c => !c.macroExpiresAt || c.macroExpiresAt > now);
+        for (const ec of expiredCards) {
+          if (ec.origin === 'bugu' || ec.type === 'babel') {
+            EvictTempCard(ec.id).catch(() => {});
+          }
+        }
+      }
 
       cards.forEach(c => {
         if (c.id === focusedCardId) return;

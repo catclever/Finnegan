@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"Finnegan/modules/bugu/models"
@@ -33,11 +34,14 @@ type SearchResult struct {
 	Content string `json:"content"`
 }
 
-func (s *SearxNGClient) Search(query string, target models.Target) ([]SearchResult, error) {
+func (s *SearxNGClient) Search(query string, target models.Target, timeRange string) ([]SearchResult, error) {
 	// e.g. "LLM vulnerabilities site:linuxfr.org"
 	finalQuery := fmt.Sprintf("%s %s", query, target.Value)
 
 	reqURL := fmt.Sprintf("%s/search?q=%s&format=json", s.BaseURL, url.QueryEscape(finalQuery))
+	if tr := strings.TrimSpace(timeRange); tr != "" {
+		reqURL = fmt.Sprintf("%s&time_range=%s", reqURL, url.QueryEscape(tr))
+	}
 
 	resp, err := s.Client.Get(reqURL)
 	if err != nil {

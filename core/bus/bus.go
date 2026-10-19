@@ -15,7 +15,15 @@ const (
 	EventThoughtCaptured    EventType = "ThoughtCaptured"
 	EventBabelCardSpawned   EventType = "BabelCardSpawned"
 	EventBuguRadarCompleted EventType = "BuguRadarCompleted"
+	EventKeywordsExtracted  EventType = "KeywordsExtracted"
 )
+
+type EventKeywordsExtractedData struct {
+	DocID    string              `json:"DocID"`
+	FilePath string              `json:"FilePath"`
+	Text     string              `json:"Text"`
+	Keywords map[string][]string `json:"Keywords"`
+}
 
 type EventFileData struct {
 	FilePath string

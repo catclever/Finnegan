@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"Finnegan/core/bus"
 	"Finnegan/core/watcher"
 
 	"github.com/oklog/ulid/v2"
@@ -40,18 +41,84 @@ type Card struct {
 	Participants   []string   `json:"participants,omitempty"`
 	StartedAt      *time.Time `json:"startedAt,omitempty"`
 	EndedAt        *time.Time `json:"endedAt,omitempty"`
+	FilePath       string     `json:"filePath,omitempty"`
 }
+
+// TempCardTTL defines the maximum macro in-memory lifetime for temporary network cards (24 hours).
+const TempCardTTL = 24 * time.Hour
 
 // CardManager handles the lifecycle of permanent and temporary cards
 type CardManager struct {
-	tempCards map[string]Card
-	mutex     sync.RWMutex
+	tempCards  map[string]Card
+	mutex      sync.RWMutex
+	stopTicker chan struct{}
 }
 
 func NewCardManager() *CardManager {
-	return &CardManager{
-		tempCards: make(map[string]Card),
+	cm := &CardManager{
+		tempCards:  make(map[string]Card),
+		stopTicker: make(chan struct{}),
 	}
+	cm.startCleanupTicker(10 * time.Minute)
+	return cm
+}
+
+func (m *CardManager) startCleanupTicker(interval time.Duration) {
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				m.CleanExpiredCards()
+			case <-m.stopTicker:
+				return
+			}
+		}
+	}()
+}
+
+// Close gracefully terminates background cleanup routines
+func (m *CardManager) Close() {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	if m.stopTicker != nil {
+		select {
+		case <-m.stopTicker:
+		default:
+			close(m.stopTicker)
+		}
+	}
+}
+
+// CleanExpiredCards removes all temporary cards that have exceeded TempCardTTL.
+// Returns the count of purged cards.
+func (m *CardManager) CleanExpiredCards() int {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	now := time.Now()
+	removed := 0
+	for id, c := range m.tempCards {
+		if !c.CreatedAt.IsZero() && now.Sub(c.CreatedAt) > TempCardTTL {
+			delete(m.tempCards, id)
+			removed++
+		}
+	}
+	return removed
+}
+
+// EvictTempCard removes a specific temporary card by ID.
+// Returns true if the card was found and deleted.
+func (m *CardManager) EvictTempCard(cardID string) bool {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	if _, exists := m.tempCards[cardID]; exists {
+		delete(m.tempCards, cardID)
+		return true
+	}
+	return false
 }
 
 // InjectBabelCards receives raw discovered data from Bugu and converts them to temporary cards
@@ -59,19 +126,29 @@ func (m *CardManager) InjectBabelCards(cards []Card) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
+	now := time.Now()
 	for _, c := range cards {
 		c.Type = CardTypeBabel // Force type for safety
+		if c.CreatedAt.IsZero() {
+			c.CreatedAt = now
+		}
 		m.tempCards[c.ID] = c
 	}
 }
 
-// GetTempCards returns all currently discovered network cards
+// GetTempCards returns all currently discovered network cards that have not expired.
+// It also lazily cleans any expired cards encountered.
 func (m *CardManager) GetTempCards() []Card {
-	m.mutex.RLock()
-	defer m.mutex.RUnlock()
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 
+	now := time.Now()
 	cards := make([]Card, 0, len(m.tempCards))
-	for _, c := range m.tempCards {
+	for id, c := range m.tempCards {
+		if !c.CreatedAt.IsZero() && now.Sub(c.CreatedAt) > TempCardTTL {
+			delete(m.tempCards, id)
+			continue
+		}
 		cards = append(cards, c)
 	}
 	return cards
@@ -83,6 +160,9 @@ func (m *CardManager) InjectChatLogCard(c Card) {
 	defer m.mutex.Unlock()
 
 	c.Type = CardTypeChatLog
+	if c.CreatedAt.IsZero() {
+		c.CreatedAt = time.Now()
+	}
 	m.tempCards[c.ID] = c
 }
 
@@ -191,6 +271,24 @@ func (m *CardManager) PromoteToLocal(cardID string, home string) (*Card, error) 
 	if err != nil {
 		return nil, err
 	}
+
+	card.FilePath = targetPath
+
+	bus.GetBus().Publish(bus.Event{
+		Type: bus.EventThoughtCaptured,
+		Data: bus.EventThoughtCapturedData{
+			DocID:        newID,
+			FilePath:     targetPath,
+			Text:         card.Content,
+			CapturedAt:   now,
+			Images:       card.Images,
+			Title:        card.Title,
+			Type:         string(card.Type),
+			Participants: card.Participants,
+			StartedAt:    card.StartedAt,
+			EndedAt:      card.EndedAt,
+		},
+	})
 
 	delete(m.tempCards, cardID)
 

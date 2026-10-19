@@ -26,6 +26,10 @@ export function DeriveChatLogTitle(arg1, arg2) {
   return window['go']['main']['App']['DeriveChatLogTitle'](arg1, arg2);
 }
 
+export function EvictTempCard(arg1) {
+  return window['go']['main']['App']['EvictTempCard'](arg1);
+}
+
 export function ExecuteModuleCommand(arg1, arg2) {
   return window['go']['main']['App']['ExecuteModuleCommand'](arg1, arg2);
 }

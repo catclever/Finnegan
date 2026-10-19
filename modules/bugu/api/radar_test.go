@@ -1,8 +1,10 @@
 package api
 
 import (
-	"Finnegan/modules/bugu/models"
+	"os"
 	"testing"
+
+	"Finnegan/modules/bugu/models"
 )
 
 func TestResolveTargetQueries(t *testing.T) {
@@ -55,3 +57,67 @@ func TestResolveTargetQueries(t *testing.T) {
 		t.Errorf("expected empty queries (prevent Chinese leak to German site), got: %v", deQueries)
 	}
 }
+
+func TestExtractKeywordsForDoc_DirectPath(t *testing.T) {
+	// Create a temporary card with frontmatter containing keywords
+	tmpDir := t.TempDir()
+	cardPath := tmpDir + "/test_card.epiphany.md"
+	cardContent := `---
+id: 01JABCDEF1234567890
+type: thought
+created: 2026-10-17T12:00:00+08:00
+keywords:
+  entity:
+    - WebKitGTK 4.1
+    - libsoup
+  symptom:
+    - TLS handshake timeout
+---
+
+Card body text discussing WebKitGTK networking.
+`
+	if err := os.WriteFile(cardPath, []byte(cardContent), 0644); err != nil {
+		t.Fatalf("failed to write test card: %v", err)
+	}
+
+	// 1. Direct path lookup
+	kw := ExtractKeywordsForDoc(cardPath)
+	if kw == nil {
+		t.Fatal("expected non-nil keywords from card")
+	}
+	if len(kw["entity"]) != 2 || kw["entity"][0] != "WebKitGTK 4.1" || kw["entity"][1] != "libsoup" {
+		t.Errorf("unexpected entity keywords: %v", kw["entity"])
+	}
+	if len(kw["symptom"]) != 1 || kw["symptom"][0] != "TLS handshake timeout" {
+		t.Errorf("unexpected symptom keywords: %v", kw["symptom"])
+	}
+
+	// 2. Empty docID
+	if kwEmpty := ExtractKeywordsForDoc(""); kwEmpty != nil {
+		t.Errorf("expected nil for empty docID, got %v", kwEmpty)
+	}
+
+	// 3. Non-existent docID
+	if kwNonExistent := ExtractKeywordsForDoc("non-existent-doc-id-xyz"); kwNonExistent != nil {
+		t.Errorf("expected nil for non-existent docID, got %v", kwNonExistent)
+	}
+}
+
+func TestFindCardFilePath(t *testing.T) {
+	tmpDir := t.TempDir()
+	cardPath := tmpDir + "/card-01JXYZ.epiphany.md"
+	if err := os.WriteFile(cardPath, []byte("---\nid: 01JXYZ\n---\nHello"), 0644); err != nil {
+		t.Fatalf("failed to write test card: %v", err)
+	}
+
+	// Direct path
+	if found := FindCardFilePath(cardPath); found != cardPath {
+		t.Errorf("expected %s, got %s", cardPath, found)
+	}
+
+	// Empty
+	if found := FindCardFilePath(""); found != "" {
+		t.Errorf("expected empty string for empty docID, got %s", found)
+	}
+}
+

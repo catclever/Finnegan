@@ -1,6 +1,8 @@
 mutagen.yml
 mutagen.yml.lock
 
+features/
+
 build/bin/
 bin/
 wails_temp
