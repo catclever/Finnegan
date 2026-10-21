@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -133,6 +134,10 @@ func (a *App) LoadLocalCards() []Card {
 			localCards = append(localCards, card)
 		}
 	}
+
+	sort.SliceStable(localCards, func(i, j int) bool {
+		return localCards[i].CreatedAt.After(localCards[j].CreatedAt)
+	})
 
 	return localCards
 }

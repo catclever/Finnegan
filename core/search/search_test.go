@@ -130,10 +130,14 @@ func TestSearchCards(t *testing.T) {
 		},
 	}
 
-	// 1. Empty query returns all cards
+	// 1. Empty query returns all cards sorted by CreatedAt descending
 	allResults := SearchCards("", cards)
 	if len(allResults) != len(cards) {
 		t.Fatalf("expected all %d cards for empty query, got %d", len(cards), len(allResults))
+	}
+	if allResults[0].ID != "card-3" || allResults[1].ID != "card-2" || allResults[2].ID != "card-1" {
+		t.Fatalf("expected empty query results to be sorted by CreatedAt descending, got order [%s, %s, %s]",
+			allResults[0].ID, allResults[1].ID, allResults[2].ID)
 	}
 
 	// 2. Title match weighting > Content match weighting

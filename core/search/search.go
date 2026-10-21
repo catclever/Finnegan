@@ -184,13 +184,19 @@ func MatchScore(target, query string) (score float64, matched bool) {
 }
 
 // SearchCards searches cards using fuzzy subsequence matching with weighting on Title, Content, and Tags.
-// If query is empty, it returns all cards.
+// If query is empty, it returns all cards sorted by CreatedAt descending.
 // Matched cards are returned sorted by score descending.
 func SearchCards(query string, cards []Card) []Card {
 	trimmedQuery := strings.TrimSpace(query)
 	if trimmedQuery == "" {
 		res := make([]Card, len(cards))
 		copy(res, cards)
+		sort.SliceStable(res, func(i, j int) bool {
+			if !res[i].CreatedAt.Equal(res[j].CreatedAt) {
+				return res[i].CreatedAt.After(res[j].CreatedAt)
+			}
+			return res[i].ID < res[j].ID
+		})
 		return res
 	}
 

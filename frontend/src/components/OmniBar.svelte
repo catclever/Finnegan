@@ -17,6 +17,8 @@
   import type { CosmicCard, SearchSession, CommandDef } from '../types/card';
   import AttachmentTray from './omnibar/AttachmentTray.svelte';
   import { isChatLogFormat } from '../lib/chatlog';
+  import { parseDate } from '../lib/time';
+  import { getCardDisplayTitle, getCardParamDisplayTitle } from '../lib/cardTitle';
   import { CaptureChatLog, CaptureChatLogWithImages } from '../../wailsjs/go/main/App.js';
 
   // Props
@@ -170,19 +172,6 @@
         return !cmdQuery || trig.includes(cmdQuery) || name.includes(cmdQuery) || desc.includes(cmdQuery);
       })
     : [];
-
-  function getCardDisplayTitle(c: CosmicCard | null | undefined): string {
-    if (!c) return '';
-    if (c.title && c.title !== 'Thought' && c.title !== 'Card' && c.title !== 'Untitled Card' && c.title !== 'Babel Echo') {
-      return c.title;
-    }
-    const raw = c.content || c.translatedText || c.originalText || '';
-    const clean = raw.split('\n')[0].replace(/^[#\s\-*]+/, '').trim();
-    if (clean) {
-      return clean.length > 20 ? clean.slice(0, 20) + '...' : clean;
-    }
-    return c.title || (c.type === 'babel' ? 'Babel Echo' : 'Thought');
-  }
 
   function selectCommand(cmd: CommandDef) {
     selectedCommand = cmd;
@@ -351,6 +340,14 @@
         if (!q) {
           // If empty query, show top cards from stage & vault as immediate options (deduplicated)
           const rawPool = [...cards.filter(c => !c.isFadingOut), ...localVaultPool];
+
+          // Sort rawPool by createdAt descending (newest cards first)
+          rawPool.sort((a, b) => {
+            const timeA = parseDate(a.createdAt)?.getTime() ?? (typeof a.spawnTime === 'number' ? a.spawnTime : 0);
+            const timeB = parseDate(b.createdAt)?.getTime() ?? (typeof b.spawnTime === 'number' ? b.spawnTime : 0);
+            return timeB - timeA;
+          });
+
           const seenIds = new Set<string>();
           const seenContent = new Set<string>();
           const uniqueCandidates: CosmicCard[] = [];
@@ -391,6 +388,7 @@
               originalText: r.originalText || '',
               translatedText: r.translatedText || '',
               sourceUrl: r.sourceUrl || '',
+              createdAt: r.createdAt || r.CreatedAt,
               x: 0, y: 0, rotation: 0, z: 50,
               spawnTime: 0, decayDuration: 0, isFresh: false, isVIP: false,
               origin: r.type === 'babel' ? 'bugu' : 'local'
@@ -839,10 +837,7 @@
         >
           <div class="card-item-title">
             <span class="candidate-icon">📄</span>
-            {getCardDisplayTitle(candidate)}
-          </div>
-          <div class="card-item-snippet">
-            {candidate.content || candidate.translatedText || candidate.originalText || ''}
+            {getCardParamDisplayTitle(candidate, omniText)}
           </div>
         </div>
       {/each}
@@ -1039,6 +1034,12 @@
     background: rgba(59, 130, 246, 0.1);
   }
 
+  .dropdown-item.card-item {
+    flex-direction: row;
+    align-items: center;
+    padding: 9px 16px;
+  }
+
   .cmd-item-header {
     display: flex;
     align-items: center;
@@ -1058,17 +1059,15 @@
     font-weight: 600;
     color: #111827;
     font-size: 0.92rem;
-  }
-
-  .card-item-snippet {
-    font-size: 0.8rem;
-    color: rgba(75, 85, 99, 0.75);
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    line-height: 1.35;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .candidate-icon {
+    flex-shrink: 0;
   }
 
   .toast-feedback {
