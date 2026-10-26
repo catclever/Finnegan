@@ -101,9 +101,24 @@ export function stageCandidate(
   activeBuguSourceId?: string | null,
   explicitTargetY?: number
 ): StageResult {
-  const targetY = explicitTargetY !== undefined ? explicitTargetY : Math.round(scrollExpansion * 300);
+  let baseTargetY = explicitTargetY !== undefined ? explicitTargetY : Math.round(scrollExpansion * 300);
 
   let currentActiveCards = [...activeCards];
+  let updatedMemoryPool = [...memoryPool];
+
+  let placementTargetY = baseTargetY;
+  if (candidate.isSearchResult) {
+    while (true) {
+      const screenSearchCards = currentActiveCards.filter(c =>
+        !c.isFadingOut && c.isSearchResult && c.y >= placementTargetY - 240 && c.y <= placementTargetY + 240
+      );
+      if (screenSearchCards.length >= 5) {
+        placementTargetY += 480;
+      } else {
+        break;
+      }
+    }
+  }
 
   function applyCascade(cascadeTargetY: number) {
     const screenSolidCards = currentActiveCards.filter(c =>
@@ -113,27 +128,35 @@ export function stageCandidate(
     if (screenSolidCards.length >= 6) {
       const evictable = screenSolidCards
         .filter(c => !isProtectedCard(c, currentActiveCards, activeBuguSourceId))
-        .sort((a, b) => a.spawnTime - b.spawnTime);
+        .sort((a, b) => b.z - a.z);
 
       if (evictable.length > 0) {
         const victim = evictable[0];
-        const nextTargetY = cascadeTargetY + 480;
 
-        const newCoords = calculateSpatialPlacement(currentActiveCards.filter(c => c.id !== victim.id), scrollExpansion, false, victim.origin, nextTargetY);
+        if (victim.z >= 85) {
+          currentActiveCards = currentActiveCards.map(c =>
+             c.id === victim.id ? { ...c, isFadingOut: true } : c
+          );
+          updatedMemoryPool = [{ ...victim, isFadingOut: false, isVIP: false, macroExpiresAt: Date.now() + MACRO_TTL_MS }, ...updatedMemoryPool.filter(c => c.id !== victim.id)];
+        } else {
+          const nextTargetY = cascadeTargetY + 480;
 
-        currentActiveCards = currentActiveCards.map(c =>
-          c.id === victim.id ? { ...c, x: newCoords.x, y: newCoords.y, z: newCoords.z } : c
-        );
+          const newCoords = calculateSpatialPlacement(currentActiveCards.filter(c => c.id !== victim.id), scrollExpansion, false, victim, nextTargetY);
 
-        applyCascade(nextTargetY);
+          currentActiveCards = currentActiveCards.map(c =>
+            c.id === victim.id ? { ...c, x: newCoords.x, y: newCoords.y, z: newCoords.z } : c
+          );
+
+          applyCascade(nextTargetY);
+        }
       }
     }
   }
 
-  applyCascade(targetY);
+  applyCascade(placementTargetY);
 
-  const coords = calculateSpatialPlacement(currentActiveCards, scrollExpansion, isNewlyCreated, candidate.origin, targetY);
-  const z = candidate.z !== undefined ? candidate.z : coords.z;
+  const coords = calculateSpatialPlacement(currentActiveCards, scrollExpansion, isNewlyCreated, candidate, placementTargetY);
+  const z = coords.z;
   const spawnTime = Date.now();
   const decayDuration = calculateDecayDuration(candidate.origin, z, candidate.isVIP, currentActiveCards, memoryPool);
 
@@ -144,8 +167,6 @@ export function stageCandidate(
   };
 
   currentActiveCards.push(stagedCard);
-
-  let updatedMemoryPool = [...memoryPool];
 
   const activeSolidCards = currentActiveCards.filter(c => !c.isFadingOut);
   const maxSafeActive = Math.max(36, Math.round(BASE_CAPACITY * (1 + scrollExpansion * 0.6)) + 4);
@@ -246,7 +267,6 @@ export function replenishStageCandidates({
     for (const ac of auraBatch) {
       if (stagingIds.has(ac.id) || currentCards.some(c => c.id === ac.id)) continue;
       const { stagedCard, updatedActiveCards, updatedMemoryPool } = stageCandidate(ac, true, scrollExpansion, currentCards, currentMemory);
-      stagedCard.z = 15 + Math.random() * 25;
       newCardsToStage.push(stagedCard);
       stagingIds.add(stagedCard.id);
       currentCards = updatedActiveCards;
