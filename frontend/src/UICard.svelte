@@ -381,9 +381,9 @@
   }
 
   .card.temporary.focused {
-    background: linear-gradient(145deg, rgba(248, 250, 253, 0.96) 0%, rgba(240, 244, 248, 0.92) 100%);
-    backdrop-filter: blur(26px);
-    -webkit-backdrop-filter: blur(26px);
+    background: linear-gradient(145deg, rgba(226, 236, 248, 0.52) 0%, rgba(210, 222, 238, 0.40) 100%);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
     border: 1px solid transparent !important;
   }
 
