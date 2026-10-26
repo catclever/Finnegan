@@ -62,11 +62,13 @@ export function computeNextScrollTarget(
  * Calculates optimal 3D spatial placement for a new or staged card using Mitchell's best-candidate sampling.
  * Avoids omnibar deadzone and neighboring cards across dynamic screen zones.
  */
+import { MACRO_TTL_MS } from './stageDecay';
+
 export function calculateSpatialPlacement(
   activeCards: CosmicCard[] = [],
   _scrollExpansion: number = 0,
   isNewlyCreated: boolean = false,
-  _origin?: string,
+  candidate: CosmicCard | null = null,
   explicitTargetY?: number
 ): StageCoordinates {
   const solidCards = activeCards.filter(c => !c.isFadingOut);
@@ -128,9 +130,42 @@ export function calculateSpatialPlacement(
   const finalX = Math.round(finalPoint.x);
   const finalY = Math.round(finalPoint.y);
   const rotation = Number(((Math.random() - 0.5) * 50).toFixed(1));
-  const z = (_origin === 'manual' && isNewlyCreated)
-    ? Number((8 + Math.random() * 20).toFixed(1))
-    : Number((15 + Math.random() * 70).toFixed(1));
+
+  let z = 50;
+  if (candidate) {
+    if (isNewlyCreated && candidate.origin === 'manual') {
+      z = 5 + Math.random() * 10;
+    } else if (candidate.isSearchResult) {
+      z = Math.random() * 15;
+    } else if (candidate.origin === 'bugu' || candidate.type === 'babel' || candidate.macroExpiresAt) {
+      const now = Date.now();
+      let ratio = 1;
+      if (candidate.macroExpiresAt) {
+        ratio = Math.max(0, Math.min(1, (candidate.macroExpiresAt - now) / MACRO_TTL_MS));
+      }
+      z = 85 - (ratio * 65);
+    } else {
+      const now = Date.now();
+      const createdAtDate = candidate.createdAt ? new Date(candidate.createdAt).getTime() : now;
+      const ageMs = now - createdAtDate;
+      const ageDays = ageMs / (1000 * 60 * 60 * 24);
+
+      if (ageDays <= 1) {
+        z = 15 + Math.random() * 20;
+      } else if (ageDays <= 3) {
+        z = 35 + Math.random() * 20;
+      } else if (ageDays <= 7) {
+        z = 55 + Math.random() * 20;
+      } else {
+        z = 75 + Math.random() * 15;
+      }
+    }
+  } else {
+    z = isNewlyCreated
+      ? Number((8 + Math.random() * 20).toFixed(1))
+      : Number((15 + Math.random() * 70).toFixed(1));
+  }
+  z = Number(z.toFixed(1));
 
   return { x: finalX, y: finalY, rotation, z };
 }
