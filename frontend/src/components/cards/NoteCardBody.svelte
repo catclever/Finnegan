@@ -14,6 +14,7 @@
 <script lang="ts">
   import type { CosmicCard } from '../../types/card';
   import { getCardDisplayTime, formatPointTime } from '../../lib/time';
+  import MarkdownContent from './MarkdownContent.svelte';
 
   export let card: CosmicCard;
   export let isFocused: boolean = false;
@@ -41,7 +42,7 @@
     </header>
 
     <div class="note-focused-body">
-      <pre class="note-pre-content">{card?.content || ''}</pre>
+      <MarkdownContent content={card?.content || ''} isFocused={true} />
     </div>
   {:else}
     <!-- Scattering Mode (200x190) -->
@@ -53,7 +54,7 @@
         {/if}
       </div>
       <div class="note-snippet">
-        <pre class="note-monospace-snippet">{card?.content || ''}</pre>
+        <MarkdownContent content={card?.content || ''} isFocused={false} />
       </div>
       {#if displayTime}
         <div class="note-footer">
@@ -144,18 +145,6 @@
     height: 0;
   }
 
-  .note-pre-content {
-    margin: 0;
-    padding: 0;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    font-size: 0.88rem;
-    line-height: 1.6;
-    white-space: pre-wrap;
-    word-break: break-word;
-    color: var(--card-text-color, rgba(28, 28, 28, 0.95));
-    user-select: text;
-    cursor: text;
-  }
 
   /* --- Scattering Mode (200x190) --- */
   .note-preview {
@@ -198,18 +187,6 @@
     position: relative;
     mask-image: linear-gradient(to bottom, black 72%, transparent 100%);
     -webkit-mask-image: linear-gradient(to bottom, black 72%, transparent 100%);
-  }
-
-  .note-monospace-snippet {
-    margin: 0;
-    padding: 0;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    font-size: 0.76rem;
-    line-height: 1.45;
-    color: var(--card-text-color, rgba(44, 44, 44, 0.9));
-    white-space: pre-wrap;
-    word-break: break-word;
-    overflow: hidden;
   }
 
   .note-footer {

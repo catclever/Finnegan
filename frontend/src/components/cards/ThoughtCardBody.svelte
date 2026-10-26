@@ -17,6 +17,7 @@
   import { onDestroy } from 'svelte';
   import { getCardDisplayTime } from '../../lib/time';
   import CardImageGallery from './CardImageGallery.svelte';
+  import MarkdownContent from './MarkdownContent.svelte';
 
   export let card: any;
   export let isFocused: boolean = false;
@@ -101,7 +102,7 @@
     <!-- Focused mode: Invariant Focus natural scroll and horizontal swipe (Option A: Text first, Images below) -->
     {#if card && card.content}
       <div class="thought-content focused" class:has-images={hasImages}>
-        <p>{card.content}</p>
+        <MarkdownContent content={card.content} isFocused={true} />
       </div>
     {/if}
 
@@ -165,7 +166,7 @@
 
     {#if card && card.content}
       <div class="thought-content" class:has-images={hasImages}>
-        <p>{card.content}</p>
+        <MarkdownContent content={card.content} isFocused={false} />
       </div>
     {/if}
 
@@ -368,30 +369,6 @@
     overflow: hidden;
   }
 
-  .thought-content p {
-    margin: 0;
-    font-size: 0.825rem;
-    line-height: 1.55;
-    color: var(--card-text-color, rgba(38, 38, 38, 0.95));
-    font-weight: 450;
-    letter-spacing: 0.01em;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    word-break: break-word;
-    width: 100%;
-    text-align: left;
-    white-space: pre-wrap;
-  }
-
-  .thought-content:not(.has-images) p {
-    -webkit-line-clamp: 5;
-  }
-
-  .thought-content.has-images p {
-    -webkit-line-clamp: 3;
-  }
 
   /* Focused State Styles */
   .thought-content.focused {
@@ -405,19 +382,4 @@
     text-align: left;
   }
 
-  .thought-content.focused p {
-    margin: 0;
-    padding-bottom: 24px;
-    font-size: 1.15rem;
-    line-height: 1.75;
-    display: block;
-    -webkit-line-clamp: unset;
-    overflow: visible;
-    text-align: left;
-    color: rgba(32, 32, 32, 0.98);
-  }
-
-  .thought-content.focused.has-images p {
-    padding-bottom: 14px;
-  }
 </style>
