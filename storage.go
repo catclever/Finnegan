@@ -53,15 +53,16 @@ func (a *App) LoadLocalCards() []Card {
 					card.Content = strings.TrimSpace(parts[2])
 
 					var fm struct {
-						ID           string   `yaml:"id"`
-						Type         string   `yaml:"type"`
-						Title        string   `yaml:"title"`
-						Participants []string `yaml:"participants"`
-						StartedAt    string   `yaml:"started_at"`
-						EndedAt      string   `yaml:"ended_at"`
-						CreatedAt    string   `yaml:"created_at"`
-						Created      string   `yaml:"created"`
-						Images       []string `yaml:"images"`
+						ID           string              `yaml:"id"`
+						Type         string              `yaml:"type"`
+						Title        string              `yaml:"title"`
+						Participants []string            `yaml:"participants"`
+						StartedAt    string              `yaml:"started_at"`
+						EndedAt      string              `yaml:"ended_at"`
+						CreatedAt    string              `yaml:"created_at"`
+						Created      string              `yaml:"created"`
+						Images       []string            `yaml:"images"`
+						Keywords     map[string][]string `yaml:"keywords"`
 					}
 					if err := yaml.Unmarshal([]byte(parts[1]), &fm); err == nil {
 						if fm.ID != "" {
@@ -98,6 +99,9 @@ func (a *App) LoadLocalCards() []Card {
 						if len(fm.Images) > 0 {
 							card.Images = fm.Images
 						}
+						if len(fm.Keywords) > 0 {
+							card.Keywords = fm.Keywords
+						}
 					} else {
 						var rawMeta map[string]any
 						if err := yaml.Unmarshal([]byte(parts[1]), &rawMeta); err == nil {
@@ -114,7 +118,7 @@ func (a *App) LoadLocalCards() []Card {
 			}
 
 			// If no explicit title was in frontmatter, derive from first line
-			if card.Title == "Thought" || card.Title == "" {
+			if card.Title == "Thought" || card.Title == "Note" || card.Title == "" {
 				lines := strings.Split(card.Content, "\n")
 				for _, l := range lines {
 					trimmed := strings.TrimSpace(l)

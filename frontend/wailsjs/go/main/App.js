@@ -10,6 +10,10 @@ export function CaptureChatLogWithImages(arg1, arg2) {
   return window['go']['main']['App']['CaptureChatLogWithImages'](arg1, arg2);
 }
 
+export function CaptureNote(arg1) {
+  return window['go']['main']['App']['CaptureNote'](arg1);
+}
+
 export function CaptureThought(arg1) {
   return window['go']['main']['App']['CaptureThought'](arg1);
 }
@@ -32,6 +36,14 @@ export function EvictTempCard(arg1) {
 
 export function ExecuteModuleCommand(arg1, arg2) {
   return window['go']['main']['App']['ExecuteModuleCommand'](arg1, arg2);
+}
+
+export function ExtractCardKeywords(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ExtractCardKeywords'](arg1, arg2, arg3);
+}
+
+export function GetKeywordEngine() {
+  return window['go']['main']['App']['GetKeywordEngine']();
 }
 
 export function GetNote(arg1) {

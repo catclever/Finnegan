@@ -1,24 +1,27 @@
 <!--
   ======================================================================================
   FINNEGAN COSMIC STAGE - OmniBar Component
-  Task: frontend_components_split_012
+  Task: modularize_backend_and_frontend_architecture_074
   
-  Encapsulates:
+  Assembles:
   - Floating Toast Feedback Banner
-  - Top Action Banner / 条幅提示 with dynamic keyboard hint badges
+  - Top Action Banner (TopActionBanner.svelte)
   - Omnibar input box with command chip, locked card chip, and auto-sizing textarea
-  - Command selection dropdown with keyboard navigation
-  - Parameter card candidate dropdown with real-time search
-  - Keyboard shortcut handling and window escape delegation
+  - Attachment tray (AttachmentTray.svelte)
+  - Command selection dropdown (CommandDropdown.svelte)
+  - Parameter card candidate dropdown (CardCandidateDropdown.svelte)
   ======================================================================================
 -->
 <script lang="ts">
   import { createEventDispatcher, onDestroy } from 'svelte';
   import type { CosmicCard, SearchSession, CommandDef } from '../types/card';
   import AttachmentTray from './omnibar/AttachmentTray.svelte';
-  import { isChatLogFormat } from '../lib/chatlog';
+  import TopActionBanner from './omnibar/TopActionBanner.svelte';
+  import CommandDropdown from './omnibar/CommandDropdown.svelte';
+  import CardCandidateDropdown from './omnibar/CardCandidateDropdown.svelte';
+  import { isChatLogFormat, extractHashTitle } from '../lib/chatlog';
   import { parseDate } from '../lib/time';
-  import { getCardDisplayTitle, getCardParamDisplayTitle } from '../lib/cardTitle';
+  import { getCardDisplayTitle } from '../lib/cardTitle';
   import { CaptureChatLog, CaptureChatLogWithImages } from '../../wailsjs/go/main/App.js';
 
   // Props
@@ -34,6 +37,7 @@
   // Callbacks
   export let onCaptureThought: ((text: string, images?: string[]) => Promise<void> | void) | undefined = undefined;
   export let onCaptureChatLog: ((text: string, images?: string[]) => Promise<void> | void) | undefined = undefined;
+  export let onCaptureNote: ((text: string) => Promise<void> | void) | undefined = undefined;
   export let onFreeSearch: ((text: string) => void) | undefined = undefined;
   export let onRevertSearch: (() => void) | undefined = undefined;
   export let onCommitSearch: (() => void) | undefined = undefined;
@@ -155,8 +159,14 @@
   }
 
   // Reactive expressions
+  $: hashTitleInfo = extractHashTitle(omniText);
+  $: explicitUserTitle = hashTitleInfo.title;
   $: isDialogueFormat = isChatLogFormat(omniText);
-  $: showTopBanner = (omniText.trim().length > 0) || (attachedImages.length > 0) || commandParamMode || commandSelectMode || (searchSession.isActive && !searchSession.isConfirmed);
+  $: isNoteFormat = /^\/note(\s+[\s\S]*)?$/i.test(omniText.trim());
+  $: noteContent = omniText.trim().replace(/^\/note\s*/i, '');
+  $: noteHashInfo = extractHashTitle(noteContent);
+  $: explicitNoteTitle = noteHashInfo.title;
+  $: showTopBanner = (omniText.trim().length > 0) || (attachedImages.length > 0) || commandParamMode || commandSelectMode || (searchSession.isActive && !searchSession.isConfirmed) || isNoteFormat;
 
   $: omnibarPlaceholder = commandParamMode
     ? (selectedCommand?.params?.[0]?.description || "吾道不孤")
@@ -174,6 +184,17 @@
     : [];
 
   function selectCommand(cmd: CommandDef) {
+    const trigger = (cmd.trigger || '').replace(/^\//, '').toLowerCase();
+    if (trigger === 'note' || cmd.id === 'core:note') {
+      commandSelectMode = false;
+      commandParamMode = false;
+      omniText = `/${trigger} `;
+      if (omnibarInputEl) {
+        omnibarInputEl.style.height = 'auto';
+        omnibarInputEl.focus();
+      }
+      return;
+    }
     selectedCommand = cmd;
     commandSelectMode = false;
     commandParamMode = true;
@@ -335,13 +356,16 @@
   function searchParamCards(text: string) {
     if (paramSearchDebounceTimer) clearTimeout(paramSearchDebounceTimer);
     const q = text.trim();
+    const requireKeywords = Boolean(selectedCommand?.params?.[0]?.requireKeywords || (selectedCommand?.trigger || '').replace(/^\//, '').toLowerCase() === 'bugu');
     paramSearchDebounceTimer = setTimeout(async () => {
       try {
         if (!q) {
-          // If empty query, show top cards from stage & vault as immediate options (deduplicated)
-          const rawPool = [...cards.filter(c => !c.isFadingOut), ...localVaultPool];
+          let rawPool = [...cards.filter(c => !c.isFadingOut), ...localVaultPool];
 
-          // Sort rawPool by createdAt descending (newest cards first)
+          if (requireKeywords) {
+            rawPool = rawPool.filter(c => c.type !== 'note' && Boolean(c.keywords && Object.values(c.keywords).some(arr => Array.isArray(arr) && arr.length > 0)));
+          }
+
           rawPool.sort((a, b) => {
             const timeA = parseDate(a.createdAt)?.getTime() ?? (typeof a.spawnTime === 'number' ? a.spawnTime : 0);
             const timeB = parseDate(b.createdAt)?.getTime() ?? (typeof b.spawnTime === 'number' ? b.spawnTime : 0);
@@ -369,11 +393,15 @@
 
         const results = onSearchLocalCards ? await onSearchLocalCards(q) : [];
         if (results && results.length > 0) {
+          const filteredResults = requireKeywords
+            ? results.filter((r: any) => r.type !== 'note' && Boolean(r.keywords && Object.values(r.keywords).some((arr: any) => Array.isArray(arr) && arr.length > 0)))
+            : results;
+
           const seenIds = new Set<string>();
           const seenContent = new Set<string>();
           const uniqueResults: CosmicCard[] = [];
 
-          for (const r of results) {
+          for (const r of filteredResults) {
             const normContent = (r.content || '').trim();
             if (r.id && seenIds.has(r.id)) continue;
             if (normContent && seenContent.has(normContent)) continue;
@@ -390,6 +418,7 @@
               sourceUrl: r.sourceUrl || '',
               createdAt: r.createdAt || r.CreatedAt,
               x: 0, y: 0, rotation: 0, z: 50,
+              keywords: r.keywords || r.Keywords,
               spawnTime: 0, decayDuration: 0, isFresh: false, isVIP: false,
               origin: r.type === 'babel' ? 'bugu' : 'local'
             });
@@ -455,10 +484,52 @@
     }
   }
 
+  async function captureCurrentNote(text: string) {
+    const trimmed = text.trim();
+    if (!trimmed || capturePending) return;
+
+    omniText = "";
+    commandSelectMode = false;
+    deleteHighlightIndex = -1;
+    if (omnibarInputEl) {
+      omnibarInputEl.style.height = 'auto';
+    }
+
+    try {
+      if (onCaptureNote) {
+        await onCaptureNote(trimmed);
+      }
+      showToast("已保存备忘");
+    } catch (err: any) {
+      console.error("CaptureNote error:", err);
+      showToast(`保存失败: ${err?.message || err}`);
+    }
+  }
+
   async function handleOmnibarKeydown(e: KeyboardEvent) {
     if (e.key !== 'Backspace' && deleteHighlightIndex !== -1) {
       deleteHighlightIndex = -1;
     }
+
+    // Note Capture Mode: /note <content>
+    if (isNoteFormat) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        if (noteContent.trim()) {
+          await captureCurrentNote(noteContent);
+        }
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        omniText = "";
+        commandSelectMode = false;
+        commandParamMode = false;
+        if (omnibarInputEl) omnibarInputEl.style.height = 'auto';
+        return;
+      }
+    }
+
     // Mode 1: Command Selection Dropdown Active
     if (commandSelectMode) {
       if (e.key === 'ArrowDown') {
@@ -509,6 +580,11 @@
     // Space trigger: Typing a valid command name (e.g. "/bugu" or "bugu") + Space enters param mode immediately
     if ((e.key === ' ' || e.key === 'Spacebar') && !commandParamMode) {
       const clean = omniText.trim().replace(/^\//, '').toLowerCase();
+      if (clean === 'note') {
+        commandSelectMode = false;
+        commandParamMode = false;
+        return;
+      }
       const exactCmd = availableCommands.find(cmd => (cmd.trigger || '').replace(/^\//, '').toLowerCase() === clean);
       if (exactCmd) {
         e.preventDefault();
@@ -520,7 +596,6 @@
     // Mode 2: Command Parameter Mode Active (Two-Stage Enter)
     if (commandParamMode) {
       if (lockedCard) {
-        // Card is locked: Enter 2 submits command; Esc/Backspace unlocks
         if (e.key === 'Enter') {
           e.preventDefault();
           await executeCurrentCommand();
@@ -532,7 +607,6 @@
           return;
         }
       } else {
-        // Param candidate search dropdown active
         if (e.key === 'ArrowDown') {
           e.preventDefault();
           if (paramCardCandidates.length > 0) {
@@ -550,7 +624,6 @@
         if (e.key === 'Enter') {
           e.preventDefault();
           if (paramCardCandidates.length > 0 && highlightedCardIndex >= 0 && highlightedCardIndex < paramCardCandidates.length) {
-            // Enter 1: Lock card candidate
             lockCard(paramCardCandidates[highlightedCardIndex]);
           }
           return;
@@ -581,8 +654,13 @@
 
     // Mode 3: Normal Mode Thought Capture vs Search Solidify
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-      // Capturing a thought ONLY triggers on (e.metaKey || e.ctrlKey) && e.key === 'Enter'
       e.preventDefault();
+      if (isNoteFormat) {
+        if (noteContent) {
+          await captureCurrentNote(noteContent);
+        }
+        return;
+      }
       await captureCurrentThought();
       return;
     }
@@ -595,7 +673,6 @@
 
     if (e.key === 'Escape') {
       if (searchSession.isActive) {
-        // Esc (一闪念) reverts stage
         e.preventDefault();
         if (onRevertSearch) onRevertSearch();
         dispatch('revertSearch');
@@ -613,11 +690,15 @@
     target.style.height = 'auto';
     target.style.height = target.scrollHeight + 'px';
 
-    // Auto-detect command trigger followed by a space (e.g. "/bugu " or "bugu ")
     if (!commandParamMode) {
       const spaceIdx = omniText.indexOf(' ');
       if (spaceIdx > 0) {
         const cmdPart = omniText.slice(0, spaceIdx).trim().replace(/^\//, '').toLowerCase();
+        if (cmdPart === 'note') {
+          commandSelectMode = false;
+          commandParamMode = false;
+          return;
+        }
         const found = availableCommands.find(c => (c.trigger || '').replace(/^\//, '').toLowerCase() === cmdPart);
         if (found) {
           const restText = omniText.slice(spaceIdx + 1);
@@ -636,11 +717,15 @@
         searchParamCards(omniText);
       }
     } else if (omniText.startsWith('/')) {
-      commandSelectMode = true;
-      highlightedCmdIndex = 0;
+      if (isNoteFormat) {
+        commandSelectMode = false;
+      } else {
+        commandSelectMode = true;
+        highlightedCmdIndex = 0;
+      }
     } else {
       commandSelectMode = false;
-      if (omniText.trim().length >= 2) {
+      if (omniText.trim().length >= 1) {
         if (onFreeSearch) onFreeSearch(omniText);
         dispatch('freeSearch', omniText);
       } else {
@@ -649,6 +734,22 @@
           dispatch('revertSearch');
         }
       }
+    }
+  }
+
+  function handleInputWheel(e: WheelEvent) {
+    e.stopPropagation();
+    if (!omnibarInputEl) return;
+    const { scrollHeight, clientHeight, scrollTop } = omnibarInputEl;
+    const isScrollable = scrollHeight > clientHeight + 1;
+    if (!isScrollable) {
+      e.preventDefault();
+      return;
+    }
+    const isAtTop = scrollTop <= 0 && e.deltaY < 0;
+    const isAtBottom = scrollTop + clientHeight >= scrollHeight - 1 && e.deltaY > 0;
+    if (isAtTop || isAtBottom) {
+      e.preventDefault();
     }
   }
 
@@ -667,85 +768,23 @@
     </div>
   {/if}
 
-  <!-- Top Action Banner / 条幅提示 -->
-  {#if showTopBanner}
-    <div class="omnibar-top-banner">
-      {#if commandParamMode}
-        {#if lockedCard}
-          <span class="banner-badge ready-badge">🚀 准备就绪</span>
-          <!-- svelte-ignore a11y-click-events-have-key-events -->
-          <!-- svelte-ignore a11y-no-static-element-interactions -->
-          <button type="button" class="banner-clickable-action" on:click={executeCurrentCommand} title="点击或按 Enter 执行命令">
-            <span class="banner-key">↵</span>
-            <span class="banner-action">执行命令</span>
-          </button>
-          <span class="banner-sep">·</span>
-          <!-- svelte-ignore a11y-click-events-have-key-events -->
-          <!-- svelte-ignore a11y-no-static-element-interactions -->
-          <button type="button" class="banner-clickable-action" on:click={unlockCard} title="点击或按 Esc 重新选择">
-            <span class="banner-key">Esc</span>
-            <span class="banner-action">重新选择</span>
-          </button>
-        {:else}
-          <span class="banner-badge param-badge">📄 观点参数</span>
-          <span class="banner-key">↑ ↓</span>
-          <span class="banner-action">移动</span>
-          <span class="banner-sep">·</span>
-          <span class="banner-key">↵</span>
-          <span class="banner-action">锁定卡片</span>
-          <span class="banner-sep">·</span>
-          <span class="banner-key">Esc</span>
-          <span class="banner-action">退出</span>
-        {/if}
-      {:else if commandSelectMode}
-        <span class="banner-badge cmd-badge">🔭 模块命令</span>
-        <span class="banner-key">↑ ↓</span>
-        <span class="banner-action">选择</span>
-        <span class="banner-sep">·</span>
-        <span class="banner-key">↵</span>
-        <span class="banner-action">确认</span>
-        <span class="banner-sep">·</span>
-        <span class="banner-key">Esc</span>
-        <span class="banner-action">取消</span>
-      {:else if searchSession.isActive && !searchSession.isConfirmed}
-        <span class="banner-badge search-badge" style="--glow-color: {searchSession.color || 'hsl(180, 95%, 62%)'}">
-          <span class="banner-dot"></span> 探针共鸣中
-        </span>
-        {#if !searchSession.isConfirmed}
-          <button type="button" class="banner-clickable-action" on:click={handleSolidifySearch} title="按 Shift+Enter 确认搜索">
-            <span class="banner-key">⇧ ↵</span>
-            <span class="banner-action">确认搜索</span>
-          </button>
-          <span class="banner-sep">·</span>
-        {/if}
-        <button type="button" class="banner-clickable-action" on:click={searchSession.isConfirmed ? handleRestoreSearch : handleRevertSearch} title="按 Esc 还原全部卡片">
-          <span class="banner-key">Esc</span>
-          <span class="banner-action">{searchSession.isConfirmed ? '恢复全部' : '清除'}</span>
-        </button>
-        <span class="banner-sep">·</span>
-        <span class="banner-key">⌘ ↵</span>
-        <span class="banner-action">录入</span>
-      {:else if isDialogueFormat}
-        <span class="banner-key">⌘ ↵</span>
-        <span class="banner-action">记录对话录</span>
-        <span class="banner-sep">·</span>
-        <span class="banner-key">↵</span>
-        <span class="banner-action">换行</span>
-        <span class="banner-sep">·</span>
-        <span class="banner-key">/</span>
-        <span class="banner-action">命令</span>
-      {:else}
-        <span class="banner-key">⌘ ↵</span>
-        <span class="banner-action">发送思绪</span>
-        <span class="banner-sep">·</span>
-        <span class="banner-key">↵</span>
-        <span class="banner-action">换行</span>
-        <span class="banner-sep">·</span>
-        <span class="banner-key">/</span>
-        <span class="banner-action">命令</span>
-      {/if}
-    </div>
-  {/if}
+  <!-- Top Action Banner -->
+  <TopActionBanner
+    {showTopBanner}
+    {commandParamMode}
+    {lockedCard}
+    {commandSelectMode}
+    {searchSession}
+    {isNoteFormat}
+    {explicitNoteTitle}
+    {isDialogueFormat}
+    {explicitUserTitle}
+    onExecuteCommand={executeCurrentCommand}
+    onUnlockCard={unlockCard}
+    onSolidifySearch={handleSolidifySearch}
+    onRevertSearch={handleRevertSearch}
+    onRestoreSearch={handleRestoreSearch}
+  />
 
   <!-- svelte-ignore a11y-click-events-have-key-events -->
   <!-- svelte-ignore a11y-no-static-element-interactions -->
@@ -758,6 +797,11 @@
     on:dragover={handleDragOver}
     on:dragleave={handleDragLeave}
     on:drop={handleDrop}
+    on:wheel|stopPropagation={(e) => {
+      if (e.target !== omnibarInputEl) {
+        e.preventDefault();
+      }
+    }}
   >
     <!-- Command Chip Badge: [🔭 /cmd] -->
     {#if commandParamMode && selectedCommand}
@@ -789,6 +833,7 @@
       on:paste={handlePaste}
       on:focus={() => isOmnibarFocused = true}
       on:blur={() => isOmnibarFocused = false}
+      on:wheel={handleInputWheel}
       disabled={capturePending}
       rows="1"
     ></textarea>
@@ -804,51 +849,30 @@
 
   <!-- Dropdown 1: Command Selection Suggestions -->
   {#if commandSelectMode && matchedCommands.length > 0}
-    <div class="dropdown-menu command-dropdown">
-      {#each matchedCommands as cmd, index}
-        <!-- svelte-ignore a11y-click-events-have-key-events -->
-        <!-- svelte-ignore a11y-no-static-element-interactions -->
-        <div 
-          class="dropdown-item" 
-          class:active={index === highlightedCmdIndex}
-          on:mouseenter={() => highlightedCmdIndex = index}
-          on:mousedown|preventDefault={() => selectCommand(cmd)}
-        >
-          <div class="cmd-item-header">
-            <span class="cmd-icon">🔭</span>
-            <span class="cmd-trigger">/{cmd.trigger.replace(/^\//, '')}</span>
-          </div>
-        </div>
-      {/each}
-    </div>
+    <CommandDropdown
+      {matchedCommands}
+      {highlightedCmdIndex}
+      onHighlight={(idx) => highlightedCmdIndex = idx}
+      onSelect={selectCommand}
+    />
   {/if}
 
   <!-- Dropdown 2: Parameter Card Candidates -->
   {#if commandParamMode && !lockedCard && paramCardCandidates.length > 0}
-    <div class="dropdown-menu card-dropdown">
-      {#each paramCardCandidates as candidate, index}
-        <!-- svelte-ignore a11y-click-events-have-key-events -->
-        <!-- svelte-ignore a11y-no-static-element-interactions -->
-        <div 
-          class="dropdown-item card-item" 
-          class:active={index === highlightedCardIndex}
-          on:mouseenter={() => highlightedCardIndex = index}
-          on:mousedown|preventDefault={() => lockCard(candidate)}
-        >
-          <div class="card-item-title">
-            <span class="candidate-icon">📄</span>
-            {getCardParamDisplayTitle(candidate, omniText)}
-          </div>
-        </div>
-      {/each}
-    </div>
+    <CardCandidateDropdown
+      {paramCardCandidates}
+      {highlightedCardIndex}
+      {omniText}
+      onHighlight={(idx) => highlightedCardIndex = idx}
+      onSelect={lockCard}
+    />
   {/if}
 </div>
 
 <style>
   .omnibar-container {
     position: absolute;
-    z-index: 50; /* Above normal background cards */
+    z-index: 50;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -923,7 +947,6 @@
     color: rgba(51, 51, 51, 0.55);
   }
 
-  /* Hide scrollbar for omnibar input */
   .omnibar-input::-webkit-scrollbar {
     display: none;
   }
@@ -991,85 +1014,6 @@
     opacity: 1;
   }
 
-  /* Dropdown Menus */
-  .dropdown-menu {
-    width: 100%;
-    margin-top: 8px;
-    background: rgba(255, 255, 255, 0.96);
-    backdrop-filter: blur(28px);
-    -webkit-backdrop-filter: blur(28px);
-    border: 1px solid rgba(255, 255, 255, 0.8);
-    border-radius: 20px;
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.16);
-    overflow: hidden;
-    max-height: 280px;
-    overflow-y: auto;
-    z-index: 60;
-    display: flex;
-    flex-direction: column;
-    animation: dropdown-slide 0.15s ease-out;
-    box-sizing: border-box;
-  }
-
-  @keyframes dropdown-slide {
-    from { opacity: 0; transform: translateY(-8px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .dropdown-item {
-    padding: 10px 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    cursor: pointer;
-    transition: background 0.15s ease;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
-  }
-
-  .dropdown-item:last-child {
-    border-bottom: none;
-  }
-
-  .dropdown-item.active {
-    background: rgba(59, 130, 246, 0.1);
-  }
-
-  .dropdown-item.card-item {
-    flex-direction: row;
-    align-items: center;
-    padding: 9px 16px;
-  }
-
-  .cmd-item-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .cmd-trigger {
-    font-weight: 700;
-    color: #2563eb;
-    font-size: 0.95rem;
-  }
-
-  .card-item-title {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-weight: 600;
-    color: #111827;
-    font-size: 0.92rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    min-width: 0;
-    width: 100%;
-  }
-
-  .candidate-icon {
-    flex-shrink: 0;
-  }
-
   .toast-feedback {
     margin-bottom: 10px;
     padding: 8px 18px;
@@ -1088,131 +1032,6 @@
   @keyframes toast-in {
     from { opacity: 0; transform: translateY(6px); }
     to { opacity: 1; transform: translateY(0); }
-  }
-
-  /* Top Action Banner / 条幅提示 */
-  .omnibar-top-banner {
-    align-self: flex-start;
-    margin-left: 22px;
-    margin-bottom: 6px;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 0;
-    background: transparent;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    border: none;
-    border-radius: 0;
-    box-shadow: none;
-    font-size: 0.72rem;
-    color: rgba(50, 50, 50, 0.85);
-    user-select: none;
-    animation: banner-pop 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-
-  @keyframes banner-pop {
-    from {
-      opacity: 0;
-      transform: translateY(3px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .banner-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    padding: 1px 6px;
-    border-radius: 4px;
-    font-weight: 600;
-    font-size: 0.68rem;
-    letter-spacing: 0.02em;
-  }
-
-  .banner-badge.cmd-badge {
-    background: rgba(59, 130, 246, 0.12);
-    color: #2563eb;
-  }
-
-  .banner-badge.param-badge {
-    background: rgba(16, 185, 129, 0.12);
-    color: #059669;
-  }
-
-  .banner-badge.ready-badge {
-    background: rgba(245, 158, 11, 0.12);
-    color: #d97706;
-  }
-
-  .banner-badge.search-badge {
-    background: rgba(147, 51, 234, 0.1);
-    color: #7e22ce;
-  }
-
-  .banner-dot {
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: var(--glow-color, #7e22ce);
-    box-shadow: 0 0 5px var(--glow-color, #7e22ce);
-    display: inline-block;
-  }
-
-  .banner-key {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1px 5px;
-    background: rgba(255, 255, 255, 0.65);
-    border: 1px solid rgba(255, 255, 255, 0.8);
-    border-radius: 4px;
-    font-size: 0.66rem;
-    font-weight: 600;
-    color: #374151;
-    line-height: 1.25;
-    font-family: inherit;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-  }
-
-  .banner-action {
-    color: rgba(55, 65, 81, 0.85);
-    font-weight: 500;
-    font-size: 0.7rem;
-    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.6);
-  }
-
-  .banner-sep {
-    color: rgba(0, 0, 0, 0.2);
-    font-weight: 600;
-    font-size: 0.65rem;
-    margin: 0 1px;
-  }
-
-  .banner-clickable-action {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    background: transparent;
-    border: none;
-    padding: 0;
-    margin: 0;
-    cursor: pointer;
-    font-family: inherit;
-    border-radius: 4px;
-    transition: transform 0.15s ease, opacity 0.15s ease;
-  }
-
-  .banner-clickable-action:hover {
-    opacity: 0.8;
-    transform: translateY(-1px);
-  }
-
-  .banner-clickable-action:active {
-    transform: translateY(0);
   }
 
   .omnibar-input.locked-mode {

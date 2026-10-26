@@ -20,10 +20,17 @@ func NewSearxNGClient(baseURL string) *SearxNGClient {
 	if baseURL == "" {
 		baseURL = "http://localhost:8080"
 	}
+	tr := &http.Transport{
+		Proxy:               http.ProxyFromEnvironment,
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 20,
+		IdleConnTimeout:     90 * time.Second,
+	}
 	return &SearxNGClient{
 		BaseURL: baseURL,
 		Client: &http.Client{
-			Timeout: 10 * time.Second,
+			Transport: tr,
+			Timeout:   30 * time.Second,
 		},
 	}
 }

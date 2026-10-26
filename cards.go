@@ -21,27 +21,31 @@ const (
 	CardTypeBabel   CardType = "babel" // Discovered by Bugu, temporary
 	CardTypeThought CardType = "thought"
 	CardTypeChatLog CardType = "chat_log"
+	CardTypeNote    CardType = "note"
 )
 
 // Card defines the core data model for a consciousness stream piece
 type Card struct {
-	ID             string     `json:"id"`
-	Type           CardType   `json:"type"`
-	Title          string     `json:"title"`
-	Content        string     `json:"content"`
-	Images         []string   `json:"images,omitempty"`
-	SourceURL      string     `json:"sourceUrl,omitempty"`
-	OriginalText   string     `json:"originalText,omitempty"`
-	TranslatedText string     `json:"translatedText,omitempty"`
-	PublishedAt    string     `json:"publishedAt,omitempty"`
-	AuthorName     string     `json:"authorName,omitempty"`
-	AuthorAvatar   string     `json:"authorAvatar,omitempty"`
-	EchoOf         string     `json:"echoOf,omitempty"`
-	CreatedAt      time.Time  `json:"createdAt"`
-	Participants   []string   `json:"participants,omitempty"`
-	StartedAt      *time.Time `json:"startedAt,omitempty"`
-	EndedAt        *time.Time `json:"endedAt,omitempty"`
-	FilePath       string     `json:"filePath,omitempty"`
+	ID             string              `json:"id"`
+	Type           CardType            `json:"type"`
+	Title          string              `json:"title"`
+	Content        string              `json:"content"`
+	Images         []string            `json:"images,omitempty"`
+	SourceURL      string              `json:"sourceUrl,omitempty"`
+	OriginalText   string              `json:"originalText,omitempty"`
+	TranslatedText string              `json:"translatedText,omitempty"`
+	PublishedAt    string              `json:"publishedAt,omitempty"`
+	AuthorName     string              `json:"authorName,omitempty"`
+	AuthorAvatar   string              `json:"authorAvatar,omitempty"`
+	EchoOf         string              `json:"echoOf,omitempty"`
+	MatchedAnchor  string              `json:"matchedAnchor,omitempty"`
+	EchoReason     string              `json:"echoReason,omitempty"`
+	CreatedAt      time.Time           `json:"createdAt"`
+	Participants   []string            `json:"participants,omitempty"`
+	StartedAt      *time.Time          `json:"startedAt,omitempty"`
+	EndedAt        *time.Time          `json:"endedAt,omitempty"`
+	FilePath       string              `json:"filePath,omitempty"`
+	Keywords       map[string][]string `json:"keywords,omitempty"`
 }
 
 // TempCardTTL defines the maximum macro in-memory lifetime for temporary network cards (24 hours).

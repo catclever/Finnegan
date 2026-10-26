@@ -7,10 +7,10 @@ import (
 	"sort"
 	"strings"
 
-	"Finnegan/modules/bugu/config"
-	"Finnegan/modules/bugu/models"
 	"Finnegan/core/chatlog"
 	"Finnegan/core/module"
+	"Finnegan/modules/bugu/config"
+	"Finnegan/modules/bugu/models"
 	"github.com/google/generative-ai-go/genai"
 	"google.golang.org/api/option"
 )
@@ -60,11 +60,11 @@ func BuildFacetSearchPlanPrompt(intent string, catalog string, keywords map[stri
 KEYWORDS PROFILE:
 %s
 DIMENSION-BASED FACET MATCHING & TIME RANGE STRATEGY:
-When a Keywords Profile is present, match target sites and time_range values based on dimension facets:
-- event / symptom: Prioritize real-time discussion platforms (HN, Reddit, V2EX, GitHub Issues/Discussions). Set time_range to "month" or "week" to capture fresh and active community discourse.
-- entity: Match technical documentation, GitHub repositories, and specialized domain communities. Set time_range to "year".
-- judgment / methodology: Match long-form analytical blogs, Substack, LessWrong, and reflective essays. Set time_range to "year" or "" (unlimited).
-- emotion / metaphor: Match reflective essays, humanities platforms, personal indie blogs, and cultural forums. Set time_range to "" (unlimited/timeless).
+When a Keywords Profile is present, match target sites and time_range values based on the 4 concrete anchor dimension facets:
+- object (名物与通用指涉): Match technical documentation, code repositories, vertical encyclopedias, and specialized domain sites. Set time_range to "year".
+- motif (处境与母题): Prioritize real-time discussion platforms and forums (HN, Reddit, V2EX, GitHub Issues/Discussions). Set time_range to "month" or "week" to capture fresh and active community discourse.
+- mood (心境与心绪): Match personal indie blogs, IndieWeb, literary essays, humanities platforms, and cultural forums. Set time_range to "" (unlimited/timeless, cross-temporal resonance).
+- concept (观念与议题): Match long-form analytical blogs, Substack, LessWrong, and editorial essays. Set time_range to "" or "year".
 `, kwProfile)
 	}
 

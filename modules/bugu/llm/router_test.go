@@ -13,22 +13,24 @@ func TestFormatKeywordsProfile(t *testing.T) {
 	if res := FormatKeywordsProfile(map[string][]string{}); res != "" {
 		t.Errorf("expected empty string for empty keywords, got %q", res)
 	}
-	if res := FormatKeywordsProfile(map[string][]string{"entity": {}}); res != "" {
+	if res := FormatKeywordsProfile(map[string][]string{"object": {}}); res != "" {
 		t.Errorf("expected empty string for empty slice, got %q", res)
 	}
 
-	// Populated profile - verify alphabetical ordering of dimensions
+	// Populated profile - verify alphabetical ordering of dimensions: concept < mood < motif < object
 	kw := map[string][]string{
-		"symptom": {"SIGSEGV crash"},
-		"entity":  {"WebKitGTK 4.1", "libsoup"},
-		"event":   {"WebKitGTK 2.44 release"},
+		"object":  {"WebKitGTK 4.1", "libsoup"},
+		"motif":   {"排查内存泄漏"},
+		"mood":    {"烦躁", "抽离感"},
+		"concept": {"以Bug改Bug"},
 	}
 
 	formatted := FormatKeywordsProfile(kw)
 	expectedLines := []string{
-		"- entity: WebKitGTK 4.1, libsoup",
-		"- event: WebKitGTK 2.44 release",
-		"- symptom: SIGSEGV crash",
+		"- concept: 以Bug改Bug",
+		"- mood: 烦躁, 抽离感",
+		"- motif: 排查内存泄漏",
+		"- object: WebKitGTK 4.1, libsoup",
 	}
 
 	for _, line := range expectedLines {
@@ -37,11 +39,12 @@ func TestFormatKeywordsProfile(t *testing.T) {
 		}
 	}
 
-	// Verify order: entity appears before event, event appears before symptom
-	idxEntity := strings.Index(formatted, "- entity:")
-	idxEvent := strings.Index(formatted, "- event:")
-	idxSymptom := strings.Index(formatted, "- symptom:")
-	if !(idxEntity < idxEvent && idxEvent < idxSymptom) {
+	// Verify order: concept < mood < motif < object
+	idxConcept := strings.Index(formatted, "- concept:")
+	idxMood := strings.Index(formatted, "- mood:")
+	idxMotif := strings.Index(formatted, "- motif:")
+	idxObject := strings.Index(formatted, "- object:")
+	if !(idxConcept < idxMood && idxMood < idxMotif && idxMotif < idxObject) {
 		t.Errorf("expected alphabetical order for dimensions, got:\n%s", formatted)
 	}
 }
@@ -50,9 +53,10 @@ func TestBuildFacetSearchPlanPrompt_WithKeywords(t *testing.T) {
 	intent := "Investigate WebKitGTK memory leaks in Wayland"
 	catalog := "ID: hn | Type: community\nID: github | Type: code"
 	kw := map[string][]string{
-		"entity":  {"WebKitGTK", "Wayland"},
-		"event":   {"GNOME 46 release"},
-		"symptom": {"memory leak on buffer swap"},
+		"object":  {"WebKitGTK", "Wayland"},
+		"motif":   {"排查内存泄漏", "GNOME 46 release"},
+		"mood":    {"烦躁"},
+		"concept": {"以Bug改Bug", "性能劣化"},
 	}
 
 	prompt := BuildFacetSearchPlanPrompt(intent, catalog, kw)
@@ -74,28 +78,31 @@ func TestBuildFacetSearchPlanPrompt_WithKeywords(t *testing.T) {
 	if !strings.Contains(prompt, "KEYWORDS PROFILE:") {
 		t.Errorf("expected prompt to contain KEYWORDS PROFILE: section")
 	}
-	if !strings.Contains(prompt, "- entity: WebKitGTK, Wayland") {
-		t.Errorf("expected entity keywords in prompt")
+	if !strings.Contains(prompt, "- object: WebKitGTK, Wayland") {
+		t.Errorf("expected object keywords in prompt")
 	}
-	if !strings.Contains(prompt, "- event: GNOME 46 release") {
-		t.Errorf("expected event keywords in prompt")
+	if !strings.Contains(prompt, "- motif: 排查内存泄漏, GNOME 46 release") {
+		t.Errorf("expected motif keywords in prompt")
 	}
-	if !strings.Contains(prompt, "- symptom: memory leak on buffer swap") {
-		t.Errorf("expected symptom keywords in prompt")
+	if !strings.Contains(prompt, "- mood: 烦躁") {
+		t.Errorf("expected mood keywords in prompt")
+	}
+	if !strings.Contains(prompt, "- concept: 以Bug改Bug, 性能劣化") {
+		t.Errorf("expected concept keywords in prompt")
 	}
 
-	// 4. Dimension-based heuristics
-	if !strings.Contains(prompt, "event / symptom: Prioritize real-time discussion platforms") {
-		t.Errorf("expected event/symptom heuristic in prompt")
+	// 4. Dimension-based heuristics (4 Concrete Anchors)
+	if !strings.Contains(prompt, "object (名物与通用指涉): Match technical documentation, code repositories, vertical encyclopedias") {
+		t.Errorf("expected object heuristic in prompt")
 	}
-	if !strings.Contains(prompt, "entity: Match technical documentation") {
-		t.Errorf("expected entity heuristic in prompt")
+	if !strings.Contains(prompt, "motif (处境与母题): Prioritize real-time discussion platforms and forums (HN, Reddit, V2EX") {
+		t.Errorf("expected motif heuristic in prompt")
 	}
-	if !strings.Contains(prompt, "judgment / methodology:") {
-		t.Errorf("expected judgment/methodology heuristic in prompt")
+	if !strings.Contains(prompt, "mood (心境与心绪): Match personal indie blogs, IndieWeb, literary essays") {
+		t.Errorf("expected mood heuristic in prompt")
 	}
-	if !strings.Contains(prompt, "emotion / metaphor:") {
-		t.Errorf("expected emotion/metaphor heuristic in prompt")
+	if !strings.Contains(prompt, "concept (观念与议题): Match long-form analytical blogs, Substack, LessWrong") {
+		t.Errorf("expected concept heuristic in prompt")
 	}
 
 	// 5. Time range instructions

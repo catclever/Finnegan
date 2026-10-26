@@ -9,7 +9,7 @@ export interface AuraTrace {
   hitTime: number;
 }
 
-export type CardType = 'thought' | 'babel' | 'chat_log' | 'local' | string;
+export type CardType = 'thought' | 'babel' | 'chat_log' | 'local' | 'note' | string;
 
 export interface DialogueTurn {
   speaker: string;
@@ -32,11 +32,14 @@ export interface CosmicCard {
   startedAt?: string;
   endedAt?: string;
   echoOf?: string;
+  matchedAnchor?: string;
+  echoReason?: string;
   x: number;
   y: number;
   rotation: number;
   z: number;
   images?: string[];
+  keywords?: Record<string, string[]>;
   isEnriching?: boolean;     // True when card title/metadata is being derived by LLM
 
   // Lifecycle & Decay properties
@@ -67,6 +70,7 @@ export interface ParamSpec {
   type: string;
   description: string;
   dataSource?: string;
+  requireKeywords?: boolean;
 }
 
 export interface CommandDef {

@@ -129,7 +129,7 @@
   function computeAnimatedBeamPath(
     source: CosmicCard,
     target: CosmicCard
-  ): { path: string; x1: number; y1: number; x2: number; y2: number } {
+  ): { path: string; x1: number; y1: number; x2: number; y2: number; midX: number; midY: number } {
     const rawDx = target.x - source.x;
     const rawDy = target.y - source.y;
     const dist = Math.hypot(rawDx, rawDy);
@@ -140,7 +140,9 @@
         x1: source.x,
         y1: source.y,
         x2: target.x,
-        y2: target.y
+        y2: target.y,
+        midX: source.x,
+        midY: source.y
       };
     }
 
@@ -206,7 +208,12 @@
 
     const path = `M ${startX.toFixed(1)} ${startY.toFixed(1)} C ${c1x.toFixed(1)} ${c1y.toFixed(1)}, ${c2x.toFixed(1)} ${c2y.toFixed(1)}, ${endX.toFixed(1)} ${endY.toFixed(1)}`;
 
-    return { path, x1: startX, y1: startY, x2: endX, y2: endY };
+    const t = 0.5;
+    const mt = 1 - t;
+    const midX = mt * mt * mt * startX + 3 * mt * mt * t * c1x + 3 * mt * t * t * c2x + t * t * t * endX;
+    const midY = mt * mt * mt * startY + 3 * mt * mt * t * c1y + 3 * mt * t * t * c2y + t * t * t * endY;
+
+    return { path, x1: startX, y1: startY, x2: endX, y2: endY, midX, midY };
   }
 
   $: renderedRays = activeInstances
@@ -224,7 +231,9 @@
         x1: beam.x1,
         y1: beam.y1,
         x2: beam.x2,
-        y2: beam.y2
+        y2: beam.y2,
+        midX: beam.midX,
+        midY: beam.midY
       };
     })
     .filter(Boolean) as Array<{
@@ -237,6 +246,8 @@
       y1: number;
       x2: number;
       y2: number;
+      midX: number;
+      midY: number;
     }>;
 
   onDestroy(() => {
@@ -253,6 +264,24 @@
 
   <!-- Magic UI Animated Beam: Refined Fiber, Bezier Curvature & Synchronized Blooming Aperture Nodes -->
   {#if renderedRays.length > 0}
+    <div class="bugu-flat-html">
+      {#each renderedRays as ray (ray.instanceId)}
+        {#if ray.target.matchedAnchor}
+          <div 
+             class="ray-anchor-badge-container"
+             style="transform: translate(calc({ray.midX}px - 50%), calc({ray.midY}px - 50%)) translateZ(8px);"
+          >
+            <div 
+              class="ray-anchor-badge"
+              title={ray.target.echoReason || ray.target.matchedAnchor}
+            >
+              「{ray.target.matchedAnchor}」
+            </div>
+          </div>
+        {/if}
+      {/each}
+    </div>
+
     <svg class="bugu-flat-svg">
       <defs>
         <!-- Soft glowing radial gradient for aperture nodes -->
@@ -669,6 +698,131 @@
     100% {
       stroke-dashoffset: -105;
       opacity: 0;
+    }
+  }
+
+  .bugu-flat-html {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    overflow: visible;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  .ray-anchor-badge-container {
+    position: absolute;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ray-anchor-badge {
+    font-size: 11px;
+    font-weight: 500;
+    color: rgba(251, 191, 36, 0.95);
+    background: rgba(18, 18, 20, 0.75);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 0.8px solid rgba(245, 158, 11, 0.45);
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.25);
+    white-space: nowrap;
+    transform-origin: center center;
+    pointer-events: auto;
+    animation: bugu-badge-decay 14.4s ease-in-out forwards;
+  }
+
+  @keyframes bugu-badge-decay {
+    /* Cycle 1 (0 ~ 4.8s): Quick fade-in, gleaming pulse as laser passes midpoint, gentle ambient sustain */
+    0% {
+      opacity: 0;
+      transform: scale(0.65);
+    }
+    3% {
+      opacity: 0.88;
+      transform: scale(1);
+    }
+    12% {
+      opacity: 0.9;
+      transform: scale(1);
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
+    }
+    15% {
+      /* Pulse crosses badge: radiant amber gleam */
+      opacity: 1;
+      transform: scale(1.08);
+      border-color: rgba(245, 158, 11, 0.85);
+      box-shadow: 0 0 16px rgba(245, 158, 11, 0.7);
+    }
+    20% {
+      opacity: 0.88;
+      transform: scale(1);
+      border-color: rgba(245, 158, 11, 0.45);
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.25);
+    }
+    33.3% {
+      opacity: 0.82;
+      transform: scale(1);
+    }
+
+    /* Cycle 2 (4.8s ~ 9.6s): Second pulse gleam */
+    33.4% {
+      opacity: 0.8;
+      transform: scale(1);
+    }
+    45% {
+      opacity: 0.82;
+      transform: scale(1);
+    }
+    48% {
+      /* Pulse 2 arrives: subtle gleam */
+      opacity: 0.95;
+      transform: scale(1.05);
+      border-color: rgba(245, 158, 11, 0.7);
+      box-shadow: 0 0 14px rgba(245, 158, 11, 0.5);
+    }
+    53% {
+      opacity: 0.78;
+      transform: scale(1);
+      border-color: rgba(245, 158, 11, 0.35);
+      box-shadow: 0 0 8px rgba(245, 158, 11, 0.2);
+    }
+    66.6% {
+      opacity: 0.7;
+      transform: scale(1);
+    }
+
+    /* Cycle 3 (9.6s ~ 14.4s): Final gentle decay */
+    66.7% {
+      opacity: 0.65;
+      transform: scale(1);
+    }
+    78% {
+      opacity: 0.68;
+    }
+    81% {
+      /* Pulse 3 arrives: faint gleam */
+      opacity: 0.8;
+      transform: scale(1.03);
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+    }
+    86% {
+      opacity: 0.55;
+      transform: scale(1);
+      box-shadow: 0 0 6px rgba(245, 158, 11, 0.15);
+    }
+    94% {
+      opacity: 0.25;
+      transform: scale(0.95);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(0.85);
     }
   }
 </style>

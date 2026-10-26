@@ -57,6 +57,7 @@ export namespace chatlog {
 		}
 	}
 	export class ParsedChatLog {
+	    userTitle?: string;
 	    participants: string[];
 	    // Go type: time
 	    startedAt?: any;
@@ -72,6 +73,7 @@ export namespace chatlog {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.userTitle = source["userTitle"];
 	        this.participants = source["participants"];
 	        this.startedAt = this.convertValues(source["startedAt"], null);
 	        this.endedAt = this.convertValues(source["endedAt"], null);
@@ -115,6 +117,55 @@ export namespace chatlog {
 
 }
 
+export namespace keywords {
+	
+	export class Config {
+	    enabled_dimensions: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Config(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.enabled_dimensions = source["enabled_dimensions"];
+	    }
+	}
+	export class KeywordEngine {
+	    LLMConfig: module.LLMConfig;
+	    Config: Config;
+	
+	    static createFrom(source: any = {}) {
+	        return new KeywordEngine(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.LLMConfig = this.convertValues(source["LLMConfig"], module.LLMConfig);
+	        this.Config = this.convertValues(source["Config"], Config);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+
 export namespace main {
 	
 	export class Card {
@@ -130,6 +181,8 @@ export namespace main {
 	    authorName?: string;
 	    authorAvatar?: string;
 	    echoOf?: string;
+	    matchedAnchor?: string;
+	    echoReason?: string;
 	    // Go type: time
 	    createdAt: any;
 	    participants?: string[];
@@ -137,6 +190,8 @@ export namespace main {
 	    startedAt?: any;
 	    // Go type: time
 	    endedAt?: any;
+	    filePath?: string;
+	    keywords?: Record<string, Array<string>>;
 	
 	    static createFrom(source: any = {}) {
 	        return new Card(source);
@@ -156,10 +211,14 @@ export namespace main {
 	        this.authorName = source["authorName"];
 	        this.authorAvatar = source["authorAvatar"];
 	        this.echoOf = source["echoOf"];
+	        this.matchedAnchor = source["matchedAnchor"];
+	        this.echoReason = source["echoReason"];
 	        this.createdAt = this.convertValues(source["createdAt"], null);
 	        this.participants = source["participants"];
 	        this.startedAt = this.convertValues(source["startedAt"], null);
 	        this.endedAt = this.convertValues(source["endedAt"], null);
+	        this.filePath = source["filePath"];
+	        this.keywords = source["keywords"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -275,6 +334,7 @@ export namespace module {
 	    type: string;
 	    description: string;
 	    dataSource: string;
+	    requireKeywords?: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new ParamSpec(source);
@@ -286,6 +346,7 @@ export namespace module {
 	        this.type = source["type"];
 	        this.description = source["description"];
 	        this.dataSource = source["dataSource"];
+	        this.requireKeywords = source["requireKeywords"];
 	    }
 	}
 	export class CommandDef {
@@ -325,6 +386,24 @@ export namespace module {
 		    }
 		    return a;
 		}
+	}
+	export class LLMConfig {
+	    provider: string;
+	    api_key: string;
+	    base_url: string;
+	    default_model: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new LLMConfig(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.provider = source["provider"];
+	        this.api_key = source["api_key"];
+	        this.base_url = source["base_url"];
+	        this.default_model = source["default_model"];
+	    }
 	}
 
 }

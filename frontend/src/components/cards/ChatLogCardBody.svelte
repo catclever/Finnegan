@@ -12,7 +12,8 @@
 -->
 <script lang="ts">
   import type { CosmicCard } from '../../types/card';
-  import { parseDialogue, formatChatLogTime } from '../../lib/chatlog';
+  import { parseDialogue } from '../../lib/chatlog';
+  import { formatIntervalTime, formatPointTime } from '../../lib/time';
   import CardImageGallery from './CardImageGallery.svelte';
 
   export let card: CosmicCard;
@@ -42,7 +43,8 @@
   $: turns = parseDialogue(card?.content || '');
   $: title = card?.title && card.title !== 'Thought' && card.title !== 'Card' && card.title !== 'Babel Echo' ? card.title : '';
   $: participants = Array.isArray(card?.participants) ? card.participants : [];
-  $: timeStr = formatChatLogTime(card?.startedAt, card?.endedAt) || thoughtTime;
+  $: timeStr = formatIntervalTime(card?.startedAt, card?.endedAt) || thoughtTime;
+  $: scatterTime = formatPointTime(card?.startedAt || card?.createdAt || card?.spawnTime);
 
   $: rawImages = card?.images || (card as any)?.Images || [];
   $: images = (Array.isArray(rawImages) ? rawImages : [rawImages])
@@ -134,6 +136,11 @@
           </div>
         {/each}
       </div>
+      {#if scatterTime}
+        <div class="preview-footer">
+          <span class="card-time">{scatterTime}</span>
+        </div>
+      {/if}
     </div>
   {/if}
 </div>
@@ -512,5 +519,24 @@
   .chat-log-card-body.enriching .screenplay-stream {
     opacity: 0.85;
     transition: opacity 0.3s ease;
+  }
+
+  .preview-footer {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    margin-top: auto;
+    padding-top: 4px;
+    flex-shrink: 0;
+  }
+
+  .card-time {
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    color: var(--card-text-secondary, rgba(62, 62, 62, 0.7));
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    opacity: 0.85;
+    flex-shrink: 0;
   }
 </style>

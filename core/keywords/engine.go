@@ -67,7 +67,7 @@ func (c *GeminiLLMClient) GenerateJSON(ctx context.Context, modelName string, pr
 	return "", errors.New("unexpected gemini response part format")
 }
 
-// KeywordEngine provides adaptive multi-dimensional cognitive keyword extraction.
+// KeywordEngine provides adaptive 4-anchor cognitive keyword extraction.
 type KeywordEngine struct {
 	LLMConfig module.LLMConfig
 	Config    Config
@@ -91,64 +91,61 @@ func (e *KeywordEngine) WithClient(client LLMClient) *KeywordEngine {
 	return e
 }
 
-// BuildPrompt constructs the adaptive Salience Gating prompt for active dimensions.
+// BuildPrompt constructs the 4-anchor Salience Gating prompt for active dimensions.
 func (e *KeywordEngine) BuildPrompt(text string) string {
 	activeDefs := e.Config.GetActiveDimensions()
 	var dimSb strings.Builder
 	for _, def := range activeDefs {
-		dimSb.WriteString(fmt.Sprintf("- Dimension [%s] (%s):\n", def.ID, def.Name))
-		dimSb.WriteString(fmt.Sprintf("  * Gating condition: %s\n", def.GatePrompt))
-		dimSb.WriteString(fmt.Sprintf("  * Extraction rule: %s\n", def.ExtractPrompt))
+		dimSb.WriteString(fmt.Sprintf("   - [%s] (%s): %s\n", def.ID, def.Name, def.Description))
+	}
+
+	var jsonFields strings.Builder
+	for i, def := range activeDefs {
+		jsonFields.WriteString(fmt.Sprintf("  \"%s\": [\"...\"]", def.ID))
+		if i < len(activeDefs)-1 {
+			jsonFields.WriteString(",\n")
+		} else {
+			jsonFields.WriteString("\n")
+		}
 	}
 
 	return fmt.Sprintf(`You are an advanced cognitive extraction engine and ontology architect.
-Your task is to analyze the provided note/card content and extract structured multi-dimensional keywords using adaptive Salience Gating.
+Your goal is to extract CONCRETE, COMPACT ANCHORS (实心锚点) from the given thought or dialogue card.
 
-ACTIVE DIMENSIONS TO EVALUATE:
+CRITICAL PRINCIPLES:
+1. ALL KEYWORDS MUST BE "CONCRETE ANCHORS" (实心锚点):
+   - Every extracted item MUST be a compact noun or discrete concept/motif phrase (2 to 5 Chinese characters, or 1 to 3 English words).
+   - STRICTLY FORBIDDEN: Long explanatory sentences, rambling literary phrases, abstract psychological descriptions (e.g. NEVER output "被具体生活之美唤醒后的抽离感" or "为了提高效率而做无用功"). No term may exceed 8 characters.
+2. 4 CONCRETE ANCHOR DIMENSIONS:
 %s
+3. SALIENCE GATING (两步合一门控):
+   - Only activate dimensions that genuinely have high weight in this card.
+   - If a dimension does not genuinely apply, return [] for that dimension. Strictly NEVER force or hallucinate keywords where the dimension does not clearly apply! Most cards should only activate 1 to 3 relevant dimensions.
+   - For activated dimensions, return 1 to 4 crisp anchor terms.
+4. Language:
+   - Extract keywords in the natural language matching the card (Chinese for Chinese content, English for English content, etc.), keeping foreign proper nouns and technical terms in their native form.
 
 CARD CONTENT:
 %s
 
-CRITICAL RULES & SALIENCE GATING (TWO-STEP GATING IN ONE PASS):
-1. Salience Gating:
-   For EACH active dimension above, first evaluate whether the card genuinely and prominently satisfies the gating condition.
-   - If the card DOES NOT genuinely exhibit this dimension's characteristics, you MUST return an empty array [] for this dimension. Strictly NEVER force or hallucinate keywords where the dimension does not clearly apply! Most cards should only activate 1 to 3 relevant dimensions.
-   - If and only if the card exhibits clear salience for that dimension, extract 1 to 5 high-quality keywords adhering strictly to that dimension's specific extraction rule.
-2. High Signal & Fidelity:
-   - For entity: Strict high fidelity, exact terms, versions, proper nouns. No generalization.
-   - For event: Subject + dynamic anchor phrase.
-   - For judgment: Tension proposition or debatable claim.
-   - For emotion: De-clinicalized contextual mood or lived experience, no generic medical terms.
-   - For question: Reconstructed high-density How/Why question.
-   - For metaphor: Preserved core poetic/philosophical imagery crystallization.
-   - For symptom: High distinction error signature and phenomenon.
-   - For methodology: Paradigm or workflow pattern ("X-driven Y").
-   - For counter_intuitive: Paradoxical contrast phrase ("surface A, reality B").
-   - For person_work: Exact author/work names with original/standard alignment.
-3. Language:
-   - Extract keywords in the natural language matching the card (Chinese for Chinese content, English for English content, etc.), keeping foreign proper nouns in their native form.
-
-OUTPUT FORMAT:
-Return strict JSON matching this exact structure:
+Output strictly valid JSON matching this structure:
 {
-  "keywords": {
-    "<dimension_id>": ["keyword1", "keyword2"]
-  }
-}
-Only include dimensions that are active. If a dimension is not triggered, its value MUST be an empty array [].`, dimSb.String(), text)
+%s}
+Only include active dimensions. If a dimension is not triggered, its value MUST be an empty array [].`, dimSb.String(), text, jsonFields.String())
 }
 
 func (e *KeywordEngine) filterActiveProfile(raw map[string][]string) KeywordsProfile {
 	activeDefs := e.Config.GetActiveDimensions()
 	activeMap := make(map[string]bool, len(activeDefs))
+	profile := make(KeywordsProfile, len(activeDefs))
 	for _, def := range activeDefs {
 		activeMap[def.ID] = true
+		profile[def.ID] = []string{}
 	}
 
-	profile := make(KeywordsProfile)
-	for k, list := range raw {
-		if !activeMap[k] {
+	for rawKey, list := range raw {
+		canonicalKey := NormalizeDimension(rawKey)
+		if !activeMap[canonicalKey] {
 			continue
 		}
 		var clean []string
@@ -158,7 +155,13 @@ func (e *KeywordEngine) filterActiveProfile(raw map[string][]string) KeywordsPro
 				clean = append(clean, trimmed)
 			}
 		}
-		profile[k] = clean
+		if len(clean) > 0 {
+			profile[canonicalKey] = append(profile[canonicalKey], clean...)
+			// Also retain raw legacy key if different from canonical key for backward compatibility
+			if rawKey != canonicalKey {
+				profile[rawKey] = append(profile[rawKey], clean...)
+			}
+		}
 	}
 	return profile
 }

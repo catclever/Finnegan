@@ -49,7 +49,10 @@ export function toCosmicCard(
     startedAt: c.startedAt || c.StartedAt || c.started_at,
     endedAt: c.endedAt || c.EndedAt || c.ended_at,
     echoOf: c.echoOf || c.EchoOf || c.echo_of || '',
+    matchedAnchor: c.matchedAnchor || c.MatchedAnchor || c.matched_anchor || '',
+    echoReason: c.echoReason || c.EchoReason || c.echo_reason || '',
     images,
+    keywords: c.keywords || c.Keywords,
     isEnriching: c.isEnriching !== undefined ? c.isEnriching : false,
     x: 0, y: 0, rotation: 0, z: 50,
     spawnTime: Date.now(), decayDuration: BASE_STAGE_DECAY_MS, isFresh: true, isVIP: false, origin,
@@ -169,7 +172,7 @@ export function getUnstagedMemoryCards(
   now: number = Date.now()
 ): CosmicCard[] {
   const activeIds = new Set(activeCards.map(c => c.id));
-  return memoryPool.filter(c => !activeIds.has(c.id) && (!c.macroExpiresAt || c.macroExpiresAt > now));
+  return memoryPool.filter(c => c.type !== 'note' && !activeIds.has(c.id) && (!c.macroExpiresAt || c.macroExpiresAt > now));
 }
 
 export interface FetchCardResult {
@@ -188,8 +191,8 @@ export function fetchNewCardIntoMemory(
   const memoryIds = new Set(memoryPool.map(c => c.id));
   const activeIds = new Set([...activeCards.map(c => c.id), ...stagingIds]);
   const candidate =
-    localVaultPool.find(c => !memoryIds.has(c.id) && !activeIds.has(c.id)) ||
-    localVaultPool.find(c => !activeIds.has(c.id));
+    localVaultPool.find(c => c.type !== 'note' && !memoryIds.has(c.id) && !activeIds.has(c.id)) ||
+    localVaultPool.find(c => c.type !== 'note' && !activeIds.has(c.id));
 
   if (candidate) {
     const freshMemoryCard: CosmicCard = {

@@ -27,6 +27,7 @@ func CleanProfile(profile KeywordsProfile) KeywordsProfile {
 }
 
 // ExtractKeywordsFromMarkdown extracts the keywords mapping from a Markdown file's YAML frontmatter.
+// Provides alias backward compatibility by ensuring canonical 4 anchor dimension keys are also populated.
 func ExtractKeywordsFromMarkdown(rawContent []byte) (KeywordsProfile, error) {
 	strContent := string(rawContent)
 	if !strings.HasPrefix(strContent, "---\n") && !strings.HasPrefix(strContent, "---\r\n") {
@@ -46,7 +47,19 @@ func ExtractKeywordsFromMarkdown(rawContent []byte) (KeywordsProfile, error) {
 	if meta.Keywords == nil {
 		return make(KeywordsProfile), nil
 	}
-	return CleanProfile(meta.Keywords), nil
+
+	clean := CleanProfile(meta.Keywords)
+	// Provide backward/forward compatibility alias mapping
+	for k, items := range clean {
+		canonical := NormalizeDimension(k)
+		if canonical != k {
+			if _, exists := clean[canonical]; !exists {
+				clean[canonical] = append([]string{}, items...)
+			}
+		}
+	}
+
+	return clean, nil
 }
 
 // MergeKeywordsToMarkdown merges the given KeywordsProfile into the YAML frontmatter of rawContent.

@@ -18,6 +18,42 @@ type Config struct {
 	I18nFilePath string
 }
 
+// BuguConfig defines the configuration options for the Bugu radar module.
+type BuguConfig struct {
+	SearxngURL     string `yaml:"searxng_url" json:"searxng_url"`
+	MaxConcurrency int    `yaml:"max_concurrency" json:"max_concurrency"`
+	FallbackKey    string `yaml:"fallback_key" json:"fallback_key"`
+	APIKey         string `yaml:"api_key" json:"api_key"`
+	JinaAPIKey     string `yaml:"jina_api_key" json:"jina_api_key"`
+	TargetLanguage string `yaml:"target_language" json:"target_language"`
+	LLMID          string `yaml:"llm_id" json:"llm_id"`
+	DefaultModel   string `yaml:"default_model" json:"default_model"`
+	RouterModel    string `yaml:"router_model" json:"router_model"`
+	DistillerModel string `yaml:"distiller_model" json:"distiller_model"`
+}
+
+// GetRouterModel returns the configured router model, smoothly falling back to DefaultModel or "gemini-3.8-flash".
+func (c *BuguConfig) GetRouterModel() string {
+	if c != nil && strings.TrimSpace(c.RouterModel) != "" {
+		return strings.TrimSpace(c.RouterModel)
+	}
+	if c != nil && strings.TrimSpace(c.DefaultModel) != "" {
+		return strings.TrimSpace(c.DefaultModel)
+	}
+	return "gemini-3.8-flash"
+}
+
+// GetDistillerModel returns the configured distiller model, smoothly falling back to DefaultModel or "gemini-3.8-flash".
+func (c *BuguConfig) GetDistillerModel() string {
+	if c != nil && strings.TrimSpace(c.DistillerModel) != "" {
+		return strings.TrimSpace(c.DistillerModel)
+	}
+	if c != nil && strings.TrimSpace(c.DefaultModel) != "" {
+		return strings.TrimSpace(c.DefaultModel)
+	}
+	return "gemini-3.8-flash"
+}
+
 type TagTranslator interface {
 	TranslateTags(tags []string) (map[string]map[string]string, error)
 }
@@ -83,6 +119,11 @@ func (c *Config) AutoEnrich(translator TagTranslator) error {
 	}
 
 	return MergeCustomTranslations(newTranslations, c.I18nFilePath)
+}
+
+// GetDistillerModel returns empty for now to fallback to LLM DefaultModel
+func (c *Config) GetDistillerModel() string {
+	return ""
 }
 
 func (c *Config) GetTargetCatalog() string {

@@ -329,3 +329,126 @@ func TestFormatCardMarkdownWithImages(t *testing.T) {
 		t.Fatalf("expected cardMD2 to contain images frontmatter from parsed.Images, got:\n%s", cardMD2)
 	}
 }
+
+func TestExtractHashTitle_Head(t *testing.T) {
+	input := `# 项目复盘讨论
+巧先生
+2026年10月14日  8:15
+体验下 看看有什么区别~~
+
+枫
+2026年10月14日  9:08
+说话语气正常了hhhh
+`
+	if !IsChatLog(input) {
+		t.Fatalf("expected IsChatLog to be true with header # Title")
+	}
+
+	parsed, err := Parse(input)
+	if err != nil {
+		t.Fatalf("Parse error: %v", err)
+	}
+
+	if parsed.UserTitle != "项目复盘讨论" {
+		t.Errorf("expected UserTitle '项目复盘讨论', got %q", parsed.UserTitle)
+	}
+
+	if strings.Contains(parsed.Coalesced, "项目复盘讨论") || strings.Contains(parsed.Coalesced, "#") {
+		t.Errorf("parsed.Coalesced should not contain title line: %s", parsed.Coalesced)
+	}
+
+	if len(parsed.Messages) != 2 {
+		t.Errorf("expected 2 messages, got %d", len(parsed.Messages))
+	}
+
+	cardMD := FormatCardMarkdown("01TESTDOCID", "", parsed)
+	if !strings.Contains(cardMD, "title: \"项目复盘讨论\"") && !strings.Contains(cardMD, "title: 项目复盘讨论") {
+		t.Errorf("FormatCardMarkdown should use parsed.UserTitle when title is empty:\n%s", cardMD)
+	}
+}
+
+func TestExtractHashTitle_Tail(t *testing.T) {
+	input := `巧先生
+2026年10月14日  8:15
+体验下 看看有什么区别~~
+
+枫
+2026年10月14日  9:08
+说话语气正常了hhhh
+
+# 尾部项目总结
+`
+	if !IsChatLog(input) {
+		t.Fatalf("expected IsChatLog to be true with footer # Title")
+	}
+
+	parsed, err := Parse(input)
+	if err != nil {
+		t.Fatalf("Parse error: %v", err)
+	}
+
+	if parsed.UserTitle != "尾部项目总结" {
+		t.Errorf("expected UserTitle '尾部项目总结', got %q", parsed.UserTitle)
+	}
+
+	if strings.Contains(parsed.Coalesced, "尾部项目总结") || strings.Contains(parsed.Coalesced, "#") {
+		t.Errorf("parsed.Coalesced should not contain title line: %s", parsed.Coalesced)
+	}
+
+	if len(parsed.Messages) != 2 {
+		t.Errorf("expected 2 messages, got %d", len(parsed.Messages))
+	}
+}
+
+func TestExtractHashTitle_RelaxedAndMiddleHash(t *testing.T) {
+	// 1. Title without space (#Redis启动) is now supported under relaxed parsing
+	inputNoSpace := `#Redis启动
+巧先生:
+你好
+
+枫:
+早上好
+`
+	parsed, err := Parse(inputNoSpace)
+	if err != nil {
+		t.Fatalf("Parse error: %v", err)
+	}
+	if parsed.UserTitle != "Redis启动" {
+		t.Errorf("expected UserTitle 'Redis启动' for #Redis启动, got %q", parsed.UserTitle)
+	}
+
+	// 2. Title with leading indentation (   # 标题)
+	inputIndented := `   # 标题
+巧先生:
+你好
+
+枫:
+早上好
+`
+	parsedIndented, err := Parse(inputIndented)
+	if err != nil {
+		t.Fatalf("Parse error: %v", err)
+	}
+	if parsedIndented.UserTitle != "标题" {
+		t.Errorf("expected UserTitle '标题' for indented # 标题, got %q", parsedIndented.UserTitle)
+	}
+
+	// 3. Middle # should remain in dialogue content
+	inputMiddle := `巧先生:
+你好
+# 这里是对话内部的一句话
+
+枫:
+知道了
+`
+	parsedMiddle, err := Parse(inputMiddle)
+	if err != nil {
+		t.Fatalf("Parse error: %v", err)
+	}
+	if parsedMiddle.UserTitle != "" {
+		t.Errorf("expected empty UserTitle when # is in middle, got %q", parsedMiddle.UserTitle)
+	}
+	if !strings.Contains(parsedMiddle.Coalesced, "# 这里是对话内部的一句话") {
+		t.Errorf("expected middle # line to remain in Coalesced content")
+	}
+}

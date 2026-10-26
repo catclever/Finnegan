@@ -17,6 +17,7 @@ type Message struct {
 
 // ParsedChatLog contains all structured dialogue metadata lifted from raw chat records.
 type ParsedChatLog struct {
+	UserTitle    string     `json:"userTitle,omitempty"`
 	Participants []string   `json:"participants"`
 	StartedAt    *time.Time `json:"startedAt,omitempty"`
 	EndedAt      *time.Time `json:"endedAt,omitempty"`
@@ -41,7 +42,63 @@ var (
 	reBracketTimeSuffix = regexp.MustCompile(`^(.+?)\s*\[(\d{4}[-/]\d{1,2}[-/]\d{1,2}\s+\d{1,2}:\d{2}(?::\d{2})?)\]:?$`)
 	// Simple colon speaker header: "巧先生:"
 	reColonSpeaker = regexp.MustCompile(`^([^\n:]{1,60}):\s*$`)
+
+	// Standard Markdown H1 title prefix: "# <title>"
+	reHashTitle = regexp.MustCompile(`^\s*#\s*(.+)$`)
 )
+
+// ExtractHashTitle scans the first or last non-empty line of text for standard
+// Markdown H1 syntax ("# <title>"). If found, it returns the extracted title and
+// the dialogue text with that title line removed.
+func ExtractHashTitle(text string) (string, string) {
+	clean := strings.ReplaceAll(text, "\r\n", "\n")
+	clean = strings.ReplaceAll(clean, "\r", "\n")
+	lines := strings.Split(clean, "\n")
+
+	firstIdx := -1
+	for i, l := range lines {
+		if strings.TrimSpace(l) != "" {
+			firstIdx = i
+			break
+		}
+	}
+
+	lastIdx := -1
+	for i := len(lines) - 1; i >= 0; i-- {
+		if strings.TrimSpace(lines[i]) != "" {
+			lastIdx = i
+			break
+		}
+	}
+
+	if firstIdx != -1 {
+		firstLine := strings.TrimSpace(lines[firstIdx])
+		if m := reHashTitle.FindStringSubmatch(firstLine); len(m) > 1 {
+			title := strings.TrimSpace(m[1])
+			if title != "" {
+				newLines := make([]string, 0, len(lines)-1)
+				newLines = append(newLines, lines[:firstIdx]...)
+				newLines = append(newLines, lines[firstIdx+1:]...)
+				return title, strings.Join(newLines, "\n")
+			}
+		}
+	}
+
+	if lastIdx != -1 && lastIdx != firstIdx {
+		lastLine := strings.TrimSpace(lines[lastIdx])
+		if m := reHashTitle.FindStringSubmatch(lastLine); len(m) > 1 {
+			title := strings.TrimSpace(m[1])
+			if title != "" {
+				newLines := make([]string, 0, len(lines)-1)
+				newLines = append(newLines, lines[:lastIdx]...)
+				newLines = append(newLines, lines[lastIdx+1:]...)
+				return title, strings.Join(newLines, "\n")
+			}
+		}
+	}
+
+	return "", text
+}
 
 // ParseTimestamp attempts to parse various chat log timestamp strings into time.Time.
 func ParseTimestamp(s string) (*time.Time, bool) {
@@ -108,7 +165,8 @@ func ParseTimestamp(s string) (*time.Time, bool) {
 
 // IsChatLog returns true if the input text exhibits distinct chat dialogue patterns.
 func IsChatLog(text string) bool {
-	clean := strings.ReplaceAll(text, "\r\n", "\n")
+	_, cleanText := ExtractHashTitle(text)
+	clean := strings.ReplaceAll(cleanText, "\r\n", "\n")
 	clean = strings.ReplaceAll(clean, "\r", "\n")
 	lines := strings.Split(clean, "\n")
 	if len(lines) < 2 {
@@ -155,7 +213,8 @@ type rawHeader struct {
 
 // Parse parses raw dialogue text into structured messages, lifted timestamps, and coalesced text.
 func Parse(text string) (*ParsedChatLog, error) {
-	clean := strings.ReplaceAll(text, "\r\n", "\n")
+	userTitle, cleanText := ExtractHashTitle(text)
+	clean := strings.ReplaceAll(cleanText, "\r\n", "\n")
 	clean = strings.ReplaceAll(clean, "\r", "\n")
 	lines := strings.Split(clean, "\n")
 
@@ -320,6 +379,7 @@ func Parse(text string) (*ParsedChatLog, error) {
 	coalesced := CoalesceMessages(messages)
 
 	return &ParsedChatLog{
+		UserTitle:    userTitle,
 		Participants: participants,
 		StartedAt:    startedAt,
 		EndedAt:      endedAt,
@@ -367,6 +427,9 @@ func CoalesceMessages(messages []Message) string {
 
 // FormatCardMarkdown generates the standardized Markdown card with YAML Frontmatter.
 func FormatCardMarkdown(id string, title string, parsed *ParsedChatLog, images ...[]string) string {
+	if title == "" && parsed != nil && parsed.UserTitle != "" {
+		title = parsed.UserTitle
+	}
 	var sb strings.Builder
 	sb.WriteString("---\n")
 	sb.WriteString(fmt.Sprintf("id: %s\n", id))

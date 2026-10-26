@@ -11,5 +11,7 @@ type BabelCard struct {
 	AuthorName     string    `json:"author_name,omitempty"`
 	AuthorAvatar   string    `json:"author_avatar,omitempty"`
 	EchoOf         string    `json:"echo_of,omitempty"`
+	MatchedAnchor  string    `json:"matched_anchor,omitempty"`
+	EchoReason     string    `json:"echo_reason,omitempty"`
 	CreatedAt      time.Time `json:"created_at"`
 }

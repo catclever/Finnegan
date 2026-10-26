@@ -13,10 +13,11 @@ const (
 
 // ParamSpec specifies an expected parameter for a module command
 type ParamSpec struct {
-	Name        string    `json:"name"`
-	Type        ParamType `json:"type"`
-	Description string    `json:"description"`
-	DataSource  string    `json:"dataSource"`
+	Name            string    `json:"name"`
+	Type            ParamType `json:"type"`
+	Description     string    `json:"description"`
+	DataSource      string    `json:"dataSource"`
+	RequireKeywords bool      `json:"requireKeywords,omitempty"`
 }
 
 // CommandDef defines an Omnibar command provided by a module

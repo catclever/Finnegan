@@ -15,6 +15,55 @@ const reSingleLineStandard = /^([^\n\d]+?)\s+(\d{4}[-/]\d{1,2}[-/]\d{1,2}\s+\d{1
 const reBracketTimePrefix = /^\[(\d{4}[-/]\d{1,2}[-/]\d{1,2}\s+\d{1,2}:\d{2}(?::\d{2})?)\]\s*(.+?):?$/;
 const reBracketTimeSuffix = /^(.+?)\s*\[(\d{4}[-/]\d{1,2}[-/]\d{1,2}\s+\d{1,2}:\d{2}(?::\d{2})?)\]:?$/;
 const reColonSpeaker = /^([^\n:：]{1,60})[:：]\s*$/;
+const reHashTitle = /^\s*#\s*(.+)$/;
+
+/**
+ * Scans the first or last non-empty line of text for standard Markdown H1 syntax ("# <title>").
+ * If found, returns the extracted title and dialogue text with that title line removed.
+ */
+export function extractHashTitle(text: string): { title: string; cleanText: string } {
+  if (!text) return { title: '', cleanText: '' };
+  const clean = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const lines = clean.split('\n');
+
+  let firstIdx = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].trim() !== '') {
+      firstIdx = i;
+      break;
+    }
+  }
+
+  let lastIdx = -1;
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (lines[i].trim() !== '') {
+      lastIdx = i;
+      break;
+    }
+  }
+
+  if (firstIdx !== -1) {
+    const firstLine = lines[firstIdx].trim();
+    const match = firstLine.match(reHashTitle);
+    if (match && match[1]?.trim()) {
+      const title = match[1].trim();
+      const newLines = [...lines.slice(0, firstIdx), ...lines.slice(firstIdx + 1)];
+      return { title, cleanText: newLines.join('\n') };
+    }
+  }
+
+  if (lastIdx !== -1 && lastIdx !== firstIdx) {
+    const lastLine = lines[lastIdx].trim();
+    const match = lastLine.match(reHashTitle);
+    if (match && match[1]?.trim()) {
+      const title = match[1].trim();
+      const newLines = [...lines.slice(0, lastIdx), ...lines.slice(lastIdx + 1)];
+      return { title, cleanText: newLines.join('\n') };
+    }
+  }
+
+  return { title: '', cleanText: text };
+}
 
 function isTimestamp(s: string): boolean {
   const t = s.trim();
@@ -29,7 +78,8 @@ function isTimestamp(s: string): boolean {
  */
 export function isChatLogFormat(text: string): boolean {
   if (!text) return false;
-  const clean = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const { cleanText } = extractHashTitle(text);
+  const clean = cleanText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
   const lines = clean.split('\n');
   if (lines.length < 2) return false;
 
@@ -70,7 +120,8 @@ export function isChatLogFormat(text: string): boolean {
  */
 export function parseDialogue(text: string): DialogueTurn[] {
   if (!text) return [];
-  const clean = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const { cleanText } = extractHashTitle(text);
+  const clean = cleanText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
   const lines = clean.split('\n');
 
   const turns: DialogueTurn[] = [];

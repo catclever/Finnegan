@@ -15,12 +15,15 @@
 -->
 <script lang="ts">
   import { onDestroy } from 'svelte';
+  import { getCardDisplayTime } from '../../lib/time';
   import CardImageGallery from './CardImageGallery.svelte';
 
   export let card: any;
   export let isFocused: boolean = false;
   export let isHovered: boolean = false;
   export let thoughtTime: string = '';
+
+  $: displayTime = thoughtTime || getCardDisplayTime(card);
 
   export function formatAssetUrl(url: string): string {
     if (!url) return '';
@@ -89,9 +92,9 @@
 
 <div class="thought-card-body" class:focused={isFocused} class:has-images={hasImages}>
   {#if isFocused}
-    {#if thoughtTime}
+    {#if displayTime}
       <div class="thought-header">
-        <span class="card-time">{thoughtTime}</span>
+        <span class="card-time">{displayTime}</span>
       </div>
     {/if}
 
@@ -166,9 +169,9 @@
       </div>
     {/if}
 
-    {#if thoughtTime}
+    {#if displayTime}
       <div class="thought-footer">
-        <span class="card-time">{thoughtTime}</span>
+        <span class="card-time">{displayTime}</span>
       </div>
     {/if}
   {/if}

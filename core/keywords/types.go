@@ -1,6 +1,16 @@
 package keywords
 
-// 10 Cognitive Dimension Constants
+import "strings"
+
+// 4 Concrete Anchor Dimension Constants
+const (
+	DimensionObject  = "object"  // 名物与通用指涉 (具体人/角色、作品、风物、工具、技术、食物、地点等名物；不仅包含专有名词，也完全包含日常通用指涉如 菜市场, 叔叔, 外卖员, 猫, 设计师, 前端)
+	DimensionMotif   = "motif"   // 处境与母题 (人类生活、对话与工作里反复上演的经典剧目、动作切片或行为场景，如 逃席, 吐槽模型, 创造需求, 薅羊毛, 体验新玩具, 额度焦虑)
+	DimensionMood    = "mood"    // 心境与心绪 (淬炼成名词的2~4字心境颗粒与审美体验，如 吐槽欲, 通透, 松弛感, 抽离感, 戏谑, 会心一笑, 烦躁, 踏实)
+	DimensionConcept = "concept" // 观念与议题 (思想交锋、价值观或判断背后的核心词条/论点抓手，如 伪提效, 创造新需求, 机械迎合, 以Bug改Bug, 前端即逻辑, 平台套路)
+)
+
+// Legacy dimension constants retained for backward compatibility
 const (
 	DimensionEntity           = "entity"
 	DimensionEvent            = "event"
@@ -31,105 +41,98 @@ type Config struct {
 	EnabledDimensions []string `yaml:"enabled_dimensions" json:"enabled_dimensions"`
 }
 
-// DefaultDimensions defines the 6 dimensions enabled by default.
+// DefaultDimensions defines the 4 concrete anchor dimensions enabled by default.
 var DefaultDimensions = []string{
-	DimensionEntity,
-	DimensionEvent,
-	DimensionJudgment,
-	DimensionEmotion,
-	DimensionQuestion,
-	DimensionMetaphor,
+	DimensionObject,
+	DimensionMotif,
+	DimensionMood,
+	DimensionConcept,
 }
 
-// AllDimensions defines all 10 supported dimension IDs in standard order.
+// AllDimensions defines all 4 supported anchor dimension IDs in standard order.
 var AllDimensions = []string{
-	DimensionEntity,
-	DimensionEvent,
-	DimensionJudgment,
-	DimensionEmotion,
-	DimensionQuestion,
-	DimensionMetaphor,
-	DimensionSymptom,
-	DimensionMethodology,
-	DimensionCounterIntuitive,
-	DimensionPersonWork,
+	DimensionObject,
+	DimensionMotif,
+	DimensionMood,
+	DimensionConcept,
 }
 
-// BuiltinDimensionDefs registers the 10 built-in cognitive dimension definitions.
+// DimensionAliases provides backward compatibility mapping from legacy dimensions to the 4 canonical anchor dimensions.
+var DimensionAliases = map[string]string{
+	// Legacy dimensions -> Canonical anchor dimensions
+	"entity":            DimensionObject,
+	"person_work":       DimensionObject,
+	"event":             DimensionMotif,
+	"symptom":           DimensionMotif,
+	"emotion":           DimensionMood,
+	"metaphor":          DimensionMood,
+	"judgment":          DimensionConcept,
+	"question":          DimensionConcept,
+	"methodology":       DimensionConcept,
+	"counter_intuitive": DimensionConcept,
+
+	// Canonical identity mappings
+	DimensionObject:  DimensionObject,
+	DimensionMotif:   DimensionMotif,
+	DimensionMood:    DimensionMood,
+	DimensionConcept: DimensionConcept,
+}
+
+// NormalizeDimension maps any legacy or alias dimension to canonical anchor dimensions.
+func NormalizeDimension(dim string) string {
+	lower := strings.ToLower(strings.TrimSpace(dim))
+	if canonical, ok := DimensionAliases[lower]; ok {
+		return canonical
+	}
+	return dim
+}
+
+// BuiltinDimensionDefs registers the 4 concrete anchor dimension definitions.
 var BuiltinDimensionDefs = map[string]DimensionDef{
-	DimensionEntity: {
-		ID:            DimensionEntity,
-		Name:          "专用名词 / 实体",
-		Description:   "技术栈、协议、软件、学术概念或专有黑话",
-		GatePrompt:    "出现特定技术栈、协议、软件、学术概念、特定流派或专有黑话",
-		ExtractPrompt: "原教旨高保真：保留精确术语、版本号、原名（如 WebKitGTK 4.1），严禁上位词泛化",
+	DimensionObject: {
+		ID:            DimensionObject,
+		Name:          "名物与通用指涉",
+		Description:   "具体人/角色、作品、风物、工具、技术、食物、地点等名物；不仅包含专有名词(Claude, Colab)，也完全包含日常通用指涉如 菜市场, 叔叔, 外卖员, 猫, 设计师, 前端",
+		GatePrompt:    "出现具体人/角色、作品、风物、工具、技术、食物、地点等名词或通用指涉",
+		ExtractPrompt: "实心锚点（2~5个汉字或1~3个英文单词），紧凑名词/通用指涉，严禁超过8个字的长句解释",
 	},
-	DimensionEvent: {
-		ID:            DimensionEvent,
-		Name:          "事件 / 动态",
-		Description:   "正在发生的行业动态、版本发布、社会事件或具体变动",
-		GatePrompt:    "提及正在发生的行业动态、版本发布、社会/圈层事件或具体变动",
-		ExtractPrompt: "主体+动态锚定：提取“谁/什么 + 发生了什么变化”的紧凑短语",
+	DimensionMotif: {
+		ID:            DimensionMotif,
+		Name:          "处境与母题",
+		Description:   "人类生活、对话与工作里反复上演的经典剧目、动作切片或行为场景(如 逃席, 吐槽模型, 创造需求, 薅羊毛, 体验新玩具, 额度焦虑, 熟人借钱, 调侃调休)",
+		GatePrompt:    "存在人类生活、对话与工作里反复上演的经典剧目、动作切片、行为场景或生活处境",
+		ExtractPrompt: "实心锚点（2~5个汉字或1~3个英文单词），动作切片与经典母题，严禁超过8个字的长句解释",
 	},
-	DimensionJudgment: {
-		ID:            DimensionJudgment,
-		Name:          "判断 / 命题",
-		Description:   "鲜明的观点、价值判断、批判或二元对立的思考张力",
-		GatePrompt:    "蕴含鲜明的观点、价值判断、批判、或者二元对立的思考张力",
-		ExtractPrompt: "张力命题化：转化为可激发深度辩论的思辨命题或反常识切口（如 Local-First 的同步悖论）",
+	DimensionMood: {
+		ID:            DimensionMood,
+		Name:          "心境与心绪",
+		Description:   "淬炼成名词的2~4字心境颗粒与审美体验(如 吐槽欲, 通透, 松弛感, 抽离感, 戏谑, 会心一笑, 烦躁, 踏实, 荒谬感)",
+		GatePrompt:    "流露出鲜明的情绪颗粒、心境体验、审美感受或精神状态",
+		ExtractPrompt: "实心锚点（2~4个汉字），淬炼成名词的心境颗粒，禁用临床病理词，严禁文学长句描述",
 	},
-	DimensionEmotion: {
-		ID:            DimensionEmotion,
-		Name:          "情绪 / 心境",
-		Description:   "情感基调、生存境遇体验、深夜独白或心境状态",
-		GatePrompt:    "流露出明显的情感基调、生存境遇体验、深夜独白或心境状态",
-		ExtractPrompt: "去临床化切片：禁用“焦虑/抑郁”等医学词，提取具象生活与心境短语（如 深夜独自排错的宁静感）",
-	},
-	DimensionQuestion: {
-		ID:            DimensionQuestion,
-		Name:          "待解问题 / 求索",
-		Description:   "明确的困惑、悬而未决的疑问、方案选型纠结或求助意图",
-		GatePrompt:    "存在明确的困惑、悬而未决的疑问、方案选型纠结或求助意图",
-		ExtractPrompt: "How/Why 问题重构：提炼为社区高信息密度的提问式短语",
-	},
-	DimensionMetaphor: {
-		ID:            DimensionMetaphor,
-		Name:          "隐喻 / 意象",
-		Description:   "文学修辞、通感、哲学意象、梦境碎片或美学符号",
-		GatePrompt:    "包含独特的文学修辞、通感、哲学意象、梦境碎片或美学符号",
-		ExtractPrompt: "意象结晶：保留核心隐喻体与美学意象组合（如 数字废墟中的苔藓、赛博招魂）",
-	},
-	DimensionSymptom: {
-		ID:            DimensionSymptom,
-		Name:          "异常 / 踩坑现象",
-		Description:   "具体 Bug 表现、诡异报错、性能劣化或反常物理/系统现象",
-		GatePrompt:    "描述具体的 Bug 表现、诡异报错、性能劣化或反常物理/系统现象",
-		ExtractPrompt: "高区分度特征：提取核心错误特征码、环境条件与异常表现",
-	},
-	DimensionMethodology: {
-		ID:            DimensionMethodology,
-		Name:          "方法论 / 范式",
-		Description:   "工作流、思维模型、架构模式、效率实践或做事法则",
-		GatePrompt:    "探讨工作流、思维模型、架构模式、效率实践或做事法则",
-		ExtractPrompt: "范式提炼：提取为“X 驱动的 Y”、“Z 工作流/原则”结构",
-	},
-	DimensionCounterIntuitive: {
-		ID:            DimensionCounterIntuitive,
-		Name:          "反直觉 / 悖论",
-		Description:   "常识背后的荒谬、事与愿违的规律或讽刺现象",
-		GatePrompt:    "揭示某种常识背后的荒谬、事与愿违的规律或讽刺现象",
-		ExtractPrompt: "悖论对比式：提取出“表面 A 实则 B”的核心冲突词",
-	},
-	DimensionPersonWork: {
-		ID:            DimensionPersonWork,
-		Name:          "人物 / 作品坐标",
-		Description:   "特定作者、思想家、导演、书籍、论文、电影、播客或开源作品",
-		GatePrompt:    "提及特定作者、思想家、导演、书籍、论文、电影、播客或开源作品",
-		ExtractPrompt: "精确书名/人名对齐：提取标准译名与原名对",
+	DimensionConcept: {
+		ID:            DimensionConcept,
+		Name:          "观念与议题",
+		Description:   "思想交锋、价值观或判断背后的核心词条/论点抓手(如 伪提效, 创造新需求, 机械迎合, 以Bug改Bug, 前端即逻辑, 平台套路, 人情味)",
+		GatePrompt:    "包含思想交锋、观点判断、反思批判或价值主张",
+		ExtractPrompt: "实心锚点（2~5个汉字或1~3个英文单词），紧凑名词/概念议题抓手，严禁长句论点阐述",
 	},
 }
 
-// DefaultConfig returns default keyword engine configuration with 6 default dimensions enabled.
+func init() {
+	// Populate legacy keys pointing to canonical definitions for backward compatibility
+	for legacyKey, canonicalKey := range DimensionAliases {
+		if _, exists := BuiltinDimensionDefs[legacyKey]; !exists {
+			if def, ok := BuiltinDimensionDefs[canonicalKey]; ok {
+				legacyDef := def
+				legacyDef.ID = legacyKey
+				BuiltinDimensionDefs[legacyKey] = legacyDef
+			}
+		}
+	}
+}
+
+// DefaultConfig returns default keyword engine configuration with 4 anchor dimensions enabled.
 func DefaultConfig() Config {
 	return Config{
 		EnabledDimensions: append([]string{}, DefaultDimensions...),
@@ -144,9 +147,15 @@ func (c *Config) GetActiveDimensions() []DimensionDef {
 	}
 
 	var defs []DimensionDef
-	for _, id := range enabled {
+	seen := make(map[string]bool)
+	for _, rawID := range enabled {
+		id := NormalizeDimension(rawID)
+		if seen[id] {
+			continue
+		}
 		if def, ok := BuiltinDimensionDefs[id]; ok {
 			defs = append(defs, def)
+			seen[id] = true
 		}
 	}
 	return defs

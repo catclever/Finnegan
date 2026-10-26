@@ -207,6 +207,24 @@ func ExecuteRadar(cfg *config.Config, router *llm.Router, searxURL, jinaKey stri
 		kw = keywordsOpt[0]
 	}
 	if len(kw) == 0 && docID != "" {
+		path := FindCardFilePath(docID)
+		if path != "" {
+			if strings.HasSuffix(path, ".note.md") {
+				return RadarResponse{
+					Status: "error",
+					Error:  "Bugu radar excludes note cards",
+				}
+			}
+			if data, err := os.ReadFile(path); err == nil {
+				contentStr := string(data)
+				if strings.Contains(contentStr, "\ntype: note\n") || strings.Contains(contentStr, "\ntype: \"note\"\n") {
+					return RadarResponse{
+						Status: "error",
+						Error:  "Bugu radar excludes note cards",
+					}
+				}
+			}
+		}
 		kw = ExtractKeywordsForDoc(docID)
 	}
 
@@ -241,6 +259,9 @@ func ExecuteRadar(cfg *config.Config, router *llm.Router, searxURL, jinaKey stri
 	var seenMu sync.Mutex
 	seenURLs := make(map[string]bool)
 
+	// Smooth concurrency semaphore for SearxNG queries (max 3 concurrent) to prevent queue exhaustion
+	searxSem := make(chan struct{}, 3)
+
 	for _, targetID := range plan.SelectedTargetIDs {
 		target, exists := cfg.TargetMap[targetID]
 		if !exists {
@@ -264,6 +285,9 @@ func ExecuteRadar(cfg *config.Config, router *llm.Router, searxURL, jinaKey stri
 			wgSearx.Add(1)
 			go func(q string, t models.Target, tr string) {
 				defer wgSearx.Done()
+				searxSem <- struct{}{}
+				defer func() { <-searxSem }()
+
 				items, err := searxClient.Search(q, t, tr)
 				if err != nil {
 					log.Printf("[SearxNG Error] %s: %v", t.ID, err)
@@ -346,26 +370,26 @@ func ExecuteRadar(cfg *config.Config, router *llm.Router, searxURL, jinaKey stri
 
 				// Distill markdown into a BabelCard
 				log.Printf("[LLM Distiller] Processing -> %s", item.URL)
-				card, err := router.DistillMarkdown(intent, md, item.URL, targetLanguage)
+				card, err := router.DistillMarkdown(intent, md, item.URL, targetLanguage, kw)
 				if err != nil {
 					log.Printf("[Distiller Error] %s: %v", item.URL, err)
 					continue
 				}
 
-				// If Jina markdown yielded no substantive text, retry with SearxNG snippet if available
-				if strings.TrimSpace(card.OriginalText) == "" && strings.TrimSpace(card.TranslatedText) == "" && !usedSearchSnippet {
+				// If rejected by gating (nil returned) and we haven't used the search snippet yet, retry with snippet.
+				if card == nil && !usedSearchSnippet {
 					if strings.TrimSpace(item.Content) != "" {
-						log.Printf("[Distiller Fallback] LLM returned empty text on Jina markdown. Retrying with search snippet for %s", item.URL)
+						log.Printf("[Distiller Fallback] LLM rejected Jina markdown (no anchor hit or empty text). Retrying with search snippet for %s", item.URL)
 						snippetMD := fmt.Sprintf("# %s\n\n%s", item.Title, item.Content)
-						if retryCard, retryErr := router.DistillMarkdown(intent, snippetMD, item.URL, targetLanguage); retryErr == nil {
+						if retryCard, retryErr := router.DistillMarkdown(intent, snippetMD, item.URL, targetLanguage, kw); retryErr == nil {
 							card = retryCard
 						}
 					}
 				}
 
-				// Final check: If still empty, DO NOT show this card ("如果还是空 则这个卡片可以不展示")
-				if strings.TrimSpace(card.OriginalText) == "" && strings.TrimSpace(card.TranslatedText) == "" {
-					log.Printf("[Bugu Module] Discarding empty card for %s (no substantive text)", item.URL)
+				// Final check: If still nil or empty, DO NOT show this card
+				if card == nil || (strings.TrimSpace(card.OriginalText) == "" && strings.TrimSpace(card.TranslatedText) == "") {
+					log.Printf("[Bugu Module] Discarding empty/rejected card for %s", item.URL)
 					continue
 				}
 
