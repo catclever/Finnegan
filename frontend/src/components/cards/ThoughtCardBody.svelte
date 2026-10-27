@@ -28,6 +28,31 @@
 
   $: resolvedDisplayTime = displayTime || thoughtTime || babelTime || getCardDisplayTime(card);
 
+  // Extract only manual keywords that have '*' provenance marker (rendered without '*')
+  $: manualKeywords = (() => {
+    if (!card) return [];
+    const list: string[] = [];
+    const seen = new Set<string>();
+
+    const kwSource = card.keywords || (card as any).Keywords;
+    if (kwSource && typeof kwSource === 'object') {
+      for (const values of Object.values(kwSource)) {
+        if (Array.isArray(values)) {
+          for (const item of values) {
+            if (typeof item === 'string' && item.endsWith('*')) {
+              const clean = item.replace(/\*+$/, '').trim();
+              if (clean && !seen.has(clean)) {
+                seen.add(clean);
+                list.push(clean);
+              }
+            }
+          }
+        }
+      }
+    }
+    return list;
+  })();
+
   export function formatAssetUrl(url: string): string {
     if (!url) return '';
     if (url.startsWith('data:') || url.startsWith('http://') || url.startsWith('https://')) {
@@ -108,9 +133,9 @@
       </div>
     {/if}
 
-    {#if card && card.tags && card.tags.length > 0}
+    {#if manualKeywords.length > 0}
       <div class="thought-tags focused">
-        {#each card.tags as tag}
+        {#each manualKeywords as tag}
           <span class="thought-tag focused">#{tag}</span>
         {/each}
       </div>
@@ -180,9 +205,9 @@
       </div>
     {/if}
 
-    {#if card && card.tags && card.tags.length > 0}
+    {#if manualKeywords.length > 0}
       <div class="thought-tags">
-        {#each card.tags as tag}
+        {#each manualKeywords as tag}
           <span class="thought-tag">#{tag}</span>
         {/each}
       </div>

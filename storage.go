@@ -165,20 +165,21 @@ func (a *App) LoadLocalCards() []Card {
 }
 
 // GetAvailableTags returns a deduplicated, sorted slice of all tags and keywords in the local vault.
+// All keywords and tags are normalized (asterisk provenance markers removed).
 func (a *App) GetAvailableTags() []string {
 	cards := a.LoadLocalCards()
 	tagSet := make(map[string]bool)
 
 	for _, c := range cards {
 		for _, t := range c.Tags {
-			t = strings.TrimSpace(t)
+			t = strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(t), "*"))
 			if t != "" {
 				tagSet[t] = true
 			}
 		}
 		for _, kwList := range c.Keywords {
 			for _, kw := range kwList {
-				kw = strings.TrimSpace(kw)
+				kw = strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(kw), "*"))
 				if kw != "" {
 					tagSet[kw] = true
 				}

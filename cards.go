@@ -256,7 +256,6 @@ func (m *CardManager) PromoteToLocal(cardID string, home string) (*Card, error) 
 		if card.EchoOf != "" {
 			sb.WriteString(fmt.Sprintf("echo_of: %s\n", card.EchoOf))
 		}
-		sb.WriteString("tags: []\n")
 		sb.WriteString("publish: false\n")
 		if len(card.Images) > 0 {
 			sb.WriteString("images:\n")

@@ -98,7 +98,7 @@
   })();
 
   $: isBuguEcho = card.origin === 'bugu' && Boolean(card.echoOf);
-  $: isTemporary = card.origin === 'bugu' || Boolean(card.macroExpiresAt);
+  $: isTemporary = card.origin === 'bugu' || card.type === 'radar';
   $: isRecentVIP = Boolean(
     card.isVIP &&
     !hasAura &&
@@ -188,14 +188,14 @@
         y: pullY,
         rotation: 0,
         opacity: 1,
-        scale: 1.10,
+        scale: 1.15,
         blur: 0,
         saturation: 1,
         textGray: 32,
         textOpacity: 1,
         rotX: 0,
         rotY: 0,
-        z3d: 180
+        z3d: 140
       });
 
     } else if (!hasAnyFocused && hoveredMotherId !== null && card.echoOf === hoveredMotherId) {
@@ -206,8 +206,8 @@
       const edgeBlur = Math.max(0, Math.min(5, (dist - 400) * 0.025));
 
       const zNorm = Math.max(0, Math.min(1, (card.z || 0) / 100));
-      const uniformScale = Number((0.38 + 0.87 * Math.pow(1 - zNorm, 1.25)).toFixed(3));
-      const z3dVal = (100 - (card.z || 0)) * 3.6 - 180;
+      const uniformScale = Number((0.55 + 0.70 * Math.pow(1 - zNorm, 1.2)).toFixed(3));
+      const z3dVal = (100 - (card.z || 0)) * 2.4 - 120;
 
       const depthBlur = zNorm > 0.60 ? (zNorm - 0.60) * 6 : 0;
       const baseBlur = Math.min(4.5, depthBlur + edgeBlur);
@@ -229,8 +229,8 @@
         saturation: hasAnyFocused ? baseSat * 0.5 : baseSat,
         textGray: targetGray,
         textOpacity: targetTextOp,
-        rotX: globalTilt.rx * 0.25,
-        rotY: globalTilt.ry * 0.25,
+        rotX: globalTilt.rx * 0.08,
+        rotY: globalTilt.ry * 0.08,
         z3d: z3dVal
       });
     } else {
@@ -240,8 +240,8 @@
       const edgeBlur = Math.max(0, Math.min(5, (dist - 400) * 0.025));
 
       const zNorm = Math.max(0, Math.min(1, (card.z || 0) / 100));
-      const uniformScale = Number((0.38 + 0.87 * Math.pow(1 - zNorm, 1.25)).toFixed(3));
-      const z3dVal = (100 - (card.z || 0)) * 3.6 - 180;
+      const uniformScale = Number((0.55 + 0.70 * Math.pow(1 - zNorm, 1.2)).toFixed(3));
+      const z3dVal = (100 - (card.z || 0)) * 2.4 - 120;
 
       const depthBlur = zNorm > 0.60 ? (zNorm - 0.60) * 6 : 0;
       const baseBlur = Math.min(4.5, depthBlur + edgeBlur);
@@ -263,8 +263,8 @@
         saturation: hasAnyFocused ? baseSat * 0.5 : baseSat,
         textGray: targetGray,
         textOpacity: targetTextOp,
-        rotX: globalTilt.rx * 0.25,
-        rotY: globalTilt.ry * 0.25,
+        rotX: globalTilt.rx * 0.08,
+        rotY: globalTilt.ry * 0.08,
         z3d: z3dVal
       });
     }
@@ -426,15 +426,15 @@
 
   .card.inspiration-vip {
     border: 1px solid transparent !important;
-    animation: ink-vip-breathe 4s ease-in-out infinite;
+    animation: ink-vip-breathe 8s ease-in-out infinite;
   }
 
   @keyframes ink-vip-breathe {
     0%, 100% {
-      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.04);
+      box-shadow: 0 8px 24px rgba(71, 85, 105, 0.06), 0 2px 6px rgba(100, 116, 139, 0.04);
     }
     50% {
-      box-shadow: 0 12px 36px rgba(15, 23, 42, 0.16), 0 0 18px rgba(30, 41, 59, 0.10);
+      box-shadow: 0 12px 36px rgba(71, 85, 105, 0.12), 0 0 18px rgba(100, 116, 139, 0.08);
     }
   }
 

@@ -250,17 +250,50 @@
 
       if (searchSession.isActive) finishCaptureSearch();
     } catch (err) {
-      console.error("handleCaptureChatLog error:", err);
-      const rollback = rollbackOptimisticCard({
-        tempId,
-        cards,
-        localVaultPool,
-        latestManualCardId,
-      });
-      cards = rollback.cards;
-      localVaultPool = rollback.localVaultPool;
-      latestManualCardId = rollback.latestManualCardId;
-      throw err;
+      console.warn("handleCaptureChatLog failed, falling back to CaptureThought:", err);
+      try {
+        let fallbackDocId = '';
+        if (images && images.length > 0) {
+          const payload = images.map(img => (typeof img === 'string' ? { data: img } : img));
+          const fallbackRes = await CaptureThoughtWithImages(text, payload as any);
+          fallbackDocId = (fallbackRes as any)?.DocID || (fallbackRes as any)?.docId || '';
+        } else {
+          const fallbackRes = await CaptureThought(text);
+          fallbackDocId = typeof fallbackRes === 'string' ? fallbackRes : ((fallbackRes as any)?.DocID || (fallbackRes as any)?.docId || '');
+        }
+
+        const updateToThought = (c: CosmicCard): CosmicCard => {
+          if (c.id === tempId) {
+            return {
+              ...c,
+              id: fallbackDocId || c.id,
+              type: 'thought',
+              title: 'Thought',
+              content: text,
+              isEnriching: false,
+            };
+          }
+          return c;
+        };
+        cards = cards.map(updateToThought);
+        localVaultPool = localVaultPool.map(updateToThought);
+        if (latestManualCardId === tempId && fallbackDocId) {
+          latestManualCardId = fallbackDocId;
+        }
+        if (searchSession.isActive) finishCaptureSearch();
+      } catch (fallbackErr) {
+        console.error("Fallback CaptureThought also failed:", fallbackErr);
+        const rollback = rollbackOptimisticCard({
+          tempId,
+          cards,
+          localVaultPool,
+          latestManualCardId,
+        });
+        cards = rollback.cards;
+        localVaultPool = rollback.localVaultPool;
+        latestManualCardId = rollback.latestManualCardId;
+        throw fallbackErr;
+      }
     } finally {
       capturePending = false;
     }
@@ -317,7 +350,7 @@
     stageActivity.resetActivityTimer();
     resetTideTimer();
     const mX = (e.clientX / window.innerWidth) * 2 - 1, mY = (e.clientY / window.innerHeight) * 2 - 1;
-    globalTilt.set(focusedCardId === null ? { rx: mY * 15, ry: -mX * 15 } : { rx: 0, ry: 0 });
+    globalTilt.set(focusedCardId === null ? { rx: mY * 4.5, ry: -mX * 4.5 } : { rx: 0, ry: 0 });
   }
 
   function toggleFocus(id: string) {

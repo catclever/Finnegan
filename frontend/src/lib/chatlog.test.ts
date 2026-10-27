@@ -79,6 +79,17 @@ ${sampleDialogue}`;
       const input = `${sampleDialogue}\n\n# 架构复盘讨论`;
       assert.equal(isChatLogFormat(input), true);
     });
+
+    it('rejects single colon headers without timestamps (common notes)', () => {
+      assert.equal(isChatLogFormat('注意:\n明天下午开会'), false);
+      assert.equal(isChatLogFormat('提示：\n这是一个普通笔记'), false);
+      assert.equal(isChatLogFormat('TODO:\n1. 修复bug\n2. 提交代码'), false);
+    });
+
+    it('accepts multi-speaker colon dialogues without timestamps', () => {
+      const multi = `张三:\n你好\n李四:\n你好呀`;
+      assert.equal(isChatLogFormat(multi), true);
+    });
   });
 
   describe('parseDialogue with hash title', () => {

@@ -35,17 +35,18 @@ type EventFileData struct {
 }
 
 type EventThoughtCapturedData struct {
-	DocID        string     `json:"DocID"`
-	FilePath     string     `json:"FilePath"`
-	Text         string     `json:"Text"`
-	CapturedAt   time.Time  `json:"CapturedAt"`
-	Images       []string   `json:"Images,omitempty"`
-	Title        string     `json:"Title,omitempty"`
-	Type         string     `json:"Type,omitempty"`
-	Participants []string   `json:"Participants,omitempty"`
-	StartedAt    *time.Time `json:"StartedAt,omitempty"`
-	EndedAt      *time.Time `json:"EndedAt,omitempty"`
-	Tags         []string   `json:"Tags,omitempty"`
+	DocID        string              `json:"DocID"`
+	FilePath     string              `json:"FilePath"`
+	Text         string              `json:"Text"`
+	CapturedAt   time.Time           `json:"CapturedAt"`
+	Images       []string            `json:"Images,omitempty"`
+	Title        string              `json:"Title,omitempty"`
+	Type         string              `json:"Type,omitempty"`
+	Participants []string            `json:"Participants,omitempty"`
+	StartedAt    *time.Time          `json:"StartedAt,omitempty"`
+	EndedAt      *time.Time          `json:"EndedAt,omitempty"`
+	Tags         []string            `json:"Tags,omitempty"`
+	Keywords     map[string][]string `json:"Keywords,omitempty"`
 }
 
 type Event struct {

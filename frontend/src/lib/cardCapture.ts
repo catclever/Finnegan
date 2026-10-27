@@ -269,6 +269,7 @@ export function mergeCapturedThought(params: MergeCapturedThoughtParams) {
           startedAt: data.StartedAt || data.startedAt || c.startedAt,
           endedAt: data.EndedAt || data.endedAt || c.endedAt,
           tags: data.Tags || data.tags || c.tags,
+          keywords: data.Keywords || data.keywords || c.keywords,
           isEnriching: false,
         };
       }
@@ -305,6 +306,7 @@ export function mergeCapturedThought(params: MergeCapturedThoughtParams) {
     startedAt: data.StartedAt || data.startedAt,
     endedAt: data.EndedAt || data.endedAt,
     tags: data.Tags || data.tags,
+    keywords: data.Keywords || data.keywords,
   }, isChat ? 'chat_log' : 'thought', 'manual');
 
   const { stagedCard, updatedActiveCards, updatedMemoryPool } = stageCandidate(

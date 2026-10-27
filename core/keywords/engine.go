@@ -264,7 +264,10 @@ func (e *KeywordEngine) ProcessCardSync(ctx context.Context, filePath string, do
 		return err
 	}
 
-	cleanProfile := CleanProfile(profile)
+	finalProfile, err := ExtractKeywordsFromMarkdown(updatedBytes)
+	if err != nil {
+		finalProfile = CleanProfile(profile)
+	}
 
 	bus.GetBus().Publish(bus.Event{
 		Type: bus.EventKeywordsExtracted,
@@ -272,7 +275,7 @@ func (e *KeywordEngine) ProcessCardSync(ctx context.Context, filePath string, do
 			DocID:    docID,
 			FilePath: filePath,
 			Text:     text,
-			Keywords: cleanProfile,
+			Keywords: finalProfile,
 		},
 	})
 

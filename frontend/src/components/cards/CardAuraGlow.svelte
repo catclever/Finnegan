@@ -118,18 +118,18 @@
       from 0deg,
       transparent 0deg,
       transparent 135deg,
-      rgba(100, 116, 139, 0.18) 155deg,
-      rgba(51, 65, 85, 0.60) 175deg,
+      rgba(148, 163, 184, 0.20) 155deg,
+      rgba(100, 116, 139, 0.45) 175deg,
       transparent 185deg,
       transparent 220deg,
-      rgba(71, 85, 105, 0.25) 245deg,
-      rgba(51, 65, 85, 0.65) 280deg,
-      rgba(30, 41, 59, 0.90) 315deg,
-      rgba(15, 23, 42, 1.0) 345deg,
-      rgba(0, 0, 0, 1.0) 355deg,
+      rgba(148, 163, 184, 0.22) 245deg,
+      rgba(100, 116, 139, 0.52) 280deg,
+      rgba(71, 85, 105, 0.72) 315deg,
+      rgba(71, 85, 105, 0.88) 345deg,
+      rgba(51, 65, 85, 0.88) 355deg,
       transparent 360deg
     );
-    animation: ink-beam-spin 3.8s linear infinite;
+    animation: ink-beam-spin 11.4s linear infinite;
     pointer-events: none;
   }
 

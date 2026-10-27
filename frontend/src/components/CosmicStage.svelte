@@ -350,7 +350,7 @@
     width: 100vw;
     height: 100vh;
     overflow: hidden;
-    perspective: 800px;
+    perspective: 1000px;
     pointer-events: none;
     z-index: 5;
     -webkit-mask-image: radial-gradient(ellipse at center, black 80%, rgba(0, 0, 0, 0.4) 93%, transparent 100%);

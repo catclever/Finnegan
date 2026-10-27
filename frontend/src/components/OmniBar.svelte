@@ -69,14 +69,20 @@
     for (const c of [...cards, ...localVaultPool]) {
       if (c.tags && Array.isArray(c.tags)) {
         for (const t of c.tags) {
-          if (t && t.trim()) set.add(t.trim());
+          if (typeof t === 'string') {
+            const clean = t.replace(/\*+$/, '').trim();
+            if (clean) set.add(clean);
+          }
         }
       }
       if (c.keywords && typeof c.keywords === 'object') {
         for (const list of Object.values(c.keywords)) {
           if (Array.isArray(list)) {
             for (const kw of list) {
-              if (kw && kw.trim()) set.add(kw.trim());
+              if (typeof kw === 'string') {
+                const clean = kw.replace(/\*+$/, '').trim();
+                if (clean) set.add(clean);
+              }
             }
           }
         }

@@ -452,3 +452,41 @@ func TestExtractHashTitle_RelaxedAndMiddleHash(t *testing.T) {
 		t.Errorf("expected middle # line to remain in Coalesced content")
 	}
 }
+
+func TestSingleColonHeaderNotChatLog(t *testing.T) {
+	singleColonCases := []string{
+		"注意:\n明天下午两点准时开会，请带上笔记本。",
+		"提示：\n这是一个普通的带有冒号的笔记条目。",
+		"TODO:\n1. 修复对话卡误判问题\n2. 补充测试用例",
+		"说明:\n只有单个发言人冒号，没有时间戳，绝不能被识别为对话录",
+	}
+
+	for _, text := range singleColonCases {
+		if IsChatLog(text) {
+			t.Errorf("IsChatLog(%q) should be false for single colon header", text)
+		}
+		if _, err := Parse(text); err == nil {
+			t.Errorf("Parse(%q) should return error for single colon header without timestamps", text)
+		}
+	}
+}
+
+func TestMultiColonHeaderIsChatLog(t *testing.T) {
+	multiColon := `张三:
+今天讨论一下方案。
+
+李四:
+好的，我已经准备好文档了。`
+
+	if !IsChatLog(multiColon) {
+		t.Errorf("IsChatLog should be true for 2 colon speaker headers")
+	}
+
+	parsed, err := Parse(multiColon)
+	if err != nil {
+		t.Fatalf("Parse error: %v", err)
+	}
+	if len(parsed.Messages) != 2 {
+		t.Errorf("expected 2 messages, got %d", len(parsed.Messages))
+	}
+}

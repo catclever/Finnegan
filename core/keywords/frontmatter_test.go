@@ -199,3 +199,66 @@ Hello world
 		t.Errorf("body lost: %s", mergedStr)
 	}
 }
+
+func TestMergeKeywordsToMarkdown_PreservesManualAsteriskKeywords(t *testing.T) {
+	origMD := `---
+id: 01J333333333
+type: thought
+keywords:
+  object:
+    - WebKitGTK 4.1*
+  mood:
+    - 松弛感*
+---
+
+今天测试了框架。
+`
+	// AI extraction produces overlapping and new keywords
+	aiProfile := KeywordsProfile{
+		"object": {"WebKitGTK 4.1", "Tauri v2"},
+		"motif":  {"体验新玩具"},
+	}
+
+	merged, err := MergeKeywordsToMarkdown([]byte(origMD), aiProfile)
+	if err != nil {
+		t.Fatalf("MergeKeywordsToMarkdown failed: %v", err)
+	}
+
+	mergedStr := string(merged)
+
+	// 1. WebKitGTK 4.1* must be preserved and NOT duplicated without '*'
+	if !strings.Contains(mergedStr, "WebKitGTK 4.1*") {
+		t.Errorf("manual 'WebKitGTK 4.1*' was lost: %s", mergedStr)
+	}
+	// Verify it does not duplicate as "WebKitGTK 4.1" without '*'
+	lines := strings.Split(mergedStr, "\n")
+	objectEntries := 0
+	for _, l := range lines {
+		trimmed := strings.TrimSpace(l)
+		if strings.HasPrefix(trimmed, "- WebKitGTK 4.1") {
+			objectEntries++
+			if trimmed != "- WebKitGTK 4.1*" {
+				t.Errorf("unexpected duplicate/unmarked entry: %s", trimmed)
+			}
+		}
+	}
+	if objectEntries != 1 {
+		t.Errorf("expected exactly 1 WebKitGTK 4.1 entry with '*', found %d: %s", objectEntries, mergedStr)
+	}
+
+	// 2. New AI keyword 'Tauri v2' should be added to object
+	if !strings.Contains(mergedStr, "Tauri v2") {
+		t.Errorf("new AI keyword 'Tauri v2' was not added: %s", mergedStr)
+	}
+
+	// 3. Manual mood '松弛感*' must be preserved even though AI extracted no mood
+	if !strings.Contains(mergedStr, "松弛感*") {
+		t.Errorf("manual '松弛感*' was lost: %s", mergedStr)
+	}
+
+	// 4. New motif keyword from AI should be present
+	if !strings.Contains(mergedStr, "体验新玩具") {
+		t.Errorf("new motif '体验新玩具' was not added: %s", mergedStr)
+	}
+}
+

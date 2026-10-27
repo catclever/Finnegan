@@ -65,6 +65,7 @@ func ExtractKeywordsFromMarkdown(rawContent []byte) (KeywordsProfile, error) {
 // MergeKeywordsToMarkdown merges the given KeywordsProfile into the YAML frontmatter of rawContent.
 // Existing frontmatter fields (id, type, created, updated, source, tags, images, etc.) and markdown
 // body are preserved losslessly.
+// AI extraction never overwrites or duplicates manual '*' entries.
 func MergeKeywordsToMarkdown(rawContent []byte, profile KeywordsProfile) ([]byte, error) {
 	strContent := string(rawContent)
 	cleanProfile := CleanProfile(profile)
@@ -84,6 +85,98 @@ func MergeKeywordsToMarkdown(rawContent []byte, profile KeywordsProfile) ([]byte
 		}
 	} else {
 		body = strContent
+	}
+
+	// Extract existing manual '*' keyword entries from existing frontmatter
+	manualEntries := make(map[string][]string) // canonical dimension -> list of manual entries (preserving '*')
+	manualSet := make(map[string]map[string]bool)
+
+	if hasFrontmatter && strings.TrimSpace(yamlStr) != "" {
+		var meta struct {
+			Keywords KeywordsProfile `yaml:"keywords"`
+		}
+		if err := yaml.Unmarshal([]byte(yamlStr), &meta); err == nil && meta.Keywords != nil {
+			for dim, list := range meta.Keywords {
+				canonical := NormalizeDimension(dim)
+				for _, item := range list {
+					trimmed := strings.TrimSpace(item)
+					if strings.HasSuffix(trimmed, "*") {
+						manualEntries[canonical] = append(manualEntries[canonical], trimmed)
+						if manualSet[canonical] == nil {
+							manualSet[canonical] = make(map[string]bool)
+						}
+						norm := strings.ToLower(strings.TrimSpace(strings.TrimSuffix(trimmed, "*")))
+						manualSet[canonical][norm] = true
+					}
+				}
+			}
+		}
+	}
+
+	// Also account for any manual '*' entries already in cleanProfile
+	for dim, list := range cleanProfile {
+		canonical := NormalizeDimension(dim)
+		for _, item := range list {
+			trimmed := strings.TrimSpace(item)
+			if strings.HasSuffix(trimmed, "*") {
+				norm := strings.ToLower(strings.TrimSpace(strings.TrimSuffix(trimmed, "*")))
+				if manualSet[canonical] == nil {
+					manualSet[canonical] = make(map[string]bool)
+				}
+				if !manualSet[canonical][norm] {
+					manualEntries[canonical] = append(manualEntries[canonical], trimmed)
+					manualSet[canonical][norm] = true
+				}
+			}
+		}
+	}
+
+	// Merge keywords: manual '*' entries take precedence and are never overwritten or duplicated
+	mergedProfile := make(KeywordsProfile)
+	processedCanonical := make(map[string]bool)
+
+	for dim, list := range cleanProfile {
+		canonical := NormalizeDimension(dim)
+		processedCanonical[canonical] = true
+
+		var mergedList []string
+		seenInDim := make(map[string]bool)
+
+		// 1. Add manual entries first
+		if manuals, ok := manualEntries[canonical]; ok {
+			for _, m := range manuals {
+				norm := strings.ToLower(strings.TrimSpace(strings.TrimSuffix(m, "*")))
+				if !seenInDim[norm] {
+					seenInDim[norm] = true
+					mergedList = append(mergedList, m)
+				}
+			}
+		}
+
+		// 2. Add incoming AI keywords, skipping duplicates of manual entries
+		for _, item := range list {
+			trimmed := strings.TrimSpace(item)
+			if trimmed == "" {
+				continue
+			}
+			norm := strings.ToLower(strings.TrimSpace(strings.TrimSuffix(trimmed, "*")))
+			if seenInDim[norm] {
+				continue
+			}
+			seenInDim[norm] = true
+			mergedList = append(mergedList, trimmed)
+		}
+
+		if len(mergedList) > 0 {
+			mergedProfile[dim] = mergedList
+		}
+	}
+
+	// 3. Preserve any dimension with manual entries that was not in cleanProfile
+	for canonical, manuals := range manualEntries {
+		if !processedCanonical[canonical] && len(manuals) > 0 {
+			mergedProfile[canonical] = append([]string{}, manuals...)
+		}
 	}
 
 	var root yaml.Node
@@ -123,13 +216,13 @@ func MergeKeywordsToMarkdown(rawContent []byte, profile KeywordsProfile) ([]byte
 
 	// Prepare keywords YAML node
 	var kwNode *yaml.Node
-	if len(cleanProfile) == 0 {
+	if len(mergedProfile) == 0 {
 		kwNode = &yaml.Node{
 			Kind: yaml.MappingNode,
 			Tag:  "!!map",
 		}
 	} else {
-		kwBytes, err := yaml.Marshal(cleanProfile)
+		kwBytes, err := yaml.Marshal(mergedProfile)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal keywords profile: %w", err)
 		}

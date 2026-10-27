@@ -83,7 +83,8 @@ export function isChatLogFormat(text: string): boolean {
   const lines = clean.split('\n');
   if (lines.length < 2) return false;
 
-  let matchCount = 0;
+  let timestampMatches = 0;
+  let colonMatches = 0;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) continue;
@@ -92,7 +93,7 @@ export function isChatLogFormat(text: string): boolean {
     if (isTimestamp(line) && i > 0) {
       const prev = lines[i - 1].trim();
       if (prev && prev.length <= 60 && !prev.startsWith('#') && !prev.startsWith('---')) {
-        matchCount++;
+        timestampMatches++;
       }
     }
 
@@ -103,16 +104,17 @@ export function isChatLogFormat(text: string): boolean {
       reBracketTimePrefix.test(line) ||
       reBracketTimeSuffix.test(line)
     ) {
-      matchCount++;
+      timestampMatches++;
     }
 
     // Check colon speaker pattern
     if (reColonSpeaker.test(line)) {
-      matchCount++;
+      colonMatches++;
     }
   }
 
-  return matchCount >= 1;
+  if (timestampMatches >= 1) return true;
+  return colonMatches >= 2;
 }
 
 /**

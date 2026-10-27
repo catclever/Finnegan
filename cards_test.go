@@ -103,3 +103,22 @@ func TestExtractHashtags(t *testing.T) {
 		}
 	}
 }
+
+func TestStripAndExtractHashtags_UnifiedKeywords(t *testing.T) {
+	text := "今天测试了 #WebKitGTK 4.1 和 #跨平台UI。\n\n#松弛感 #治愈"
+	cleanBody, tags := StripAndExtractHashtags(text)
+
+	if cleanBody != "今天测试了 WebKitGTK 4.1 和 跨平台UI。" {
+		t.Fatalf("unexpected cleanBody: %q", cleanBody)
+	}
+
+	expectedTags := []string{"WebKitGTK", "跨平台UI", "松弛感", "治愈"}
+	if len(tags) != len(expectedTags) {
+		t.Fatalf("expected %d tags, got %d: %v", len(expectedTags), len(tags), tags)
+	}
+	for i, exp := range expectedTags {
+		if tags[i] != exp {
+			t.Errorf("expected tag %d to be %q, got %q", i, exp, tags[i])
+		}
+	}
+}

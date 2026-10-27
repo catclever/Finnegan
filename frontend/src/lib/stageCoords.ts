@@ -142,16 +142,18 @@ export function calculateSpatialPlacement(
   const finalPoint = chosenPoint || globalBestPoint || { x: fallbackX, y: viewCenterY };
   const finalX = Math.round(finalPoint.x);
   const finalY = Math.round(finalPoint.y);
-  const rotation = Number(((Math.random() - 0.5) * 50).toFixed(1));
+  // Natural desk-scatter rotation (±7 deg) instead of disorienting ±25 deg
+  const rotation = Number(((Math.random() - 0.5) * 14).toFixed(1));
 
   let z = 50;
   if (candidate) {
     if ((isNewlyCreated && candidate.origin === 'manual') || candidate.isVIP) {
-      // Extreme foreground: sits at the absolute closest layer (translateZ ~ +95px, scale ~ 1.07x)
+      // Extreme foreground: sits at the absolute closest layer
       z = Number((1.5 + Math.random() * 3.5).toFixed(1)); // z: 1.5 ~ 5.0
     } else if (candidate.isSearchResult) {
       z = Math.random() * 15;
-    } else if (candidate.origin === 'bugu' || candidate.macroExpiresAt) {
+    } else if (candidate.origin === 'bugu' || candidate.type === 'radar') {
+      // Ephemeral network cards decay by TTL ratio
       const now = Date.now();
       let ratio = 1;
       if (candidate.macroExpiresAt) {
@@ -159,27 +161,27 @@ export function calculateSpatialPlacement(
       }
       z = 85 - (ratio * 65);
     } else {
+      // Permanent user memories & local cards: Strictly mapped by temporal recency
       const now = Date.now();
       const createdAtDate = candidate.createdAt ? new Date(candidate.createdAt).getTime() : now;
-      const ageMs = now - createdAtDate;
+      const ageMs = Math.max(0, now - createdAtDate);
       const ageDays = ageMs / (1000 * 60 * 60 * 24);
 
       if (ageDays > 365) {
-        // 回光返照 (Resurgence Echo of memories > 1 year):
-        // Does not sit in foreground, but resurfaces close to the 1-week depth tier (~45..55)
-        z = 45 + Math.random() * 10;
+        // 回光返照 (Resurgence Echo of memories > 1 year): ~42..52
+        z = 42 + Math.random() * 10;
       } else if (ageDays <= 1) {
-        z = 15 + Math.random() * 12; // 今日 (0~24h): 15 ~ 27
+        z = 3 + Math.random() * 8;   // 今日 (0~24h): z 3 ~ 11 -> scale ~1.20x - 1.25x
       } else if (ageDays <= 3) {
-        z = 27 + Math.random() * 12; // 近 3 天: 27 ~ 39
+        z = 16 + Math.random() * 10; // 近 3 天: z 16 ~ 26 -> scale ~1.02x - 1.09x
       } else if (ageDays <= 7) {
-        z = 39 + Math.random() * 13; // 近 1 周: 39 ~ 52
+        z = 30 + Math.random() * 12; // 近 1 周: z 30 ~ 42 -> scale ~0.86x - 0.93x
       } else if (ageDays <= 30) {
-        z = 52 + Math.random() * 13; // 近 1 个月: 52 ~ 65
+        z = 48 + Math.random() * 14; // 近 1 个月 (如 11天前): z 48 ~ 62 -> scale ~0.67x - 0.73x
       } else if (ageDays <= 90) {
-        z = 65 + Math.random() * 12; // 近 3 个月: 65 ~ 77
+        z = 66 + Math.random() * 12; // 近 3 个月: z 66 ~ 78 -> scale ~0.52x - 0.58x
       } else {
-        z = 77 + Math.random() * 11; // 3 个月 ~ 1 年: 77 ~ 88
+        z = 80 + Math.random() * 12; // 3 个月 ~ 1 年: z 80 ~ 92 -> scale ~0.43x - 0.48x
       }
     }
   } else {

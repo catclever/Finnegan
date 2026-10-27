@@ -8,16 +8,17 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
 	"Finnegan/core/bus"
 	"Finnegan/core/chatlog"
 	"Finnegan/core/config"
+	"Finnegan/core/keywords"
 	"Finnegan/core/watcher"
 
 	"github.com/oklog/ulid/v2"
+	"gopkg.in/yaml.v3"
 )
 
 func sanitizeSlug(s string) string {
@@ -42,36 +43,37 @@ func sanitizeSlug(s string) string {
 	return s
 }
 
+// StripAndExtractHashtags strips trailing/standalone hashtags completely from card body,
+// and strips '#' from inline hashtags to preserve grammatical fluency.
+func StripAndExtractHashtags(text string) (string, []string) {
+	return keywords.StripAndExtractHashtags(text)
+}
+
 // ExtractHashtags extracts clean hashtags from text.
 // Supports Chinese characters, letters, digits, underscores, hyphens, and dots.
 // Matches tokens like #tag, #WebKitGTK, #跨平台UI, #v1.0
 func ExtractHashtags(text string) []string {
-	re := regexp.MustCompile(`#([\p{L}\p{N}_\-\.]+)`)
-	matches := re.FindAllStringSubmatch(text, -1)
-	seen := make(map[string]bool)
-	var tags []string
-	for _, m := range matches {
-		if len(m) > 1 {
-			tag := strings.TrimSpace(m[1])
-			tag = strings.TrimRight(tag, ".,!?;:")
-			if tag != "" && !seen[tag] {
-				seen[tag] = true
-				tags = append(tags, tag)
-			}
-		}
-	}
+	_, tags := keywords.StripAndExtractHashtags(text)
 	return tags
 }
 
-func formatTagsYAML(tags []string) string {
-	if len(tags) == 0 {
-		return "[]"
+func formatKeywordsYAML(profile keywords.KeywordsProfile) string {
+	clean := keywords.CleanProfile(profile)
+	if len(clean) == 0 {
+		return ""
 	}
-	var parts []string
-	for _, t := range tags {
-		parts = append(parts, fmt.Sprintf("%q", t))
+	kwBytes, err := yaml.Marshal(clean)
+	if err != nil {
+		return ""
 	}
-	return fmt.Sprintf("[%s]", strings.Join(parts, ", "))
+	var sb strings.Builder
+	sb.WriteString("keywords:\n")
+	for _, line := range strings.Split(strings.TrimSpace(string(kwBytes)), "\n") {
+		if strings.TrimSpace(line) != "" {
+			sb.WriteString("  " + line + "\n")
+		}
+	}
+	return sb.String()
 }
 
 func (a *App) CaptureThought(text string) (string, error) {
@@ -79,6 +81,9 @@ func (a *App) CaptureThought(text string) (string, error) {
 	if text == "" {
 		return "", errors.New("empty text")
 	}
+
+	cleanBody, tags := StripAndExtractHashtags(text)
+	kwProfile := keywords.RouteTagsToKeywords(tags)
 
 	home := a.Home
 	if home == "" {
@@ -94,7 +99,11 @@ func (a *App) CaptureThought(text string) (string, error) {
 	targetDir := filepath.Join(home, "Scattering")
 
 	now := time.Now()
-	baseName := fmt.Sprintf("%s-%s", now.Format("20060102-1504"), sanitizeSlug(text))
+	slugSource := cleanBody
+	if slugSource == "" {
+		slugSource = text
+	}
+	baseName := fmt.Sprintf("%s-%s", now.Format("20060102-1504"), sanitizeSlug(slugSource))
 	var targetPath string
 
 	for i := 1; i <= 100; i++ {
@@ -114,10 +123,23 @@ func (a *App) CaptureThought(text string) (string, error) {
 	}
 
 	docID := ulid.Make().String()
-	tags := ExtractHashtags(text)
 
-	contentStr := fmt.Sprintf("---\nid: %s\ntype: thought\ncreated: %s\nupdated: %s\nsource: local\ntags: %s\npublish: false\n---\n\n%s\n",
-		docID, now.Format(time.RFC3339), now.Format(time.RFC3339), formatTagsYAML(tags), text)
+	var sb strings.Builder
+	sb.WriteString("---\n")
+	sb.WriteString(fmt.Sprintf("id: %s\n", docID))
+	sb.WriteString("type: thought\n")
+	sb.WriteString(fmt.Sprintf("created: %s\n", now.Format(time.RFC3339)))
+	sb.WriteString(fmt.Sprintf("updated: %s\n", now.Format(time.RFC3339)))
+	sb.WriteString("source: local\n")
+	if kwYAML := formatKeywordsYAML(kwProfile); kwYAML != "" {
+		sb.WriteString(kwYAML)
+	}
+	sb.WriteString("publish: false\n")
+	sb.WriteString("---\n\n")
+	sb.WriteString(cleanBody)
+	sb.WriteString("\n")
+
+	contentStr := sb.String()
 
 	err := watcher.GetWatcher().WriteFile(targetPath, []byte(contentStr), "capture")
 	if err != nil {
@@ -129,9 +151,10 @@ func (a *App) CaptureThought(text string) (string, error) {
 		Data: bus.EventThoughtCapturedData{
 			DocID:      docID,
 			FilePath:   targetPath,
-			Text:       text,
+			Text:       cleanBody,
 			CapturedAt: now,
 			Tags:       tags,
+			Keywords:   kwProfile,
 		},
 	})
 
@@ -201,7 +224,6 @@ func (a *App) CaptureNote(text string) (string, error) {
 	sb.WriteString(fmt.Sprintf("created: %s\n", now.Format(time.RFC3339)))
 	sb.WriteString(fmt.Sprintf("updated: %s\n", now.Format(time.RFC3339)))
 	sb.WriteString("source: local\n")
-	sb.WriteString(fmt.Sprintf("tags: %s\n", formatTagsYAML(tags)))
 	sb.WriteString("publish: false\n")
 	sb.WriteString("---\n\n")
 	sb.WriteString(body)
@@ -364,7 +386,10 @@ func (a *App) CaptureThoughtWithImages(text string, images []ImagePayload) (stri
 
 	targetDir := filepath.Join(home, "Scattering")
 	now := time.Now()
-	slugSrc := text
+	cleanBody, tags := StripAndExtractHashtags(text)
+	kwProfile := keywords.RouteTagsToKeywords(tags)
+
+	slugSrc := cleanBody
 	if slugSrc == "" {
 		slugSrc = "thought"
 	}
@@ -388,7 +413,6 @@ func (a *App) CaptureThoughtWithImages(text string, images []ImagePayload) (stri
 	}
 
 	docID := ulid.Make().String()
-	tags := ExtractHashtags(text)
 
 	var sb strings.Builder
 	sb.WriteString("---\n")
@@ -397,7 +421,9 @@ func (a *App) CaptureThoughtWithImages(text string, images []ImagePayload) (stri
 	sb.WriteString(fmt.Sprintf("created: %s\n", now.Format(time.RFC3339)))
 	sb.WriteString(fmt.Sprintf("updated: %s\n", now.Format(time.RFC3339)))
 	sb.WriteString("source: local\n")
-	sb.WriteString(fmt.Sprintf("tags: %s\n", formatTagsYAML(tags)))
+	if kwYAML := formatKeywordsYAML(kwProfile); kwYAML != "" {
+		sb.WriteString(kwYAML)
+	}
 	sb.WriteString("publish: false\n")
 	if len(savedImageNames) > 0 {
 		sb.WriteString("images:\n")
@@ -408,7 +434,7 @@ func (a *App) CaptureThoughtWithImages(text string, images []ImagePayload) (stri
 		sb.WriteString("images: []\n")
 	}
 	sb.WriteString("---\n\n")
-	sb.WriteString(text)
+	sb.WriteString(cleanBody)
 	sb.WriteString("\n")
 
 	contentStr := sb.String()
@@ -423,10 +449,11 @@ func (a *App) CaptureThoughtWithImages(text string, images []ImagePayload) (stri
 		Data: bus.EventThoughtCapturedData{
 			DocID:      docID,
 			FilePath:   targetPath,
-			Text:       text,
+			Text:       cleanBody,
 			CapturedAt: now,
 			Images:     savedImageNames,
 			Tags:       tags,
+			Keywords:   kwProfile,
 		},
 	})
 

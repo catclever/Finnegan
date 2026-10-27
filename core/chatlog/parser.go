@@ -173,7 +173,8 @@ func IsChatLog(text string) bool {
 		return false
 	}
 
-	matchCount := 0
+	timestampMatches := 0
+	colonMatches := 0
 	for i := 0; i < len(lines); i++ {
 		line := strings.TrimSpace(lines[i])
 		if line == "" {
@@ -184,24 +185,28 @@ func IsChatLog(text string) bool {
 		if _, ok := ParseTimestamp(line); ok && i > 0 {
 			prev := strings.TrimSpace(lines[i-1])
 			if prev != "" && len(prev) <= 60 && !strings.HasPrefix(prev, "#") && !strings.HasPrefix(prev, "---") {
-				matchCount++
+				timestampMatches++
 			}
 		}
 
 		// Check single-line timestamp header
 		if reSingleLineWeChat.MatchString(line) || reSingleLineStandard.MatchString(line) ||
 			reBracketTimePrefix.MatchString(line) || reBracketTimeSuffix.MatchString(line) {
-			matchCount++
+			timestampMatches++
 		}
 
 		// Check colon speaker pattern
 		if reColonSpeaker.MatchString(line) {
-			matchCount++
+			colonMatches++
 		}
 	}
 
-	// A valid chat log should have at least 1 two-line header or at least 2 colon/single-line headers
-	return matchCount >= 1
+	// Dialogue with explicit timestamp: at least 1 timestamp header
+	if timestampMatches >= 1 {
+		return true
+	}
+	// Dialogue without timestamp: requires at least 2 colon speaker headers
+	return colonMatches >= 2
 }
 
 type rawHeader struct {
@@ -306,6 +311,18 @@ func Parse(text string) (*ParsedChatLog, error) {
 
 	if len(headers) == 0 {
 		return nil, fmt.Errorf("no dialogue headers found in text")
+	}
+
+	// If only colon headers were found (no timestamps), require at least 2 speaker headers for a valid dialogue
+	hasTimestampHeader := false
+	for _, h := range headers {
+		if h.timestamp != nil {
+			hasTimestampHeader = true
+			break
+		}
+	}
+	if !hasTimestampHeader && len(headers) < 2 {
+		return nil, fmt.Errorf("dialogue without timestamps requires at least 2 speaker headers")
 	}
 
 	// Extract messages between headers
