@@ -1,5 +1,5 @@
 import type { CosmicCard, SearchSession } from '../types/card';
-import { calculateSpatialPlacement } from './stageCoords';
+import { calculateSpatialPlacement } from './stageCoords.ts';
 
 // --- Cosmic Stage Configuration Constants ---
 export const BASE_CAPACITY = 10;                      // Base single-screen card count (8~12)

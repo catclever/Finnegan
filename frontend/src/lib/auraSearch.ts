@@ -4,7 +4,7 @@
  */
 
 import type { AuraTrace, CosmicCard } from '../types/card';
-export { toCosmicCard } from './stageDecay';
+export { toCosmicCard } from './stageDecay.ts';
 
 /**
  * Generates a distinct aura color using the Color Wheel Max Angular Gap Algorithm

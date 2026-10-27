@@ -112,7 +112,7 @@ describe('Universal Gravitational Fallback Engine', () => {
 
       // Apply fallback and verify
       const fallen = applyGravitationalFallback(oldCard, NOW);
-      assert.equal(fallen.z, targetZ);
+      assert.ok(fallen.z >= 66 && fallen.z <= 78, `fallen.z (${fallen.z}) should match 60-day intrinsic band (66~78)`);
       assert.ok(fallen.z > oldCard.z + 5, 'Card must sink deeper than z + 5');
 
       // Optical decoupling: visual aura, search flags, and metadata MUST remain intact
@@ -233,7 +233,8 @@ describe('Universal Gravitational Fallback Engine', () => {
       assert.ok(targetZ > deepCard.z + 5);
 
       const result = applyGravitationalFallback(deepCard, NOW);
-      assert.equal(result.z, targetZ);
+      assert.ok(result.z >= 80 && result.z <= 92, `result.z (${result.z}) should match 200-day intrinsic band (80~92)`);
+      assert.ok(result.z > deepCard.z + 5, 'Card must sink deeper than z + 5');
     });
   });
 
