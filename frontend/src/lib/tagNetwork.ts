@@ -40,13 +40,16 @@ export function cardHasTag(card: CosmicCard | any, queryTag: string): boolean {
   }
 
   // 2. Check card.keywords / card.Keywords (Record<string, string[]>)
+  // Only items with '*' provenance marker are recognized as manual tags
   const kwSource = card.keywords || card.Keywords;
   if (kwSource && typeof kwSource === 'object') {
     for (const list of Object.values(kwSource)) {
       if (Array.isArray(list)) {
         for (const item of list) {
-          if (typeof item === 'string' && normalizeTag(item).toLowerCase() === cleanQuery) {
-            return true;
+          if (typeof item === 'string' && item.trim().endsWith('*')) {
+            if (normalizeTag(item).toLowerCase() === cleanQuery) {
+              return true;
+            }
           }
         }
       }
@@ -57,7 +60,7 @@ export function cardHasTag(card: CosmicCard | any, queryTag: string): boolean {
 }
 
 /**
- * Extracts and deduplicates all normalized tags from a card.
+ * Extracts and deduplicates only manual tags (ending with '*') from a card.
  */
 export function getCardTags(card: CosmicCard | any): string[] {
   if (!card) return [];
@@ -78,7 +81,7 @@ export function getCardTags(card: CosmicCard | any): string[] {
     for (const list of Object.values(kwSource)) {
       if (Array.isArray(list)) {
         for (const item of list) {
-          if (typeof item === 'string') {
+          if (typeof item === 'string' && item.trim().endsWith('*')) {
             const clean = normalizeTag(item);
             if (clean) set.add(clean);
           }

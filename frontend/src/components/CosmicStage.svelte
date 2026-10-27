@@ -304,6 +304,7 @@
         onHover={() => handleHover(card.id)}
         onLeave={handleLeave}
         on:tagClick={(e) => dispatch('tagClick', e.detail)}
+        on:cardPromoted={(e) => dispatch('cardPromoted', e.detail)}
       />
     {/each}
 

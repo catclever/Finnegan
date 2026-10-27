@@ -428,6 +428,29 @@
     memoryPool = nextMemoryPool;
   }
 
+  function handleCardPromoted(detail: { originalId: string; card: CosmicCard }) {
+    if (!detail) return;
+    const { originalId, card: promoted } = detail;
+    cards = cards.map(c => {
+      if (c.id === originalId) {
+        return {
+          ...c,
+          ...promoted,
+          origin: 'local',
+          macroExpiresAt: undefined,
+        };
+      }
+      return c;
+    });
+    memoryPool = memoryPool.filter(c => c.id !== originalId && c.id !== promoted.id);
+    if (focusedCardId === originalId) {
+      focusedCardId = promoted.id;
+    }
+    if (!localVaultPool.some(v => v.id === promoted.id)) {
+      localVaultPool = [promoted, ...localVaultPool];
+    }
+  }
+
   // --- Tilt, Focus, & Keydown Delegators ---
   let globalTilt = spring({ rx: 0, ry: 0 }, { stiffness: 0.04, damping: 0.25 });
 
@@ -685,7 +708,7 @@
         }
       });
       replenishStage();
-    }, 2000);
+    }, 45000);
 
     return () => {
       window.removeEventListener('focus', handleWindowFocus);
@@ -717,6 +740,7 @@
     onLeaveCard={() => hoveredCardId = null} onBgClick={handleWindowClick}
     on:navigate={(e) => navigateFocus(e.detail)}
     on:tagClick={(e) => handleTagClick(e.detail)}
+    on:cardPromoted={(e) => handleCardPromoted(e.detail)}
   />
 
   <OmniBar

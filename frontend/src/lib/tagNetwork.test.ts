@@ -45,15 +45,28 @@ describe('Finnegan Tag Association & Resurgence Physics', () => {
       assert.ok(cardHasTag(card, 'pve-native'));
       assert.ok(!cardHasTag(card, 'unknown'));
     });
+
+    it('strictly ignores AI keywords that lack an asterisk marker', () => {
+      const card: any = {
+        id: 'c_ai',
+        keywords: {
+          object: ['AI提取物无星号'],
+          mood: ['人工标记*'],
+        },
+      };
+
+      assert.ok(!cardHasTag(card, 'AI提取物无星号'));
+      assert.ok(cardHasTag(card, '人工标记'));
+    });
   });
 
   describe('getCardTags', () => {
-    it('aggregates and deduplicates normalized tags across keywords and tags', () => {
+    it('aggregates and deduplicates only manual tags ending with asterisk', () => {
       const card: any = {
         id: 'c3',
         tags: ['WebkitGTK 4.1*', 'Rust'],
         keywords: {
-          object: ['WebKitGTK 4.1'],
+          object: ['AI提取物无星号'],
           mood: ['松弛感*'],
         },
       };
@@ -62,6 +75,7 @@ describe('Finnegan Tag Association & Resurgence Physics', () => {
       assert.ok(tags.includes('WebKitGTK 4.1') || tags.includes('WebkitGTK 4.1'));
       assert.ok(tags.includes('Rust'));
       assert.ok(tags.includes('松弛感'));
+      assert.ok(!tags.includes('AI提取物无星号'));
       assert.ok(!tags.some(t => t.endsWith('*')));
     });
   });

@@ -62,7 +62,7 @@ export function computeNextScrollTarget(
  * Calculates optimal 3D spatial placement for a new or staged card using Mitchell's best-candidate sampling.
  * Avoids omnibar deadzone and neighboring cards across dynamic screen zones.
  */
-import { MACRO_TTL_MS } from './stageDecay';
+const MACRO_TTL_MS = 24 * 3600 * 1000; // 24 hours macro TTL
 
 export function calculateSpatialPlacement(
   activeCards: CosmicCard[] = [],
@@ -153,13 +153,14 @@ export function calculateSpatialPlacement(
     } else if (candidate.isSearchResult) {
       z = Math.random() * 15;
     } else if (candidate.origin === 'bugu' || candidate.type === 'radar') {
-      // Ephemeral network cards decay by TTL ratio
+      // Ephemeral network cards decay by TTL ratio with 20~30 random jitter at birth
       const now = Date.now();
       let ratio = 1;
       if (candidate.macroExpiresAt) {
         ratio = Math.max(0, Math.min(1, (candidate.macroExpiresAt - now) / MACRO_TTL_MS));
       }
-      z = 85 - (ratio * 65);
+      const initialZ = 20 + Math.random() * 10;
+      z = 85 - (ratio * (85 - initialZ));
     } else {
       // Permanent user memories & local cards: Strictly mapped by temporal recency
       const now = Date.now();
