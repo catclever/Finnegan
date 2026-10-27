@@ -238,14 +238,14 @@ export function findUnstagedMatchingCards(
   const matches: CosmicCard[] = [];
 
   for (const c of memoryPool) {
-    if (!stageIdSet.has(c.id) && !seenIds.has(c.id) && cardHasTag(c, tag)) {
+    if (!stageIdSet.has(c.id) && !seenIds.has(c.id) && cardHasKeyword(c, tag)) {
       matches.push(c);
       seenIds.add(c.id);
     }
   }
 
   for (const c of localVaultPool) {
-    if (!stageIdSet.has(c.id) && !seenIds.has(c.id) && cardHasTag(c, tag)) {
+    if (!stageIdSet.has(c.id) && !seenIds.has(c.id) && cardHasKeyword(c, tag)) {
       matches.push(c);
       seenIds.add(c.id);
     }

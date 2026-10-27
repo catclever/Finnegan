@@ -27,15 +27,25 @@
     ? candidateItems
     : (paramCardCandidates || []).map(c => ({ card: c, tier: 'current_screen' as const }))) as CandidateCardItem[];
 
-  // Scroll active item smoothly into view whenever index updates
+  // Scroll active item into view whenever index updates
   $: if (menuEl && highlightedCardIndex >= 0 && items.length > 0) {
     tick().then(() => {
       if (!menuEl) return;
       const activeEl = menuEl.querySelector('.dropdown-item.active') as HTMLElement;
       if (activeEl) {
-        activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        activeEl.scrollIntoView({ block: 'nearest', behavior: 'auto' });
       }
     });
+  }
+
+  function handleItemMouseMove(e: MouseEvent, index: number) {
+    // Only update highlight when user actually moves the mouse physically,
+    // preventing a stationary mouse from stealing highlight during keyboard scroll navigation.
+    if (e.movementX !== 0 || e.movementY !== 0) {
+      if (highlightedCardIndex !== index) {
+        onHighlight(index);
+      }
+    }
   }
 
   function handleScroll(e: Event) {
@@ -82,7 +92,7 @@
       <div 
         class="dropdown-item card-item" 
         class:active={index === highlightedCardIndex}
-        on:mouseenter={() => onHighlight(index)}
+        on:mousemove={(e) => handleItemMouseMove(e, index)}
         on:mousedown|preventDefault={() => onSelect(item.card)}
       >
         <div class="card-item-title">
@@ -129,7 +139,6 @@
     flex-direction: column;
     animation: dropdown-slide 0.15s ease-out;
     box-sizing: border-box;
-    scroll-behavior: smooth;
   }
 
   @keyframes dropdown-slide {

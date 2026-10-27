@@ -4,7 +4,11 @@ import assert from 'node:assert/strict';
 // @ts-ignore
 import {
   normalizeTag,
+  cardHasManualTag,
+  cardHasKeyword,
   cardHasTag,
+  getCardManualTags,
+  getCardAllKeywords,
   getCardTags,
   calculateIntrinsicTargetZ,
   calculateResurgenceZ,
@@ -21,49 +25,41 @@ describe('Finnegan Tag Association & Resurgence Physics', () => {
     });
   });
 
-  describe('cardHasTag', () => {
-    it('matches tags in keywords regardless of asterisks or case', () => {
+  describe('cardHasManualTag vs cardHasKeyword', () => {
+    it('matches manual tags only when asterisk is present (or in tags array)', () => {
       const card: any = {
         id: 'c1',
         keywords: {
           object: ['WebKitGTK 4.1*'],
           mood: ['松弛感*'],
+          concept: ['AI提取物无星号'],
         },
       };
 
-      assert.ok(cardHasTag(card, 'WebKitGTK 4.1'));
-      assert.ok(cardHasTag(card, 'webkitgtk 4.1*'));
-      assert.ok(cardHasTag(card, '松弛感'));
-      assert.ok(!cardHasTag(card, 'OtherTag'));
+      assert.ok(cardHasManualTag(card, 'WebKitGTK 4.1'));
+      assert.ok(cardHasManualTag(card, '松弛感'));
+      assert.ok(!cardHasManualTag(card, 'AI提取物无星号'));
+
+      // cardHasKeyword opens up to match AI keywords as well
+      assert.ok(cardHasKeyword(card, 'WebKitGTK 4.1'));
+      assert.ok(cardHasKeyword(card, 'AI提取物无星号'));
+      assert.ok(!cardHasKeyword(card, 'NonExistent'));
     });
 
-    it('matches legacy tags array', () => {
+    it('matches legacy tags array as manual', () => {
       const card: any = {
         id: 'c2',
         tags: ['rust*', 'pve-native'],
       };
 
-      assert.ok(cardHasTag(card, 'Rust'));
-      assert.ok(cardHasTag(card, 'pve-native'));
-      assert.ok(!cardHasTag(card, 'unknown'));
-    });
-
-    it('strictly ignores AI keywords that lack an asterisk marker', () => {
-      const card: any = {
-        id: 'c_ai',
-        keywords: {
-          object: ['AI提取物无星号'],
-          mood: ['人工标记*'],
-        },
-      };
-
-      assert.ok(!cardHasTag(card, 'AI提取物无星号'));
-      assert.ok(cardHasTag(card, '人工标记'));
+      assert.ok(cardHasManualTag(card, 'Rust'));
+      assert.ok(cardHasManualTag(card, 'pve-native'));
+      assert.ok(!cardHasManualTag(card, 'unknown'));
     });
   });
 
-  describe('getCardTags', () => {
-    it('aggregates and deduplicates only manual tags ending with asterisk', () => {
+  describe('getCardManualTags vs getCardAllKeywords', () => {
+    it('getCardManualTags only includes asterisk keywords, whereas getCardAllKeywords includes all', () => {
       const card: any = {
         id: 'c3',
         tags: ['WebkitGTK 4.1*', 'Rust'],
@@ -73,12 +69,15 @@ describe('Finnegan Tag Association & Resurgence Physics', () => {
         },
       };
 
-      const tags = getCardTags(card);
-      assert.ok(tags.includes('WebKitGTK 4.1') || tags.includes('WebkitGTK 4.1'));
-      assert.ok(tags.includes('Rust'));
-      assert.ok(tags.includes('松弛感'));
-      assert.ok(!tags.includes('AI提取物无星号'));
-      assert.ok(!tags.some(t => t.endsWith('*')));
+      const manualTags = getCardManualTags(card);
+      assert.ok(manualTags.includes('WebKitGTK 4.1') || manualTags.includes('WebkitGTK 4.1'));
+      assert.ok(manualTags.includes('Rust'));
+      assert.ok(manualTags.includes('松弛感'));
+      assert.ok(!manualTags.includes('AI提取物无星号'));
+
+      const allKeywords = getCardAllKeywords(card);
+      assert.ok(allKeywords.includes('AI提取物无星号'));
+      assert.ok(allKeywords.includes('松弛感'));
     });
   });
 
@@ -145,18 +144,18 @@ describe('Finnegan Tag Association & Resurgence Physics', () => {
   });
 
   describe('findUnstagedMatchingCards', () => {
-    it('returns only matching cards from memory and vault pools that are NOT on stage', () => {
+    it('recalls unstaged cards even if they only have AI keywords (open recall)', () => {
       const stage = [
         { id: 'c1', keywords: { object: ['tagA*'] } } as any,
       ];
       const memory = [
         { id: 'c1', keywords: { object: ['tagA*'] } } as any, // already on stage
-        { id: 'c2', keywords: { object: ['tagA*'] } } as any, // not on stage
+        { id: 'c2', keywords: { object: ['tagA'] } } as any, // not on stage, AI keyword without *!
         { id: 'c3', keywords: { object: ['tagB*'] } } as any, // not matching
       ];
       const vault = [
-        { id: 'c4', keywords: { mood: ['tagA*'] } } as any, // not on stage
-        { id: 'c2', keywords: { object: ['tagA*'] } } as any, // duplicate of memory
+        { id: 'c4', keywords: { mood: ['tagA*'] } } as any, // not on stage, manual tag
+        { id: 'c2', keywords: { object: ['tagA'] } } as any, // duplicate of memory
       ];
 
       const unstaged = findUnstagedMatchingCards('tagA', stage, memory, vault);

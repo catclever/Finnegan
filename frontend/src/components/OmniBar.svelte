@@ -679,14 +679,14 @@
             if (highlightedCardIndex >= paramCardCandidates.length - 1 && hasMoreVault) {
               handleLoadMoreCandidates();
             }
-            highlightedCardIndex = (highlightedCardIndex + 1) % paramCardCandidates.length;
+            highlightedCardIndex = Math.min(highlightedCardIndex + 1, paramCardCandidates.length - 1);
           }
           return;
         }
         if (e.key === 'ArrowUp') {
           e.preventDefault();
           if (paramCardCandidates.length > 0) {
-            highlightedCardIndex = (highlightedCardIndex - 1 + paramCardCandidates.length) % paramCardCandidates.length;
+            highlightedCardIndex = Math.max(0, highlightedCardIndex - 1);
           }
           return;
         }
