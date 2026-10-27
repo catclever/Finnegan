@@ -730,136 +730,275 @@
     font-weight: 600;
     letter-spacing: 0.04em;
     color: #fef3c7;
-    background: rgba(15, 23, 42, 0.85);
-    border: 1px solid rgba(245, 158, 11, 0.45);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    background: transparent;
+    border: 1px solid transparent;
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
     padding: 1.5px 8px;
     border-radius: 6px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5), 0 0 10px rgba(245, 158, 11, 0.25);
-    text-shadow: 0 0 4px rgba(245, 158, 11, 0.5);
+    box-shadow: none;
+    text-shadow: 0 0 5px rgba(245, 158, 11, 0.45);
     white-space: nowrap;
     transform-origin: center center;
     pointer-events: auto;
     cursor: default;
     user-select: none;
-    transition: opacity 0.25s ease, text-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+    transition: background 0.25s ease, border-color 0.25s ease, backdrop-filter 0.25s ease, -webkit-backdrop-filter 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease, opacity 0.25s ease, text-shadow 0.25s ease;
     animation: bugu-badge-decay 14.4s ease-in-out forwards;
   }
 
   .ray-anchor-badge:hover {
     opacity: 1 !important;
+    background: rgba(15, 23, 42, 0.88) !important;
+    border-color: rgba(245, 158, 11, 0.75) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
     transform: scale(1.06) !important;
-    border-color: rgba(245, 158, 11, 0.8) !important;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6), 0 0 16px rgba(245, 158, 11, 0.45) !important;
     text-shadow: 0 0 8px rgba(245, 158, 11, 0.85), 0 0 14px rgba(251, 191, 36, 0.5) !important;
   }
 
   @keyframes bugu-badge-decay {
-    /* Cycle 1 (0 ~ 4.8s): High-contrast ambient entrance, glowing surge when pulse passes midpoint (13%~17%), high-contrast sustain */
+    /* Cycle 1 (0 ~ 4.8s): Transparent text entrance, frosted glass blooms when pulse passes (13%~18%), dissolves back to transparent */
     0% {
       opacity: 0;
       transform: scale(0.9);
+      background: transparent;
+      border-color: transparent;
+      box-shadow: none;
+      backdrop-filter: blur(0px);
+      -webkit-backdrop-filter: blur(0px);
     }
     3% {
-      opacity: 0.88;
+      opacity: 0.85;
       transform: scale(1);
+      background: transparent;
+      border-color: transparent;
+      box-shadow: none;
+      backdrop-filter: blur(0px);
+      -webkit-backdrop-filter: blur(0px);
     }
     11% {
-      opacity: 0.88;
+      opacity: 0.85;
       transform: scale(1);
+      background: transparent;
+      border-color: transparent;
+      box-shadow: none;
+      backdrop-filter: blur(0px);
+      -webkit-backdrop-filter: blur(0px);
+    }
+    13% {
+      /* Pulse approaches: frosted capsule begins blooming */
+      opacity: 0.95;
+      transform: scale(1.03);
+      background: rgba(15, 23, 42, 0.5);
+      border-color: rgba(245, 158, 11, 0.4);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 8px rgba(245, 158, 11, 0.25);
     }
     14% {
-      /* Pulse packet rushes across the badge */
+      /* Pulse packet rushes across badge: full frosted glass capsule manifestation */
       opacity: 1;
-      transform: scale(1.05);
-      border-color: rgba(245, 158, 11, 0.8);
+      transform: scale(1.06);
+      background: rgba(15, 23, 42, 0.88);
+      border-color: rgba(245, 158, 11, 0.75);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
       box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6), 0 0 16px rgba(245, 158, 11, 0.4);
       text-shadow: 0 0 8px rgba(245, 158, 11, 0.8), 0 0 14px rgba(251, 191, 36, 0.5);
     }
     17% {
       opacity: 1;
-      transform: scale(1.05);
-      border-color: rgba(245, 158, 11, 0.8);
+      transform: scale(1.06);
+      background: rgba(15, 23, 42, 0.88);
+      border-color: rgba(245, 158, 11, 0.75);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
       box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6), 0 0 16px rgba(245, 158, 11, 0.4);
       text-shadow: 0 0 8px rgba(245, 158, 11, 0.8), 0 0 14px rgba(251, 191, 36, 0.5);
     }
-    21% {
-      opacity: 0.88;
-      transform: scale(1);
-      border-color: rgba(245, 158, 11, 0.45);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5), 0 0 10px rgba(245, 158, 11, 0.25);
+    19% {
+      /* Pulse leaves: frosted capsule begins dissolving */
+      opacity: 0.90;
+      transform: scale(1.02);
+      background: rgba(15, 23, 42, 0.4);
+      border-color: rgba(245, 158, 11, 0.25);
+      backdrop-filter: blur(3px);
+      -webkit-backdrop-filter: blur(3px);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
     }
-    33.3% {
+    21% {
+      /* Restores to transparent ambient presence */
       opacity: 0.85;
       transform: scale(1);
+      background: transparent;
+      border-color: transparent;
+      box-shadow: none;
+      backdrop-filter: blur(0px);
+      -webkit-backdrop-filter: blur(0px);
+      text-shadow: 0 0 4px rgba(245, 158, 11, 0.4);
+    }
+    33.3% {
+      opacity: 0.82;
+      transform: scale(1);
+      background: transparent;
+      border-color: transparent;
+      box-shadow: none;
+      backdrop-filter: blur(0px);
+      -webkit-backdrop-filter: blur(0px);
     }
 
     /* Cycle 2 (4.8s ~ 9.6s): Second pulse wave */
     33.4% {
-      opacity: 0.85;
+      opacity: 0.82;
       transform: scale(1);
+      background: transparent;
+      border-color: transparent;
+      box-shadow: none;
+      backdrop-filter: blur(0px);
+      -webkit-backdrop-filter: blur(0px);
     }
     44% {
-      opacity: 0.85;
+      opacity: 0.82;
       transform: scale(1);
+      background: transparent;
+      border-color: transparent;
+      box-shadow: none;
+      backdrop-filter: blur(0px);
+      -webkit-backdrop-filter: blur(0px);
+    }
+    46% {
+      /* Pulse 2 approaches */
+      opacity: 0.92;
+      transform: scale(1.02);
+      background: rgba(15, 23, 42, 0.45);
+      border-color: rgba(245, 158, 11, 0.35);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
     }
     47% {
-      /* Pulse 2 crosses midpoint */
+      /* Pulse 2 crosses midpoint: frosted capsule blooms */
       opacity: 1;
       transform: scale(1.05);
+      background: rgba(15, 23, 42, 0.85);
       border-color: rgba(245, 158, 11, 0.7);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6), 0 0 14px rgba(245, 158, 11, 0.4);
       text-shadow: 0 0 8px rgba(245, 158, 11, 0.7), 0 0 14px rgba(251, 191, 36, 0.4);
     }
     50% {
       opacity: 1;
       transform: scale(1.05);
+      background: rgba(15, 23, 42, 0.85);
       border-color: rgba(245, 158, 11, 0.7);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6), 0 0 14px rgba(245, 158, 11, 0.4);
       text-shadow: 0 0 8px rgba(245, 158, 11, 0.7), 0 0 14px rgba(251, 191, 36, 0.4);
     }
-    54% {
-      opacity: 0.82;
-      transform: scale(1);
-      border-color: rgba(245, 158, 11, 0.45);
+    52% {
+      /* Pulse 2 dissolves */
+      opacity: 0.88;
+      transform: scale(1.01);
+      background: rgba(15, 23, 42, 0.35);
+      border-color: rgba(245, 158, 11, 0.2);
+      backdrop-filter: blur(3px);
+      -webkit-backdrop-filter: blur(3px);
     }
-    66.6% {
+    54% {
       opacity: 0.80;
       transform: scale(1);
+      background: transparent;
+      border-color: transparent;
+      box-shadow: none;
+      backdrop-filter: blur(0px);
+      -webkit-backdrop-filter: blur(0px);
+    }
+    66.6% {
+      opacity: 0.76;
+      transform: scale(1);
+      background: transparent;
+      border-color: transparent;
+      box-shadow: none;
+      backdrop-filter: blur(0px);
+      -webkit-backdrop-filter: blur(0px);
     }
 
     /* Cycle 3 (9.6s ~ 14.4s): Final gentle whisper */
     66.7% {
-      opacity: 0.80;
+      opacity: 0.76;
       transform: scale(1);
+      background: transparent;
+      border-color: transparent;
+      box-shadow: none;
+      backdrop-filter: blur(0px);
+      -webkit-backdrop-filter: blur(0px);
     }
-    77% {
-      opacity: 0.80;
+    78% {
+      opacity: 0.76;
+      background: transparent;
+      border-color: transparent;
+      box-shadow: none;
+      backdrop-filter: blur(0px);
+      -webkit-backdrop-filter: blur(0px);
     }
     80% {
-      /* Pulse 3 subtle illumination */
+      /* Pulse 3 subtle bloom */
       opacity: 0.95;
       transform: scale(1.03);
+      background: rgba(15, 23, 42, 0.82);
       border-color: rgba(245, 158, 11, 0.6);
+      backdrop-filter: blur(7px);
+      -webkit-backdrop-filter: blur(7px);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5), 0 0 12px rgba(245, 158, 11, 0.3);
       text-shadow: 0 0 7px rgba(245, 158, 11, 0.55);
     }
     83% {
       opacity: 0.95;
       transform: scale(1.03);
+      background: rgba(15, 23, 42, 0.82);
       border-color: rgba(245, 158, 11, 0.6);
+      backdrop-filter: blur(7px);
+      -webkit-backdrop-filter: blur(7px);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5), 0 0 12px rgba(245, 158, 11, 0.3);
       text-shadow: 0 0 7px rgba(245, 158, 11, 0.55);
     }
+    85% {
+      opacity: 0.78;
+      background: transparent;
+      border-color: transparent;
+      box-shadow: none;
+      backdrop-filter: blur(0px);
+      -webkit-backdrop-filter: blur(0px);
+    }
     87% {
-      opacity: 0.75;
+      opacity: 0.65;
       transform: scale(1);
-      border-color: rgba(245, 158, 11, 0.4);
+      background: transparent;
+      border-color: transparent;
+      box-shadow: none;
+      backdrop-filter: blur(0px);
+      -webkit-backdrop-filter: blur(0px);
     }
     94% {
-      opacity: 0.4;
+      opacity: 0.35;
       transform: scale(0.96);
+      background: transparent;
+      border-color: transparent;
+      box-shadow: none;
+      backdrop-filter: blur(0px);
+      -webkit-backdrop-filter: blur(0px);
     }
     100% {
       opacity: 0;
       transform: scale(0.9);
+      background: transparent;
+      border-color: transparent;
+      box-shadow: none;
+      backdrop-filter: blur(0px);
+      -webkit-backdrop-filter: blur(0px);
     }
   }
   :global(.permanent-track) {
@@ -880,7 +1019,10 @@
     animation: none !important;
     opacity: 1 !important;
     transform: scale(1) !important;
-    border-color: rgba(245, 158, 11, 0.75) !important;
+    background: rgba(15, 23, 42, 0.88) !important;
+    border: 1px solid rgba(245, 158, 11, 0.75) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5), 0 0 12px rgba(245, 158, 11, 0.35) !important;
     text-shadow: 0 0 8px rgba(245, 158, 11, 0.7) !important;
   }

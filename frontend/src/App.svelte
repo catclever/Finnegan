@@ -31,7 +31,7 @@
   let focusNavDirection: 'prev' | 'next' | null = null;
   let omniBarRef: OmniBar, availableCommands: CommandDef[] = [];
   let searchSession: SearchSession = { isActive: false, isConfirmed: false, searchId: '', stashedCards: [], rankedResults: [], color: '' };
-  let searchDebounceTimer: any = null, tideTimer: any = null;
+  let searchDebounceTimer: any = null;
   let activeBuguSession: BuguSession | null = null;
   let activeBuguBeacon: BuguBeacon | null = null;
 
