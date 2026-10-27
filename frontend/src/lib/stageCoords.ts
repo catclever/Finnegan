@@ -10,7 +10,7 @@ export interface StageCoordinates {
 }
 
 export const OMNIBAR_DEADZONE = { halfWidth: 290, halfHeight: 32 };
-export const CARD_CLEARANCE = { dx: 220, dy: 200 };
+export const CARD_CLEARANCE = { dx: 290, dy: 270 };
 export const COMFORT_NORM_DIST = 1.15; // Minimum safe distance threshold for comfortable placement
 
 export interface ScreenZone {

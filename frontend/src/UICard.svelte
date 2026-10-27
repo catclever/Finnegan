@@ -188,14 +188,14 @@
         y: pullY,
         rotation: 0,
         opacity: 1,
-        scale: 1.05,
+        scale: 1.10,
         blur: 0,
         saturation: 1,
         textGray: 32,
         textOpacity: 1,
         rotX: 0,
         rotY: 0,
-        z3d: 120
+        z3d: 180
       });
 
     } else if (!hasAnyFocused && hoveredMotherId !== null && card.echoOf === hoveredMotherId) {
@@ -206,10 +206,10 @@
       const edgeBlur = Math.max(0, Math.min(5, (dist - 400) * 0.025));
 
       const zNorm = Math.max(0, Math.min(1, (card.z || 0) / 100));
-      const uniformScale = 1.08 - (zNorm * 0.44);
-      const z3dVal = (100 - (card.z || 0)) * 1.5 - 50;
+      const uniformScale = Number((0.38 + 0.87 * Math.pow(1 - zNorm, 1.25)).toFixed(3));
+      const z3dVal = (100 - (card.z || 0)) * 3.6 - 180;
 
-      const depthBlur = zNorm > 0.65 ? (zNorm - 0.65) * 6 : 0;
+      const depthBlur = zNorm > 0.60 ? (zNorm - 0.60) * 6 : 0;
       const baseBlur = Math.min(4.5, depthBlur + edgeBlur);
 
       const depthOpacity = 0.96 - (zNorm * 0.32);
@@ -240,10 +240,10 @@
       const edgeBlur = Math.max(0, Math.min(5, (dist - 400) * 0.025));
 
       const zNorm = Math.max(0, Math.min(1, (card.z || 0) / 100));
-      const uniformScale = 1.08 - (zNorm * 0.44);
-      const z3dVal = (100 - (card.z || 0)) * 1.5 - 50;
+      const uniformScale = Number((0.38 + 0.87 * Math.pow(1 - zNorm, 1.25)).toFixed(3));
+      const z3dVal = (100 - (card.z || 0)) * 3.6 - 180;
 
-      const depthBlur = zNorm > 0.65 ? (zNorm - 0.65) * 6 : 0;
+      const depthBlur = zNorm > 0.60 ? (zNorm - 0.60) * 6 : 0;
       const baseBlur = Math.min(4.5, depthBlur + edgeBlur);
 
       const depthOpacity = 0.96 - (zNorm * 0.32);
@@ -350,7 +350,7 @@
     {!isVisible ? 'visibility: hidden; pointer-events: none;' : ''}
   "
 >
-  <CardAuraGlow {card} {hasAura} {auraStage} {conicGradient} {isBuguEcho} {isFocused} />
+  <CardAuraGlow {card} {hasAura} {auraStage} {conicGradient} {isBuguEcho} {isFocused} isRecentVIP={isRecentVIP && !isFocused} {isTemporary} />
 
   <svelte:component
     this={getCardComponent(card.type)}
@@ -425,16 +425,16 @@
   }
 
   .card.inspiration-vip {
-    border: 1.2px solid rgba(245, 158, 11, 0.75) !important;
-    animation: inspiration-breathe 4s ease-in-out infinite;
+    border: 1px solid transparent !important;
+    animation: ink-vip-breathe 4s ease-in-out infinite;
   }
 
-  @keyframes inspiration-breathe {
+  @keyframes ink-vip-breathe {
     0%, 100% {
-      box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.45), 0 0 14px rgba(245, 158, 11, 0.22), 0 8px 24px rgba(0, 0, 0, 0.04);
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.04);
     }
     50% {
-      box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.85), 0 0 24px rgba(245, 158, 11, 0.45), 0 0 45px rgba(245, 158, 11, 0.18), 0 10px 28px rgba(0, 0, 0, 0.06);
+      box-shadow: 0 12px 36px rgba(15, 23, 42, 0.16), 0 0 18px rgba(30, 41, 59, 0.10);
     }
   }
 
