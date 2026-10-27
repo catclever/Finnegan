@@ -18,6 +18,7 @@
   import AttachmentTray from './omnibar/AttachmentTray.svelte';
   import TopActionBanner from './omnibar/TopActionBanner.svelte';
   import CommandDropdown from './omnibar/CommandDropdown.svelte';
+  import TagDropdown from './omnibar/TagDropdown.svelte';
   import CardCandidateDropdown from './omnibar/CardCandidateDropdown.svelte';
   import WritingPaper from './omnibar/WritingPaper.svelte';
   import { isChatLogFormat, extractHashTitle } from '../lib/chatlog';
@@ -57,6 +58,61 @@
   let deleteHighlightIndex: number = -1;
   let isDraggingOver: boolean = false;
   const MAX_IMAGES = 4;
+
+  let tagSelectMode: boolean = false;
+  let tagQuery: string = "";
+  let highlightedTagIndex: number = 0;
+  let tagMatchStart: number = -1;
+
+  $: allAvailableTags = (() => {
+    const set = new Set<string>();
+    for (const c of [...cards, ...localVaultPool]) {
+      if (c.tags && Array.isArray(c.tags)) {
+        for (const t of c.tags) {
+          if (t && t.trim()) set.add(t.trim());
+        }
+      }
+      if (c.keywords && typeof c.keywords === 'object') {
+        for (const list of Object.values(c.keywords)) {
+          if (Array.isArray(list)) {
+            for (const kw of list) {
+              if (kw && kw.trim()) set.add(kw.trim());
+            }
+          }
+        }
+      }
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  })();
+
+  $: matchedTags = tagSelectMode
+    ? (tagQuery === ""
+        ? allAvailableTags.slice(0, 15)
+        : allAvailableTags.filter(t => t.toLowerCase().includes(tagQuery.toLowerCase())).slice(0, 15)
+      )
+    : [];
+
+  function selectTag(tag: string) {
+    if (tagMatchStart < 0) return;
+    const cursorPos = omnibarInputEl?.selectionStart ?? omniText.length;
+    const before = omniText.slice(0, tagMatchStart);
+    const after = omniText.slice(cursorPos);
+    const tagWithFormat = tag.includes(' ') ? tag.replace(/\s+/g, '-') : tag;
+    omniText = `${before}#${tagWithFormat} ${after}`;
+    tagSelectMode = false;
+    tagQuery = "";
+    tagMatchStart = -1;
+
+    setTimeout(() => {
+      if (omnibarInputEl) {
+        const newCursor = (before + `#${tagWithFormat} `).length;
+        omnibarInputEl.setSelectionRange(newCursor, newCursor);
+        omnibarInputEl.focus();
+        omnibarInputEl.style.height = 'auto';
+        omnibarInputEl.style.height = omnibarInputEl.scrollHeight + 'px';
+      }
+    }, 10);
+  }
 
   function addImageFiles(files: FileList | File[]) {
     const fileList = Array.from(files).filter(f => f.type.startsWith('image/'));
@@ -261,6 +317,10 @@
       deleteHighlightIndex = -1;
       return true;
     }
+    if (tagSelectMode) {
+      tagSelectMode = false;
+      return true;
+    }
     if (commandParamMode) {
       if (lockedCard) {
         unlockCard();
@@ -299,12 +359,14 @@
       omnibarInputEl.blur();
     }
     isOmnibarFocused = false;
+    tagSelectMode = false;
   }
 
   export function clearText(): void {
     omniText = "";
     attachedImages = [];
     deleteHighlightIndex = -1;
+    tagSelectMode = false;
     if (omnibarInputEl) {
       omnibarInputEl.style.height = 'auto';
     }
@@ -507,6 +569,32 @@
       }
     }
 
+    // Tag Autocomplete Dropdown Active
+    if (tagSelectMode && matchedTags.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        highlightedTagIndex = (highlightedTagIndex + 1) % matchedTags.length;
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        highlightedTagIndex = (highlightedTagIndex - 1 + matchedTags.length) % matchedTags.length;
+        return;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        if (highlightedTagIndex >= 0 && highlightedTagIndex < matchedTags.length) {
+          selectTag(matchedTags[highlightedTagIndex]);
+        }
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        tagSelectMode = false;
+        return;
+      }
+    }
+
     // Mode 1: Command Selection Dropdown Active
     if (commandSelectMode) {
       if (e.key === 'ArrowDown') {
@@ -658,6 +746,20 @@
     const target = e.target as HTMLTextAreaElement;
     target.style.height = 'auto';
     target.style.height = target.scrollHeight + 'px';
+
+    // Hashtag Autocomplete Detection
+    const cursorPos = target.selectionStart ?? omniText.length;
+    const textBeforeCursor = omniText.slice(0, cursorPos);
+    const hashMatch = textBeforeCursor.match(/(?:^|\s)#([^\s#]*)$/);
+
+    if (hashMatch && !commandParamMode && !commandSelectMode) {
+      tagSelectMode = true;
+      tagQuery = hashMatch[1];
+      tagMatchStart = textBeforeCursor.lastIndexOf('#');
+      highlightedTagIndex = 0;
+    } else {
+      tagSelectMode = false;
+    }
 
     if (!commandParamMode) {
       const spaceIdx = omniText.indexOf(' ');
@@ -878,6 +980,16 @@
       {highlightedCmdIndex}
       onHighlight={(idx) => highlightedCmdIndex = idx}
       onSelect={selectCommand}
+    />
+  {/if}
+
+  <!-- Dropdown: Tag / Hashtag Autocomplete Suggestions -->
+  {#if tagSelectMode && matchedTags.length > 0}
+    <TagDropdown
+      {matchedTags}
+      highlightedIndex={highlightedTagIndex}
+      onHighlight={(idx) => highlightedTagIndex = idx}
+      onSelect={selectTag}
     />
   {/if}
 

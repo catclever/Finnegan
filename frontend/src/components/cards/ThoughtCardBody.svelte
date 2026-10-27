@@ -23,8 +23,10 @@
   export let isFocused: boolean = false;
   export let isHovered: boolean = false;
   export let thoughtTime: string = '';
+  export let babelTime: string = '';
+  export let displayTime: string = '';
 
-  $: displayTime = thoughtTime || getCardDisplayTime(card);
+  $: resolvedDisplayTime = displayTime || thoughtTime || babelTime || getCardDisplayTime(card);
 
   export function formatAssetUrl(url: string): string {
     if (!url) return '';
@@ -93,9 +95,9 @@
 
 <div class="thought-card-body" class:focused={isFocused} class:has-images={hasImages}>
   {#if isFocused}
-    {#if displayTime}
+    {#if resolvedDisplayTime}
       <div class="thought-header">
-        <span class="card-time">{displayTime}</span>
+        <span class="card-time">{resolvedDisplayTime}</span>
       </div>
     {/if}
 
@@ -103,6 +105,14 @@
     {#if card && card.content}
       <div class="thought-content focused" class:has-images={hasImages}>
         <MarkdownContent content={card.content} isFocused={true} />
+      </div>
+    {/if}
+
+    {#if card && card.tags && card.tags.length > 0}
+      <div class="thought-tags focused">
+        {#each card.tags as tag}
+          <span class="thought-tag focused">#{tag}</span>
+        {/each}
       </div>
     {/if}
 
@@ -170,9 +180,17 @@
       </div>
     {/if}
 
-    {#if displayTime}
+    {#if card && card.tags && card.tags.length > 0}
+      <div class="thought-tags">
+        {#each card.tags as tag}
+          <span class="thought-tag">#{tag}</span>
+        {/each}
+      </div>
+    {/if}
+
+    {#if resolvedDisplayTime}
       <div class="thought-footer">
-        <span class="card-time">{displayTime}</span>
+        <span class="card-time">{resolvedDisplayTime}</span>
       </div>
     {/if}
   {/if}
@@ -188,6 +206,7 @@
     z-index: 1;
     overflow: hidden;
     text-align: left;
+    color: var(--card-text-color, #1e293b);
   }
 
   .thought-card-body.focused {
@@ -227,6 +246,38 @@
     flex-shrink: 0;
     position: relative;
     z-index: 2;
+  }
+
+  .thought-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+    margin-bottom: 2px;
+  }
+
+  .thought-tags.focused {
+    margin-top: 8px;
+    margin-bottom: 8px;
+    gap: 6px;
+  }
+
+  .thought-tag {
+    font-size: 10px;
+    font-weight: 500;
+    color: #0284c7;
+    background: rgba(56, 189, 248, 0.12);
+    padding: 1px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.02em;
+    user-select: none;
+    white-space: nowrap;
+  }
+
+  .thought-tag.focused {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 6px;
   }
 
   .card-time {
@@ -380,6 +431,11 @@
     max-height: none;
     overflow: visible !important;
     text-align: left;
+    color: var(--card-text-color, #1e293b);
+  }
+
+  .thought-content.focused.has-images {
+    margin-bottom: 12px;
   }
 
 </style>

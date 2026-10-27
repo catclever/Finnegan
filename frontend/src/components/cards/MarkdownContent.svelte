@@ -16,13 +16,14 @@
   .markdown-content {
     font-family: inherit;
     line-height: 1.5;
-    color: inherit;
+    color: var(--card-text-color, #1e293b);
     word-break: break-word;
   }
 
   /* Shared styles for both focused and scattered */
   :global(.markdown-content strong) {
     font-weight: 600;
+    color: var(--card-text-color, #0f172a);
   }
 
   :global(.markdown-content em) {
@@ -31,7 +32,8 @@
 
   :global(.markdown-content code) {
     font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.06);
+    color: #0f172a;
     padding: 2px 4px;
     border-radius: 4px;
     font-size: 0.9em;
@@ -40,40 +42,42 @@
   /* Focused mode styles */
   .markdown-content.focused {
     font-size: 14px;
+    color: var(--card-text-color, #1e293b);
+  }
+
+  :global(.markdown-content.focused h1),
+  :global(.markdown-content.focused h2),
+  :global(.markdown-content.focused h3),
+  :global(.markdown-content.focused h4),
+  :global(.markdown-content.focused h5),
+  :global(.markdown-content.focused h6) {
+    font-weight: 600;
+    margin: 1em 0 0.5em;
+    line-height: 1.3;
+    color: var(--card-text-color, #0f172a);
   }
 
   :global(.markdown-content.focused h1) {
     font-size: 1.5em;
-    font-weight: 600;
-    margin: 1em 0 0.5em;
-    line-height: 1.3;
   }
 
   :global(.markdown-content.focused h2) {
     font-size: 1.3em;
-    font-weight: 600;
-    margin: 1em 0 0.5em;
-    line-height: 1.3;
   }
 
   :global(.markdown-content.focused h3) {
     font-size: 1.1em;
-    font-weight: 600;
-    margin: 1em 0 0.5em;
-    line-height: 1.3;
   }
 
   :global(.markdown-content.focused h4),
   :global(.markdown-content.focused h5),
   :global(.markdown-content.focused h6) {
     font-size: 1em;
-    font-weight: 600;
-    margin: 1em 0 0.5em;
-    line-height: 1.3;
   }
 
   :global(.markdown-content.focused p) {
     margin: 0 0 1em;
+    color: var(--card-text-color, #1e293b);
   }
 
   :global(.markdown-content.focused p:last-child) {
@@ -81,7 +85,7 @@
   }
 
   :global(.markdown-content.focused a) {
-    color: #8ab4f8;
+    color: #2563eb;
     text-decoration: none;
   }
 
@@ -93,6 +97,7 @@
   :global(.markdown-content.focused ol) {
     margin: 0 0 1em;
     padding-left: 20px;
+    color: var(--card-text-color, #1e293b);
   }
 
   :global(.markdown-content.focused li) {
@@ -102,10 +107,10 @@
   :global(.markdown-content.focused blockquote) {
     margin: 0 0 1em;
     padding: 0.5em 1em;
-    border-left: 4px solid rgba(255, 255, 255, 0.2);
-    background: rgba(255, 255, 255, 0.05);
+    border-left: 3px solid rgba(0, 0, 0, 0.18);
+    background: rgba(0, 0, 0, 0.03);
     border-radius: 0 4px 4px 0;
-    color: rgba(255, 255, 255, 0.8);
+    color: rgba(30, 30, 30, 0.85);
   }
 
   :global(.markdown-content.focused blockquote p:last-child) {
@@ -113,17 +118,19 @@
   }
 
   :global(.markdown-content.focused pre) {
-    background: rgba(0, 0, 0, 0.2);
+    background: rgba(0, 0, 0, 0.04);
     padding: 1em;
     border-radius: 6px;
     overflow-x: auto;
     margin: 0 0 1em;
+    color: #1e293b;
   }
 
   :global(.markdown-content.focused pre code) {
     background: transparent;
     padding: 0;
     font-size: 0.9em;
+    color: inherit;
   }
 
   /* Scattered mode (compact) styles */
@@ -173,7 +180,7 @@
   :global(.markdown-content:not(.focused) blockquote) {
     display: inline;
     font-style: italic;
-    color: rgba(255, 255, 255, 0.7);
+    color: rgba(30, 30, 30, 0.75);
     border-left: none;
     background: transparent;
   }
@@ -193,8 +200,10 @@
   }
 
   :global(.markdown-content:not(.focused) pre code) {
-    background: rgba(255, 255, 255, 0.1);
-    padding: 2px 4px !important;
+    background: rgba(0, 0, 0, 0.06);
+    color: #0f172a;
+    padding: 1px 3px;
+    border-radius: 3px;
   }
 
   :global(.markdown-content:not(.focused) br) {

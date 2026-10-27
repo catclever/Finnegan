@@ -46,6 +46,7 @@ type Card struct {
 	EndedAt        *time.Time          `json:"endedAt,omitempty"`
 	FilePath       string              `json:"filePath,omitempty"`
 	Keywords       map[string][]string `json:"keywords,omitempty"`
+	Tags           []string            `json:"tags,omitempty"`
 }
 
 // TempCardTTL defines the maximum macro in-memory lifetime for temporary network cards (24 hours).

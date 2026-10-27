@@ -27,6 +27,8 @@ export function ExecuteModuleCommand(arg1:string,arg2:Record<string, any>):Promi
 
 export function ExtractCardKeywords(arg1:string,arg2:string,arg3:string):Promise<void>;
 
+export function GetAvailableTags():Promise<Array<string>>;
+
 export function GetKeywordEngine():Promise<keywords.KeywordEngine>;
 
 export function GetNote(arg1:string):Promise<string>;

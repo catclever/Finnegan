@@ -49,6 +49,7 @@ func ParseCardFile(filePath string) (*Card, error) {
 				Created      string              `yaml:"created"`
 				Images       []string            `yaml:"images"`
 				Keywords     map[string][]string `yaml:"keywords"`
+				Tags         []string            `yaml:"tags"`
 			}
 			if err := yaml.Unmarshal([]byte(parts[1]), &fm); err == nil {
 				if fm.ID != "" {
@@ -87,6 +88,9 @@ func ParseCardFile(filePath string) (*Card, error) {
 				}
 				if len(fm.Keywords) > 0 {
 					card.Keywords = fm.Keywords
+				}
+				if len(fm.Tags) > 0 {
+					card.Tags = fm.Tags
 				}
 			} else {
 				var rawMeta map[string]any
@@ -158,4 +162,34 @@ func (a *App) LoadLocalCards() []Card {
 	})
 
 	return localCards
+}
+
+// GetAvailableTags returns a deduplicated, sorted slice of all tags and keywords in the local vault.
+func (a *App) GetAvailableTags() []string {
+	cards := a.LoadLocalCards()
+	tagSet := make(map[string]bool)
+
+	for _, c := range cards {
+		for _, t := range c.Tags {
+			t = strings.TrimSpace(t)
+			if t != "" {
+				tagSet[t] = true
+			}
+		}
+		for _, kwList := range c.Keywords {
+			for _, kw := range kwList {
+				kw = strings.TrimSpace(kw)
+				if kw != "" {
+					tagSet[kw] = true
+				}
+			}
+		}
+	}
+
+	tags := make([]string, 0, len(tagSet))
+	for t := range tagSet {
+		tags = append(tags, t)
+	}
+	sort.Strings(tags)
+	return tags
 }

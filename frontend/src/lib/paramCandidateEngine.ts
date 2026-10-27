@@ -188,7 +188,7 @@ export function rankSearchCandidates(
       x: 0, y: 0, rotation: 0, z: 50,
       keywords: r.keywords || r.Keywords,
       spawnTime: 0, decayDuration: 0, isFresh: false, isVIP: false,
-      origin: r.type === 'babel' ? 'bugu' : 'local'
+      origin: ((r as any).origin || 'local') as 'manual' | 'bugu' | 'local'
     };
 
     if (!filterCandidateCard(cardObj, spec)) continue;

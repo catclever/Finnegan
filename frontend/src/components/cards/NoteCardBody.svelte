@@ -20,9 +20,11 @@
   export let isFocused: boolean = false;
   export let isHovered: boolean = false;
   export let thoughtTime: string = '';
+  export let babelTime: string = '';
+  export let displayTime: string = '';
 
   $: title = card?.title && card.title !== 'Thought' && card.title !== 'Card' && card.title !== 'Note' ? card.title : '';
-  $: displayTime = thoughtTime || formatPointTime(card?.createdAt || card?.spawnTime) || getCardDisplayTime(card);
+  $: resolvedDisplayTime = displayTime || thoughtTime || babelTime || formatPointTime(card?.createdAt || card?.spawnTime) || getCardDisplayTime(card);
 </script>
 
 <div class="note-card-body" class:focused={isFocused} class:hovered={isHovered}>
@@ -31,8 +33,8 @@
     <header class="note-focused-header">
       <div class="note-header-top">
         <span class="note-badge" title="Note">📝</span>
-        {#if displayTime}
-          <span class="card-time">{displayTime}</span>
+        {#if resolvedDisplayTime}
+          <span class="card-time">{resolvedDisplayTime}</span>
         {/if}
       </div>
       {#if title}
@@ -56,9 +58,9 @@
       <div class="note-snippet">
         <MarkdownContent content={card?.content || ''} isFocused={false} />
       </div>
-      {#if displayTime}
+      {#if resolvedDisplayTime}
         <div class="note-footer">
-          <span class="card-time">{displayTime}</span>
+          <span class="card-time">{resolvedDisplayTime}</span>
         </div>
       {/if}
     </div>

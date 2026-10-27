@@ -192,6 +192,7 @@ export namespace main {
 	    endedAt?: any;
 	    filePath?: string;
 	    keywords?: Record<string, Array<string>>;
+	    tags?: string[];
 	
 	    static createFrom(source: any = {}) {
 	        return new Card(source);
@@ -219,6 +220,7 @@ export namespace main {
 	        this.endedAt = this.convertValues(source["endedAt"], null);
 	        this.filePath = source["filePath"];
 	        this.keywords = source["keywords"];
+	        this.tags = source["tags"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

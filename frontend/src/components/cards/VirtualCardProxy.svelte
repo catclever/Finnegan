@@ -1,14 +1,15 @@
 <script lang="ts">
   import type { CosmicCard } from '../../types/card';
-  import BabelCardBody from './BabelCardBody.svelte';
-  import ChatLogCardBody from './ChatLogCardBody.svelte';
-  import NoteCardBody from './NoteCardBody.svelte';
-  import ThoughtCardBody from './ThoughtCardBody.svelte';
+  import { getCardComponent } from './cardRegistry';
   import { getCardDisplayTime } from '../../lib/time';
   import { createEventDispatcher } from 'svelte';
 
   export let cards: CosmicCard[] = [];
   export let isStackDeck: boolean = false;
+  export let isOnTop: boolean = false;
+  export let scrollExpansion: number = 0;
+  export let globalTilt: { rx: number, ry: number } = { rx: 0, ry: 0 };
+  export let isFocusedMode: boolean = false;
 
   const dispatch = createEventDispatcher();
   let activeIndex = 0;
@@ -36,13 +37,29 @@
     return getCardDisplayTime(c);
   }
 
-  function handleCardClick(card: CosmicCard) {
+  function handleCardClick(e: MouseEvent, card: CosmicCard) {
+    e.stopPropagation();
     dispatch('cardClick', card);
+  }
+
+  function handleCardDblClick(e: MouseEvent, card: CosmicCard) {
+    e.stopPropagation();
+    dispatch('cardDblClick', card);
   }
 </script>
 
 {#if cards.length > 0}
-<div class="virtual-proxy-wrapper" class:is-stack={isStackDeck}>
+<div 
+  class="virtual-proxy-wrapper" 
+  class:is-stack={isStackDeck}
+  class:is-on-top={isOnTop}
+  style="
+    transform: translateY({scrollExpansion * 300}px) 
+               translateZ({isFocusedMode ? (isOnTop ? 125 : 116) : 125}px)
+               {isFocusedMode ? '' : `rotateX(${-globalTilt.rx}deg) rotateY(${-globalTilt.ry}deg)`};
+    z-index: {isFocusedMode ? (isOnTop ? 1005 : 995) : 1005};
+  "
+>
   {#each cards as card, i}
     {@const zIndex = cards.length - i}
     {@const offset = i * 8}
@@ -58,27 +75,28 @@
       style="z-index: {isStackDeck ? (i === activeIndex ? 10 : zIndex) : 1};
              transform: {isStackDeck && i !== activeIndex ? `translate(${offset}px, ${offset}px) scale(${scale})` : 'none'};
              opacity: {isStackDeck && i !== activeIndex ? opacity : (i === activeIndex ? 1 : 0)};"
-      on:click={() => handleCardClick(card)}
+      on:click={(e) => handleCardClick(e, card)}
+      on:dblclick={(e) => handleCardDblClick(e, card)}
     >
       <div class="virtual-card-content">
-        {#if card.type === 'babel'}
-          <BabelCardBody {card} isFocused={true} babelTime={getTime(card)} />
-        {:else if card.type === 'chat_log'}
-          <ChatLogCardBody {card} isFocused={true} thoughtTime={getTime(card)} />
-        {:else if card.type === 'note'}
-          <NoteCardBody {card} isFocused={true} thoughtTime={getTime(card)} />
-        {:else}
-          <ThoughtCardBody {card} isFocused={true} thoughtTime={getTime(card)} />
-        {/if}
+        <svelte:component
+          this={getCardComponent(card.type)}
+          {card}
+          isFocused={true}
+          isHovered={false}
+          thoughtTime={getTime(card)}
+          babelTime={getTime(card)}
+          displayTime={getTime(card)}
+        />
       </div>
 
       {#if isStackDeck && hasMultiple && i === activeIndex}
         <div class="deck-controls" on:click|stopPropagation>
-          <button on:click={handlePrev}>
+          <button on:click={handlePrev} title="上一张">
             <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><polyline points="15 18 9 12 15 6"></polyline></svg>
           </button>
           <span>{activeIndex + 1} / {cards.length}</span>
-          <button on:click={handleNext}>
+          <button on:click={handleNext} title="下一张">
             <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><polyline points="9 18 15 12 9 6"></polyline></svg>
           </button>
         </div>
@@ -95,8 +113,10 @@
     right: 40px;
     width: 320px;
     height: 320px;
-    z-index: 1000;
+    pointer-events: auto;
     perspective: 1000px;
+    transform-style: preserve-3d;
+    transition: box-shadow 0.28s ease;
   }
 
   .virtual-card {
@@ -105,21 +125,29 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.9);
     border-radius: 20px;
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.6) inset;
     overflow: hidden;
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
     display: flex;
     flex-direction: column;
     cursor: pointer;
+    pointer-events: auto;
+    color: #1e293b;
+    --card-text-color: #1e293b;
+    --card-text-secondary: rgba(60, 60, 60, 0.75);
+  }
+
+  .virtual-proxy-wrapper.is-on-top .virtual-card {
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18), 0 0 0 1.5px rgba(245, 158, 11, 0.5) inset;
   }
 
   .virtual-card:hover {
-    transform: translateY(-4px) scale(1.02) !important;
+    transform: translateY(-3px) scale(1.015) !important;
     box-shadow: 0 20px 48px rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(255, 255, 255, 0.8) inset;
   }
 
@@ -137,10 +165,27 @@
     transform-origin: top left;
     display: flex;
     flex-direction: column;
-    /* Mimic the focused card padding and styles */
     padding: 26px 36px;
     box-sizing: border-box;
-    pointer-events: none;
+    pointer-events: auto;
+    color: #1e293b;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .virtual-card-content::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
+  :global(.virtual-card-content .gallery-image) {
+    max-height: 180px;
+    object-fit: contain;
+    width: auto;
+    margin: 0 auto;
   }
 
   .deck-controls {

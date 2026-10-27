@@ -33,7 +33,7 @@
     }> = [];
 
     for (const child of cards) {
-      if (child.type === 'babel' && child.echoOf && !child.isFadingOut) {
+      if (child.origin === 'bugu' && child.echoOf && !child.isFadingOut) {
         const mother = cards.find(
           c => c.id === child.echoOf && !c.isFadingOut
         );

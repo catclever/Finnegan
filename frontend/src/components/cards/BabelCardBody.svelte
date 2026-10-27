@@ -11,7 +11,10 @@
 
   export let card: any;
   export let isFocused: boolean = false;
+  export let isHovered: boolean = false;
   export let babelTime: string = '';
+  export let thoughtTime: string = '';
+  export let displayTime: string = '';
 
   function getHostname(url: string | undefined): string {
     if (!url) return '';
@@ -44,10 +47,10 @@
     if (el) el.style.display = 'none';
   }
 
-  $: displayTime = babelTime || getCardDisplayTime(card);
+  $: resolvedDisplayTime = displayTime || babelTime || thoughtTime || getCardDisplayTime(card);
 </script>
 
-<div class="babel-card-body" class:focused={isFocused}>
+<div class="babel-card-body" class:focused={isFocused} class:hovered={isHovered}>
   <div class="babel-header">
     <div class="header-left">
       {#if card.sourceUrl}
@@ -93,8 +96,8 @@
       {/if}
     </div>
 
-    {#if displayTime}
-      <span class="card-time">{displayTime}</span>
+    {#if resolvedDisplayTime}
+      <span class="card-time">{resolvedDisplayTime}</span>
     {/if}
   </div>
 </div>

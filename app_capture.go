@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -39,6 +40,38 @@ func sanitizeSlug(s string) string {
 		return strings.TrimRight(string(runes[:20]), "._ ")
 	}
 	return s
+}
+
+// ExtractHashtags extracts clean hashtags from text.
+// Supports Chinese characters, letters, digits, underscores, hyphens, and dots.
+// Matches tokens like #tag, #WebKitGTK, #跨平台UI, #v1.0
+func ExtractHashtags(text string) []string {
+	re := regexp.MustCompile(`#([\p{L}\p{N}_\-\.]+)`)
+	matches := re.FindAllStringSubmatch(text, -1)
+	seen := make(map[string]bool)
+	var tags []string
+	for _, m := range matches {
+		if len(m) > 1 {
+			tag := strings.TrimSpace(m[1])
+			tag = strings.TrimRight(tag, ".,!?;:")
+			if tag != "" && !seen[tag] {
+				seen[tag] = true
+				tags = append(tags, tag)
+			}
+		}
+	}
+	return tags
+}
+
+func formatTagsYAML(tags []string) string {
+	if len(tags) == 0 {
+		return "[]"
+	}
+	var parts []string
+	for _, t := range tags {
+		parts = append(parts, fmt.Sprintf("%q", t))
+	}
+	return fmt.Sprintf("[%s]", strings.Join(parts, ", "))
 }
 
 func (a *App) CaptureThought(text string) (string, error) {
@@ -81,9 +114,10 @@ func (a *App) CaptureThought(text string) (string, error) {
 	}
 
 	docID := ulid.Make().String()
+	tags := ExtractHashtags(text)
 
-	contentStr := fmt.Sprintf("---\nid: %s\ntype: thought\ncreated: %s\nupdated: %s\nsource: local\ntags: []\npublish: false\n---\n\n%s\n",
-		docID, now.Format(time.RFC3339), now.Format(time.RFC3339), text)
+	contentStr := fmt.Sprintf("---\nid: %s\ntype: thought\ncreated: %s\nupdated: %s\nsource: local\ntags: %s\npublish: false\n---\n\n%s\n",
+		docID, now.Format(time.RFC3339), now.Format(time.RFC3339), formatTagsYAML(tags), text)
 
 	err := watcher.GetWatcher().WriteFile(targetPath, []byte(contentStr), "capture")
 	if err != nil {
@@ -97,6 +131,7 @@ func (a *App) CaptureThought(text string) (string, error) {
 			FilePath:   targetPath,
 			Text:       text,
 			CapturedAt: now,
+			Tags:       tags,
 		},
 	})
 
@@ -154,6 +189,7 @@ func (a *App) CaptureNote(text string) (string, error) {
 	}
 
 	docID := ulid.Make().String()
+	tags := ExtractHashtags(text)
 
 	var sb strings.Builder
 	sb.WriteString("---\n")
@@ -165,6 +201,7 @@ func (a *App) CaptureNote(text string) (string, error) {
 	sb.WriteString(fmt.Sprintf("created: %s\n", now.Format(time.RFC3339)))
 	sb.WriteString(fmt.Sprintf("updated: %s\n", now.Format(time.RFC3339)))
 	sb.WriteString("source: local\n")
+	sb.WriteString(fmt.Sprintf("tags: %s\n", formatTagsYAML(tags)))
 	sb.WriteString("publish: false\n")
 	sb.WriteString("---\n\n")
 	sb.WriteString(body)
@@ -184,6 +221,7 @@ func (a *App) CaptureNote(text string) (string, error) {
 			Text:       body,
 			Type:       "note",
 			CapturedAt: now,
+			Tags:       tags,
 		},
 	})
 
@@ -350,6 +388,7 @@ func (a *App) CaptureThoughtWithImages(text string, images []ImagePayload) (stri
 	}
 
 	docID := ulid.Make().String()
+	tags := ExtractHashtags(text)
 
 	var sb strings.Builder
 	sb.WriteString("---\n")
@@ -358,7 +397,7 @@ func (a *App) CaptureThoughtWithImages(text string, images []ImagePayload) (stri
 	sb.WriteString(fmt.Sprintf("created: %s\n", now.Format(time.RFC3339)))
 	sb.WriteString(fmt.Sprintf("updated: %s\n", now.Format(time.RFC3339)))
 	sb.WriteString("source: local\n")
-	sb.WriteString("tags: []\n")
+	sb.WriteString(fmt.Sprintf("tags: %s\n", formatTagsYAML(tags)))
 	sb.WriteString("publish: false\n")
 	if len(savedImageNames) > 0 {
 		sb.WriteString("images:\n")
@@ -387,6 +426,7 @@ func (a *App) CaptureThoughtWithImages(text string, images []ImagePayload) (stri
 			Text:       text,
 			CapturedAt: now,
 			Images:     savedImageNames,
+			Tags:       tags,
 		},
 	})
 

@@ -175,6 +175,13 @@
 
   $: isProxyStackDeck = focusedMotherChildrenDeck.length > 0;
 
+  let isVirtualCardOnTop: boolean = false;
+  let lastFocusedCardId: string | null = null;
+  $: if (focusedCardId !== lastFocusedCardId) {
+    lastFocusedCardId = focusedCardId;
+    isVirtualCardOnTop = false;
+  }
+
   $: hasCardsBelow = cards.some(c => !c.isFadingOut && (c.y - scrollExpansion * 300) > 280);
   $: hasCardsAbove = scrollExpansion > 0.15;
 
@@ -289,10 +296,32 @@
         isFocused={focusedCardId === card.id}
         isHovered={hoveredCardId === card.id}
         onToggleFocus={() => handleToggleFocus(card.id)}
+        onFocusedClick={() => { isVirtualCardOnTop = false; }}
         onHover={() => handleHover(card.id)}
         onLeave={handleLeave}
       />
     {/each}
+
+    {#if proxyCardsToRender.length > 0}
+      <VirtualCardProxy
+        cards={proxyCardsToRender}
+        isStackDeck={isProxyStackDeck}
+        isOnTop={isVirtualCardOnTop}
+        scrollExpansion={scrollExpansion}
+        globalTilt={globalTilt}
+        isFocusedMode={focusedCardId !== null}
+        on:cardClick={(e) => {
+          if (focusedCardId !== null) {
+            isVirtualCardOnTop = true;
+          } else {
+            handleToggleFocus(e.detail.id);
+          }
+        }}
+        on:cardDblClick={(e) => {
+          handleToggleFocus(e.detail.id);
+        }}
+      />
+    {/if}
   </div>
 
   <!-- 3 Vertically Arranged Pulsating Dots for Directional Overflow Cue -->
@@ -305,15 +334,6 @@
     <span class="scroll-dot dot-2"></span>
     <span class="scroll-dot dot-3"></span>
   </div>
-
-
-  {#if proxyCardsToRender.length > 0}
-    <VirtualCardProxy
-      cards={proxyCardsToRender}
-      isStackDeck={isProxyStackDeck}
-      on:cardClick={(e) => handleToggleFocus(e.detail.id)}
-    />
-  {/if}
 
 </div>
 

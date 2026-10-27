@@ -151,7 +151,7 @@ export function calculateSpatialPlacement(
       z = Number((1.5 + Math.random() * 3.5).toFixed(1)); // z: 1.5 ~ 5.0
     } else if (candidate.isSearchResult) {
       z = Math.random() * 15;
-    } else if (candidate.origin === 'bugu' || candidate.type === 'babel' || candidate.macroExpiresAt) {
+    } else if (candidate.origin === 'bugu' || candidate.macroExpiresAt) {
       const now = Date.now();
       let ratio = 1;
       if (candidate.macroExpiresAt) {

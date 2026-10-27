@@ -20,6 +20,8 @@
   export let isFocused: boolean = false;
   export let isHovered: boolean = false;
   export let thoughtTime: string = '';
+  export let babelTime: string = '';
+  export let displayTime: string = '';
   export let isEnriching: boolean = false;
 
   export function formatAssetUrl(url: string): string {
@@ -43,8 +45,8 @@
   $: turns = parseDialogue(card?.content || '');
   $: title = card?.title && card.title !== 'Thought' && card.title !== 'Card' && card.title !== 'Babel Echo' ? card.title : '';
   $: participants = Array.isArray(card?.participants) ? card.participants : [];
-  $: timeStr = formatIntervalTime(card?.startedAt, card?.endedAt) || thoughtTime;
-  $: scatterTime = formatPointTime(card?.startedAt || card?.createdAt || card?.spawnTime);
+  $: timeStr = displayTime || formatIntervalTime(card?.startedAt, card?.endedAt) || thoughtTime || babelTime;
+  $: scatterTime = displayTime || formatPointTime(card?.startedAt || card?.createdAt || card?.spawnTime) || thoughtTime || babelTime;
 
   $: rawImages = card?.images || (card as any)?.Images || [];
   $: images = (Array.isArray(rawImages) ? rawImages : [rawImages])

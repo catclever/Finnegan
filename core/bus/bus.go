@@ -45,6 +45,7 @@ type EventThoughtCapturedData struct {
 	Participants []string   `json:"Participants,omitempty"`
 	StartedAt    *time.Time `json:"StartedAt,omitempty"`
 	EndedAt      *time.Time `json:"EndedAt,omitempty"`
+	Tags         []string   `json:"Tags,omitempty"`
 }
 
 type Event struct {

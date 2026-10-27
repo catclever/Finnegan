@@ -88,3 +88,18 @@ func TestCardManager_EvictTempCard(t *testing.T) {
 		t.Fatal("expected tempCards to be empty after eviction")
 	}
 }
+
+func TestExtractHashtags(t *testing.T) {
+	text := "今天测试了 #WebKitGTK 4.1 和 #跨平台UI, 以及 #v1.0.0。顺便体验了 #松弛感！"
+	tags := ExtractHashtags(text)
+
+	expected := []string{"WebKitGTK", "跨平台UI", "v1.0.0", "松弛感"}
+	if len(tags) != len(expected) {
+		t.Fatalf("expected %d tags, got %d: %v", len(expected), len(tags), tags)
+	}
+	for i, exp := range expected {
+		if tags[i] != exp {
+			t.Errorf("expected tag %d to be %q, got %q", i, exp, tags[i])
+		}
+	}
+}

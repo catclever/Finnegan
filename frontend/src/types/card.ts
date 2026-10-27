@@ -11,6 +11,15 @@ export interface AuraTrace {
 
 export type CardType = 'thought' | 'babel' | 'chat_log' | 'local' | 'note' | string;
 
+export interface CardTypeDefinition {
+  type: string;
+  name: string;
+  description?: string;
+  isDefault?: boolean;
+  defaultTitle?: string;
+  icon?: string;
+}
+
 export interface DialogueTurn {
   speaker: string;
   lines: string[];
@@ -40,6 +49,7 @@ export interface CosmicCard {
   z: number;
   images?: string[];
   keywords?: Record<string, string[]>;
+  tags?: string[];
   isEnriching?: boolean;     // True when card title/metadata is being derived by LLM
   filePath?: string;
 

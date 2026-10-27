@@ -42,6 +42,10 @@ export function ExtractCardKeywords(arg1, arg2, arg3) {
   return window['go']['main']['App']['ExtractCardKeywords'](arg1, arg2, arg3);
 }
 
+export function GetAvailableTags() {
+  return window['go']['main']['App']['GetAvailableTags']();
+}
+
 export function GetKeywordEngine() {
   return window['go']['main']['App']['GetKeywordEngine']();
 }

@@ -477,7 +477,7 @@
     GetRegisteredCommands().then(cmds => { if (Array.isArray(cmds)) availableCommands = cmds; }).catch(console.warn);
 
     Promise.all([LoadLocalCards(), GetTempCards()]).then(([localCards, tempCards]) => {
-      if (tempCards?.length) memoryPool = tempCards.map(c => ({ ...toCosmicCard(c, 'babel', 'bugu', MACRO_TTL_MS), isFresh: false, spawnTime: 0, decayDuration: 0, z: 50 }));
+      if (tempCards?.length) memoryPool = tempCards.map(c => ({ ...toCosmicCard(c, c.type || 'babel', (c as any).origin || 'bugu', MACRO_TTL_MS), isFresh: false, spawnTime: 0, decayDuration: 0, z: 50 }));
       if (localCards?.length) localVaultPool = localCards.map(c => ({ ...toCosmicCard(c, c.type || 'thought', 'local'), isFresh: false, spawnTime: 0, decayDuration: 0, z: 50 }));
       replenishStage();
     }).catch(err => console.error("loadCards error:", err));
@@ -545,7 +545,7 @@
       if (expiredCards.length > 0) {
         memoryPool = memoryPool.filter(c => !c.macroExpiresAt || c.macroExpiresAt > now);
         for (const ec of expiredCards) {
-          if (ec.origin === 'bugu' || ec.type === 'babel') {
+          if (ec.origin === 'bugu') {
             EvictTempCard(ec.id).catch(() => {});
           }
         }

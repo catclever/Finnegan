@@ -1,5 +1,6 @@
 import type { CosmicCard, SearchSession } from '../types/card';
 import { calculateSpatialPlacement } from './stageCoords';
+import { getCardDefaultTitle } from './cardRegistry.ts';
 
 // --- Cosmic Stage Configuration Constants ---
 export const BASE_CAPACITY = 10;                      // Base single-screen card count (8~12)
@@ -29,7 +30,7 @@ export function toCosmicCard(
   let title = c.title || c.Title;
   if (!title || title === 'Thought') {
     const firstLine = rawContent.split('\n')[0].replace(/^[#\s\-*]+/, '').trim();
-    title = firstLine ? (firstLine.length > 20 ? firstLine.slice(0, 20) + '...' : firstLine) : (type === 'babel' ? 'Babel Echo' : 'Thought');
+    title = firstLine ? (firstLine.length > 20 ? firstLine.slice(0, 20) + '...' : firstLine) : getCardDefaultTitle(type);
   }
   const rawImages = c.images || c.Images;
   const images = rawImages ? (Array.isArray(rawImages) ? rawImages : [rawImages]) : undefined;
@@ -53,10 +54,11 @@ export function toCosmicCard(
     echoReason: c.echoReason || c.EchoReason || c.echo_reason || '',
     images,
     keywords: c.keywords || c.Keywords,
+    tags: c.tags || c.Tags || [],
     isEnriching: c.isEnriching !== undefined ? c.isEnriching : false,
     filePath: c.filePath || c.FilePath || '',
     x: 0, y: 0, rotation: 0, z: 50,
-    spawnTime: Date.now(), decayDuration: BASE_STAGE_DECAY_MS, isFresh: true, isVIP: false, origin,
+    spawnTime: Date.now(), decayDuration: BASE_STAGE_DECAY_MS, isFresh: true, isVIP: false, origin: c.origin || origin,
     macroExpiresAt: ttl ? Date.now() + ttl : undefined
   };
 }

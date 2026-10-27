@@ -7,10 +7,7 @@
 <script lang="ts">
   import { spring } from 'svelte/motion';
   import { getCardDisplayTime } from './lib/time';
-  import ThoughtCardBody from './components/cards/ThoughtCardBody.svelte';
-  import ChatLogCardBody from './components/cards/ChatLogCardBody.svelte';
-  import NoteCardBody from './components/cards/NoteCardBody.svelte';
-  import BabelCardBody from './components/cards/BabelCardBody.svelte';
+  import { getCardComponent } from './components/cards/cardRegistry';
   import CardAuraGlow from './components/cards/CardAuraGlow.svelte';
   import { OpenCardInEditor } from '../wailsjs/go/main/App.js';
 
@@ -22,6 +19,7 @@
   export let hasAnyFocused: boolean = false;
   export let isHovered: boolean = false;
   export let onToggleFocus: () => void;
+  export let onFocusedClick: (() => void) | undefined = undefined;
   export let onHover: () => void;
   export let onLeave: () => void;
   export let focusNavDirection: 'prev' | 'next' | null = null;
@@ -99,8 +97,8 @@
     return `conic-gradient(from 0deg, ${stops.join(', ')}, ${colors[0]} 360deg)`;
   })();
 
-  $: isBuguEcho = card.type === 'babel' && Boolean(card.echoOf);
-  $: isTemporary = card.origin === 'bugu' || card.type === 'babel';
+  $: isBuguEcho = card.origin === 'bugu' && Boolean(card.echoOf);
+  $: isTemporary = card.origin === 'bugu' || Boolean(card.macroExpiresAt);
   $: isRecentVIP = Boolean(
     card.isVIP &&
     !hasAura &&
@@ -272,8 +270,9 @@
     }
   }
 
-  $: babelTime = card.type === 'babel' ? getCardDisplayTime(card) : '';
-  $: thoughtTime = card.type !== 'babel' ? getCardDisplayTime(card) : '';
+  $: displayTime = getCardDisplayTime(card);
+  $: babelTime = displayTime;
+  $: thoughtTime = displayTime;
 
   let focusedAt = 0;
   $: if (isFocused) {
@@ -308,6 +307,8 @@
     }
     if (!isFocused) {
       onToggleFocus();
+    } else {
+      if (onFocusedClick) onFocusedClick();
     }
   }
 </script>
@@ -351,15 +352,15 @@
 >
   <CardAuraGlow {card} {hasAura} {auraStage} {conicGradient} {isBuguEcho} {isFocused} />
 
-  {#if card.type === 'babel'}
-    <BabelCardBody {card} {isFocused} {babelTime} />
-  {:else if card.type === 'chat_log'}
-    <ChatLogCardBody {card} {isFocused} {isHovered} {thoughtTime} />
-  {:else if card.type === 'note'}
-    <NoteCardBody {card} {isFocused} {isHovered} {thoughtTime} />
-  {:else}
-    <ThoughtCardBody {card} {isFocused} {isHovered} {thoughtTime} />
-  {/if}
+  <svelte:component
+    this={getCardComponent(card.type)}
+    {card}
+    {isFocused}
+    {isHovered}
+    {thoughtTime}
+    {babelTime}
+    {displayTime}
+  />
 </div>
 
 <style>
