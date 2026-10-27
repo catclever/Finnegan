@@ -19,10 +19,13 @@
   import { createBuguSessionController } from './modules/bugu/buguSession';
   import { createStageActivityController } from './lib/stageActivity';
   import { createOptimisticChatLogCard, reconcileChatLogCard, rollbackOptimisticCard, createNoteCard, mergeCapturedThought } from './lib/cardCapture';
+  import { findUnstagedMatchingCards } from './lib/tagNetwork';
+  import type { AuraTrace } from './types/card';
 
   // --- Stage Pools & Selection State ---
   let memoryPool: CosmicCard[] = [], localVaultPool: CosmicCard[] = [], cards: CosmicCard[] = [];
   let latestManualCardId: string | null = null, focusedCardId: string | null = null, hoveredCardId: string | null = null;
+  let activeConstellationTag: string | null = null;
   let isOmnibarFocused = false, capturePending = false;
   let isWindowFocused = true, isStageSleeping = false;
   let focusNavDirection: 'prev' | 'next' | null = null;
@@ -343,6 +346,88 @@
     await ExecuteModuleCommand(cmd.id, { cardId: card.id, card, content: card.content || card.title, id: card.id, text: card.content || card.title });
   }
 
+  // --- Tag Association & Resurgence Recall Engine ---
+  function handleTagClick(detail: { tag: string; cardId: string }) {
+    const tag = detail?.tag;
+    if (!tag) return;
+    if (activeConstellationTag === tag) {
+      activeConstellationTag = null;
+      return;
+    }
+    activateConstellationTag(tag);
+  }
+
+  function activateConstellationTag(tag: string) {
+    activeConstellationTag = tag;
+    stageActivity.resetActivityTimer();
+    resetTideTimer();
+
+    // Query unstaged matching cards from memoryPool and localVaultPool
+    const unstaged = findUnstagedMatchingCards(tag, cards, memoryPool, localVaultPool);
+    if (unstaged.length === 0) return;
+
+    let currentCards = [...cards];
+    let nextMemoryPool = [...memoryPool];
+    const now = Date.now();
+    const viewportCenterY = Math.round($scrollExpansion * 300);
+
+    for (const candidate of unstaged) {
+      // Stage candidate near viewport center
+      const res = stageCandidate(
+        candidate,
+        false,
+        $scrollExpansion,
+        currentCards,
+        nextMemoryPool,
+        activeBuguBeacon?.sourceCardId || null,
+        viewportCenterY
+      );
+
+      currentCards = res.updatedActiveCards;
+      nextMemoryPool = res.updatedMemoryPool;
+
+      // Resurgence Lifecycle:
+      // Fixed at foreground Z: 10 during the 2-minute reading window.
+      // Resonance Aura: 'hsl(199, 89%, 60%)' (#38bdf8 Ice Blue), duration 120,000ms.
+      // When the 2 minutes expire, the aura naturally fades out via UICard CSS transitions,
+      // and the card remains stationary without any jarring visual jumps.
+      const searchId = 'tag_resurgence_' + tag + '_' + now + '_' + candidate.id;
+      const auraTrace: AuraTrace = {
+        searchId,
+        color: 'hsl(199, 89%, 60%)',
+        hitTime: now,
+        duration: 120000,
+      };
+
+      currentCards = currentCards.map(c => {
+        if (c.id === candidate.id) {
+          return {
+            ...c,
+            z: 10,
+            auraTraces: [...(c.auraTraces || []).filter(t => !t.searchId.startsWith('tag_resurgence_')), auraTrace],
+            decayDuration: Math.max(c.decayDuration || 0, 120000 + 3600000),
+            isFadingOut: false,
+          };
+        }
+        return c;
+      });
+
+      // Ensure candidate is recorded in memoryPool with 24h macro TTL if permanent vault card
+      if (!nextMemoryPool.some(m => m.id === candidate.id)) {
+        nextMemoryPool = [
+          {
+            ...candidate,
+            macroExpiresAt: now + MACRO_TTL_MS,
+          },
+          ...nextMemoryPool,
+        ];
+      }
+    }
+
+    cards = currentCards;
+    memoryPool = nextMemoryPool;
+  }
+
   // --- Tilt, Focus, & Keydown Delegators ---
   let globalTilt = spring({ rx: 0, ry: 0 }, { stiffness: 0.04, damping: 0.25 });
 
@@ -416,7 +501,10 @@
     omniBarRef?.blurInput();
     omniBarRef?.closeCommandSelect();
     if (searchSession.isActive && !searchSession.isConfirmed) { revertSearchView(); omniBarRef?.clearText(); }
-    if (target && !target.closest('.card') && !target.closest('.nav-button')) focusedCardId = null;
+    if (target && !target.closest('.card') && !target.closest('.nav-button') && !target.closest('.thought-tag')) {
+      if (focusedCardId !== null) focusedCardId = null;
+      if (activeConstellationTag !== null) activeConstellationTag = null;
+    }
   }
 
   function handleWindowKeydown(e: KeyboardEvent) {
@@ -432,6 +520,10 @@
     }
 
     if (e.key === 'Escape') {
+      if (activeConstellationTag !== null) {
+        activeConstellationTag = null;
+        return;
+      }
       if (focusedCardId !== null) { focusedCardId = null; return; }
       if (searchSession.isActive && searchSession.isConfirmed) {
         restoreConfirmedSearch();
@@ -620,9 +712,11 @@
     globalTilt={$globalTilt} scrollExpansion={$scrollExpansion} {focusedCardId} {hoveredCardId} {isOmnibarFocused}
     isSearchActive={searchSession.isActive} {isStageSleeping} {isWindowFocused}
     {lastScrollDirection}
+    {activeConstellationTag}
     onToggleFocus={toggleFocus} onHoverCard={(id) => { hoveredCardId = id; resetTideTimer(); }}
     onLeaveCard={() => hoveredCardId = null} onBgClick={handleWindowClick}
     on:navigate={(e) => navigateFocus(e.detail)}
+    on:tagClick={(e) => handleTagClick(e.detail)}
   />
 
   <OmniBar

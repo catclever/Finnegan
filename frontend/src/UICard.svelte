@@ -5,11 +5,15 @@
   ======================================================================================
 -->
 <script lang="ts">
+  import { createEventDispatcher } from 'svelte';
   import { spring } from 'svelte/motion';
   import { getCardDisplayTime } from './lib/time';
   import { getCardComponent } from './components/cards/cardRegistry';
   import CardAuraGlow from './components/cards/CardAuraGlow.svelte';
   import { OpenCardInEditor } from '../wailsjs/go/main/App.js';
+  import { cardHasTag } from './lib/tagNetwork';
+
+  const dispatch = createEventDispatcher();
 
   export let card: any;
 
@@ -24,6 +28,7 @@
   export let onLeave: () => void;
   export let focusNavDirection: 'prev' | 'next' | null = null;
   export let hoveredMotherId: string | null = null;
+  export let activeConstellationTag: string | null = null;
 
   let lastNavDir: 'prev' | 'next' | null = null;
   $: if (!isFocused) lastNavDir = null;
@@ -50,16 +55,23 @@
   $: scrollOffsetY = scrollExpansion * 300;
 
   // --- Aura Search Flowing Light & Decay Logic ---
+  $: isConstellationDimmed = Boolean(
+    activeConstellationTag &&
+    !isFocused &&
+    !cardHasTag(card, activeConstellationTag)
+  );
+
   $: auraTraces = card.auraTraces || [];
-  $: hasAura = auraTraces.length > 0;
+  $: activeAuraTraces = auraTraces.filter((t: any) => !t.duration || Date.now() - (t.hitTime || 0) < t.duration);
+  $: hasAura = activeAuraTraces.length > 0;
 
   // Find latest hit time and most recent aura color
   $: latestHitTime = hasAura 
-    ? Math.max(...auraTraces.map((t: any) => t.hitTime || 0)) 
+    ? Math.max(...activeAuraTraces.map((t: any) => t.hitTime || 0)) 
     : 0;
 
   $: latestColor = hasAura 
-    ? (auraTraces[auraTraces.length - 1]?.color || 'hsl(180, 95%, 62%)') 
+    ? (activeAuraTraces[activeAuraTraces.length - 1]?.color || 'hsl(180, 95%, 62%)') 
     : '';
 
   // Safely convert hsl string to hsla with given alpha for valid WebKit box-shadows
@@ -84,7 +96,7 @@
   // Dynamic conic-gradient for spinning border
   $: conicGradient = (() => {
     if (!hasAura) return '';
-    const colors = auraTraces.map((t: any) => t.color).filter(Boolean);
+    const colors = activeAuraTraces.map((t: any) => t.color).filter(Boolean);
     if (colors.length === 0) return '';
     if (colors.length === 1) {
       const c = colors[0];
@@ -219,11 +231,13 @@
       const targetGray = Math.round(34 + zNorm * 111);
       const targetTextOp = Number((0.98 - zNorm * 0.16).toFixed(2));
 
+      const finalOpacity = isConstellationDimmed ? 0.35 : (hasAnyFocused ? baseOpacity * 0.35 : baseOpacity);
+
       animSpring.set({
         x: card.x,
         y: card.y,
         rotation: 0,
-        opacity: hasAnyFocused ? baseOpacity * 0.35 : baseOpacity,
+        opacity: finalOpacity,
         scale: uniformScale,
         blur: hasAnyFocused ? baseBlur + 10 : baseBlur,
         saturation: hasAnyFocused ? baseSat * 0.5 : baseSat,
@@ -253,11 +267,13 @@
       const targetGray = Math.round(34 + zNorm * 111);
       const targetTextOp = Number((0.98 - zNorm * 0.16).toFixed(2));
 
+      const finalOpacity = isConstellationDimmed ? 0.35 : (hasAnyFocused ? baseOpacity * 0.35 : baseOpacity);
+
       animSpring.set({
         x: card.x,
         y: card.y,
         rotation: card.rotation,
-        opacity: hasAnyFocused ? baseOpacity * 0.35 : baseOpacity,
+        opacity: finalOpacity,
         scale: uniformScale,
         blur: hasAnyFocused ? baseBlur + 10 : baseBlur,
         saturation: hasAnyFocused ? baseSat * 0.5 : baseSat,
@@ -318,6 +334,7 @@
 <div 
   class="card"
   class:inert={hasAnyFocused && !isFocused}
+  class:constellation-dimmed={isConstellationDimmed}
   class:bugu-echo={isBuguEcho}
   class:temporary={isTemporary}
   class:focused={isFocused}
@@ -355,11 +372,13 @@
   <svelte:component
     this={getCardComponent(card.type)}
     {card}
+    z={card.z}
     {isFocused}
     {isHovered}
     {thoughtTime}
     {babelTime}
     {displayTime}
+    on:tagClick={(e) => dispatch('tagClick', e.detail)}
   />
 </div>
 
@@ -388,6 +407,11 @@
 
   .card.inert {
     pointer-events: none !important;
+  }
+
+  .card.constellation-dimmed {
+    opacity: 0.35 !important;
+    transition: opacity 0.3s ease;
   }
 
   /* Ephemeral / Temporary Card Aesthetics: Translucent Mist-Blue Base + Dynamic Breathing Rim */

@@ -30,6 +30,7 @@
   import UICard from '../UICard.svelte';
   import type { CosmicCard } from '../types/card';
   import BuguRayNetwork from '../modules/bugu/BuguRayNetwork.svelte';
+  import SynapseRayNetwork from './cards/SynapseRayNetwork.svelte';
   import type { BuguBeacon, BuguSession } from '../modules/bugu/types';
   import { getMaxScrollExpansion } from '../lib/stageCoords';
   import VirtualCardProxy from './cards/VirtualCardProxy.svelte';
@@ -41,6 +42,7 @@
   export let scrollExpansion: number = 0;
   export let focusedCardId: string | null = null;
   export let hoveredCardId: string | null = null;
+  export let activeConstellationTag: string | null = null;
   export let focusNavDirection: 'prev' | 'next' | null = null;
   export let isOmnibarFocused: boolean = false;
   export let isSearchActive: boolean = false;
@@ -283,6 +285,7 @@
     {/if}
 
     <BuguRayNetwork {cards} beacon={buguBeacon} session={buguSession} {scrollExpansion} {hoveredMotherId} />
+    <SynapseRayNetwork {cards} {hoveredCardId} {activeConstellationTag} {scrollExpansion} {focusedCardId} />
 
     {#each cards as card (card.id)}
       <UICard 
@@ -290,6 +293,7 @@
 
         {globalTilt}
         {scrollExpansion}
+        {activeConstellationTag}
         hasAnyFocused={focusedCardId !== null}
         focusNavDirection={focusedCardId === card.id ? focusNavDirection : null}
         hoveredMotherId={hoveredMotherId}
@@ -299,6 +303,7 @@
         onFocusedClick={() => { isVirtualCardOnTop = false; }}
         onHover={() => handleHover(card.id)}
         onLeave={handleLeave}
+        on:tagClick={(e) => dispatch('tagClick', e.detail)}
       />
     {/each}
 

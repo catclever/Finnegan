@@ -14,7 +14,7 @@
   ======================================================================================
 -->
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { createEventDispatcher, onDestroy } from 'svelte';
   import { getCardDisplayTime } from '../../lib/time';
   import CardImageGallery from './CardImageGallery.svelte';
   import MarkdownContent from './MarkdownContent.svelte';
@@ -25,8 +25,28 @@
   export let thoughtTime: string = '';
   export let babelTime: string = '';
   export let displayTime: string = '';
+  export let z: number | undefined = undefined;
+
+  const dispatch = createEventDispatcher<{
+    tagClick: { tag: string; cardId: string };
+  }>();
 
   $: resolvedDisplayTime = displayTime || thoughtTime || babelTime || getCardDisplayTime(card);
+
+  $: currentZ = z !== undefined ? z : card?.z;
+
+  $: hasActiveAura = Boolean(
+    card?.auraTraces &&
+    card.auraTraces.length > 0 &&
+    card.auraTraces.some((t: any) => !t.duration || Date.now() - (t.hitTime || 0) < t.duration)
+  );
+
+  $: isForeground = currentZ !== undefined && currentZ <= 16;
+  $: isTagVisible = isForeground || isHovered || isFocused || hasActiveAura;
+
+  function handleTagClick(tag: string) {
+    dispatch('tagClick', { tag, cardId: card?.id });
+  }
 
   // Extract only manual keywords that have '*' provenance marker (rendered without '*')
   $: manualKeywords = (() => {
@@ -136,7 +156,14 @@
     {#if manualKeywords.length > 0}
       <div class="thought-tags focused">
         {#each manualKeywords as tag}
-          <span class="thought-tag focused">#{tag}</span>
+          <!-- svelte-ignore a11y-click-events-have-key-events -->
+          <!-- svelte-ignore a11y-no-static-element-interactions -->
+          <span 
+            class="thought-tag focused" 
+            role="button" 
+            tabindex="0"
+            on:click|stopPropagation={() => handleTagClick(tag)}
+          >#{tag}</span>
         {/each}
       </div>
     {/if}
@@ -206,9 +233,20 @@
     {/if}
 
     {#if manualKeywords.length > 0}
-      <div class="thought-tags">
+      <div 
+        class="thought-tags" 
+        class:tag-visible={isTagVisible}
+        style="opacity: {isTagVisible ? 1 : 0}; pointer-events: {isTagVisible ? 'auto' : 'none'}; transition: opacity 0.25s ease;"
+      >
         {#each manualKeywords as tag}
-          <span class="thought-tag">#{tag}</span>
+          <!-- svelte-ignore a11y-click-events-have-key-events -->
+          <!-- svelte-ignore a11y-no-static-element-interactions -->
+          <span 
+            class="thought-tag" 
+            role="button" 
+            tabindex="0"
+            on:click|stopPropagation={() => handleTagClick(tag)}
+          >#{tag}</span>
         {/each}
       </div>
     {/if}
@@ -279,9 +317,19 @@
     gap: 4px;
     margin-top: 4px;
     margin-bottom: 2px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+
+  .thought-tags.tag-visible {
+    opacity: 1;
+    pointer-events: auto;
   }
 
   .thought-tags.focused {
+    opacity: 1;
+    pointer-events: auto;
     margin-top: 8px;
     margin-bottom: 8px;
     gap: 6px;
@@ -297,6 +345,13 @@
     letter-spacing: 0.02em;
     user-select: none;
     white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.15s ease, color 0.2s ease;
+  }
+
+  .thought-tag:hover {
+    background: rgba(56, 189, 248, 0.24);
+    color: #0369a1;
   }
 
   .thought-tag.focused {

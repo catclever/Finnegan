@@ -7,6 +7,15 @@ export interface AuraTrace {
   searchId: string;
   color: string;
   hitTime: number;
+  duration?: number;
+}
+
+export interface CardResurgenceState {
+  summonTime: number;
+  durationMs: number;
+  initialZ: number;
+  targetZ: number;
+  searchId: string;
 }
 
 export type CardType = 'thought' | 'babel' | 'chat_log' | 'local' | 'note' | string;
@@ -65,6 +74,7 @@ export interface CosmicCard {
   // Aura Search properties
   isSearchResult?: boolean;
   auraTraces?: AuraTrace[];
+  resurgence?: CardResurgenceState;
 }
 
 export interface SearchSession {
