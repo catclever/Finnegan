@@ -95,9 +95,9 @@ export function cardHasKeyword(card: CosmicCard | any, queryTag: string): boolea
 }
 
 /**
- * Backwards compatible alias: defaults to open keyword check.
+ * Backwards compatible alias: defaults to manual tag check.
  */
-export const cardHasTag = cardHasKeyword;
+export const cardHasTag = cardHasManualTag;
 
 /**
  * Extracts and deduplicates only manual tags (ending with '*') from a card.
