@@ -24,6 +24,7 @@
   export let onHover: () => void;
   export let onLeave: () => void;
   export let focusNavDirection: 'prev' | 'next' | null = null;
+  export let hoveredMotherId: string | null = null;
 
   let lastNavDir: 'prev' | 'next' | null = null;
   $: if (!isFocused) lastNavDir = null;
@@ -187,6 +188,42 @@
         rotX: 0,
         rotY: 0,
         z3d: 120
+      });
+
+    } else if (!hasAnyFocused && hoveredMotherId !== null && card.echoOf === hoveredMotherId) {
+      // Mother card hovered: straighten up child cards (rotation: 0)
+      const viewY = card.y - scrollOffsetY;
+      const dist = Math.sqrt(card.x * card.x + viewY * viewY);
+      const edgeFade = Math.max(0, Math.min(1, 1 - (dist - 440) / 240));
+      const edgeBlur = Math.max(0, Math.min(5, (dist - 400) * 0.025));
+
+      const zNorm = Math.max(0, Math.min(1, (card.z || 0) / 100));
+      const uniformScale = 1.08 - (zNorm * 0.44);
+      const z3dVal = (100 - (card.z || 0)) * 1.5 - 50;
+
+      const depthBlur = zNorm > 0.65 ? (zNorm - 0.65) * 6 : 0;
+      const baseBlur = Math.min(4.5, depthBlur + edgeBlur);
+
+      const depthOpacity = 0.96 - (zNorm * 0.32);
+      const baseOpacity = depthOpacity * (card.isFresh ? Math.max(0.85, edgeFade) : edgeFade);
+      const baseSat = Math.max(0.42, 1.0 - (zNorm * 0.5));
+
+      const targetGray = Math.round(34 + zNorm * 111);
+      const targetTextOp = Number((0.98 - zNorm * 0.16).toFixed(2));
+
+      animSpring.set({
+        x: card.x,
+        y: card.y,
+        rotation: 0,
+        opacity: hasAnyFocused ? baseOpacity * 0.35 : baseOpacity,
+        scale: uniformScale,
+        blur: hasAnyFocused ? baseBlur + 10 : baseBlur,
+        saturation: hasAnyFocused ? baseSat * 0.5 : baseSat,
+        textGray: targetGray,
+        textOpacity: targetTextOp,
+        rotX: globalTilt.rx * 0.25,
+        rotY: globalTilt.ry * 0.25,
+        z3d: z3dVal
       });
     } else {
       const viewY = card.y - scrollOffsetY;
