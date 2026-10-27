@@ -47,6 +47,7 @@
     if (el) el.style.display = 'none';
   }
 
+  $: isBluesky = card.origin === 'atproto' || (typeof card.sourceUrl === 'string' && card.sourceUrl.includes('bsky.app'));
   $: resolvedDisplayTime = displayTime || babelTime || thoughtTime || getCardDisplayTime(card);
 </script>
 
@@ -61,7 +62,11 @@
           on:click={handleOpenSource}
           title={card.sourceUrl}
         >
-          <span class="domain-icon">🌐</span> {hostname}
+          {#if isBluesky}
+            <span class="domain-icon bluesky-icon">🦋</span> @{card.authorName || 'bsky.app'}
+          {:else}
+            <span class="domain-icon">🌐</span> {hostname}
+          {/if}
         </a>
       {/if}
     </div>
@@ -95,6 +100,20 @@
         </div>
       {/if}
     </div>
+
+    {#if isFocused && isBluesky}
+      <div class="interaction-bar">
+        <button class="interaction-btn reply-btn" on:click={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('atproto:fetch_comments', { detail: { uri: card.sourceUrl || card.id } })); }}>
+          <span class="icon">💬</span> {card.replyCount || card.commentsCount || ''}
+        </button>
+        <button class="interaction-btn">
+          <span class="icon">🔁</span> {card.repostCount || ''}
+        </button>
+        <button class="interaction-btn">
+          <span class="icon">♥</span> {card.likeCount || ''}
+        </button>
+      </div>
+    {/if}
 
     {#if resolvedDisplayTime}
       <span class="card-time">{resolvedDisplayTime}</span>
@@ -203,6 +222,41 @@
   .source-link:hover {
     background: rgba(255, 255, 255, 0.9);
     color: rgba(0, 0, 0, 0.8);
+  }
+
+  .bluesky-icon {
+    color: #0085ff;
+  }
+
+  .interaction-bar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(4px);
+    padding: 4px 8px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  }
+
+  .interaction-btn {
+    background: none;
+    border: none;
+    padding: 2px 6px;
+    font-size: 0.75rem;
+    color: rgba(0, 0, 0, 0.7);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: color 0.2s, background 0.2s;
+    border-radius: 8px;
+  }
+
+  .interaction-btn:hover {
+    background: rgba(255, 255, 255, 0.8);
+    color: rgba(0, 0, 0, 0.9);
   }
 
   :global(.card.temporary) .author-pill {
