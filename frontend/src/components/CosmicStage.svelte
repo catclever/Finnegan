@@ -32,6 +32,7 @@
   import BuguRayNetwork from '../modules/bugu/BuguRayNetwork.svelte';
   import type { BuguBeacon, BuguSession } from '../modules/bugu/types';
   import { getMaxScrollExpansion } from '../lib/stageCoords';
+  import VirtualCardProxy from './cards/VirtualCardProxy.svelte';
 
   // Props
   export let cards: CosmicCard[] = [];
@@ -121,6 +122,58 @@
       if (bottomDwellTimer) { clearTimeout(bottomDwellTimer); bottomDwellTimer = null; }
     }
   }
+
+
+  // --- Mother-Child Hover Logic ---
+  $: activeMotherCard = hoveredCardId ? cards.find(c => c.id === hoveredCardId && cards.some(child => child.echoOf === c.id)) : null;
+  $: activeChildCard = hoveredCardId ? cards.find(c => c.id === hoveredCardId && c.echoOf) : null;
+  $: hoveredMotherId = activeMotherCard ? activeMotherCard.id : (activeChildCard ? activeChildCard.echoOf : null);
+
+  // Requirement 2: Scattered Mode Child Hover -> Virtual Mother Card
+  $: offscreenMotherProxy = (() => {
+    if (focusedCardId) return null;
+    if (activeChildCard && activeChildCard.echoOf) {
+      const mother = cards.find(c => c.id === activeChildCard.echoOf && !c.isFadingOut);
+      if (mother) {
+        // Check if mother is out of view (roughly beyond +/- 850px from scroll center)
+        const isOffscreen = Math.abs(mother.y - scrollExpansion * 300) > 600;
+        if (isOffscreen) {
+          return mother;
+        }
+      }
+    }
+    return null;
+  })();
+
+  // Requirement 3: Focused Mode Mother -> Child Cards Stack Deck
+  $: focusedMotherChildrenDeck = (() => {
+    if (!focusedCardId) return [];
+    const focusedCard = cards.find(c => c.id === focusedCardId);
+    if (!focusedCard) return [];
+
+    // Check if it's a mother card
+    const children = cards.filter(c => c.echoOf === focusedCardId && !c.isFadingOut);
+    if (children.length > 0) {
+      return children;
+    }
+    return [];
+  })();
+
+  // Requirement 4: Focused Mode Child -> Virtual Mother Card
+  $: focusedChildMotherProxy = (() => {
+    if (!focusedCardId) return null;
+    const focusedCard = cards.find(c => c.id === focusedCardId);
+    if (focusedCard && focusedCard.echoOf) {
+      return cards.find(c => c.id === focusedCard.echoOf && !c.isFadingOut) || null;
+    }
+    return null;
+  })();
+
+  $: proxyCardsToRender = focusedMotherChildrenDeck.length > 0
+    ? focusedMotherChildrenDeck
+    : (focusedChildMotherProxy ? [focusedChildMotherProxy] : (offscreenMotherProxy ? [offscreenMotherProxy] : []));
+
+  $: isProxyStackDeck = focusedMotherChildrenDeck.length > 0;
 
   $: hasCardsBelow = cards.some(c => !c.isFadingOut && (c.y - scrollExpansion * 300) > 280);
   $: hasCardsAbove = scrollExpansion > 0.15;
@@ -222,7 +275,7 @@
       ></div>
     {/if}
 
-    <BuguRayNetwork {cards} beacon={buguBeacon} session={buguSession} {scrollExpansion} />
+    <BuguRayNetwork {cards} beacon={buguBeacon} session={buguSession} {scrollExpansion} {hoveredMotherId} />
 
     {#each cards as card (card.id)}
       <UICard 
@@ -232,6 +285,7 @@
         {scrollExpansion}
         hasAnyFocused={focusedCardId !== null}
         focusNavDirection={focusedCardId === card.id ? focusNavDirection : null}
+        hoveredMotherId={hoveredMotherId}
         isFocused={focusedCardId === card.id}
         isHovered={hoveredCardId === card.id}
         onToggleFocus={() => handleToggleFocus(card.id)}
@@ -251,6 +305,16 @@
     <span class="scroll-dot dot-2"></span>
     <span class="scroll-dot dot-3"></span>
   </div>
+
+
+  {#if proxyCardsToRender.length > 0}
+    <VirtualCardProxy
+      cards={proxyCardsToRender}
+      isStackDeck={isProxyStackDeck}
+      on:cardClick={(e) => handleToggleFocus(e.detail.id)}
+    />
+  {/if}
+
 </div>
 
 <style>

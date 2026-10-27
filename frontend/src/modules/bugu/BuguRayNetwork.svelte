@@ -13,6 +13,7 @@
   export let cards: CosmicCard[] = [];
   export let beacon: BuguBeacon | null = null;
   export let scrollExpansion: number = 0;
+  export let hoveredMotherId: string | null = null;
   // Legacy session prop fallback
   export let session: any = null;
   $: void scrollExpansion;
@@ -64,6 +65,9 @@
   let nextInstanceId = 0;
   let nextSpawnTimer: any = null;
   let lastSpawnedRayId: string = '';
+
+  // To track hovered items without changing ActiveRayInstance interface which doesn't allow new props
+  $: isMotherHovered = (id: string) => hoveredMotherId !== null && hoveredMotherId === id;
 
   function spawnNextRay() {
     if (availableRays.length === 0) {
@@ -297,28 +301,28 @@
         <g class="ray-instance">
           <!-- Source Node Aperture Bloom (Erupts before launch, dissolves as beam flies) -->
           <g class="aperture-group" transform="translate({ray.x1}, {ray.y1})">
-            <circle cx="0" cy="0" r="22" fill="url(#bugu-aperture-glow)" class="glow-ring source-bloom" />
-            <circle cx="0" cy="0" r="3.2" fill="#f59e0b" class="core-dot source-bloom" />
+            <circle cx="0" cy="0" r="22" fill="url(#bugu-aperture-glow)" class="glow-ring source-bloom" class:permanent-bloom={isMotherHovered(ray.source.id)} />
+            <circle cx="0" cy="0" r="3.2" fill="#f59e0b" class="core-dot source-bloom" class:permanent-bloom={isMotherHovered(ray.source.id)} />
           </g>
 
           <!-- Magic UI Style: Static ambient beam path in pure Amber Gold (#f59e0b) -->
           <path
             d={ray.path}
-            class="beam-track"
+            class="beam-track" class:permanent-track={isMotherHovered(ray.source.id)}
           />
 
           <!-- Magic UI Style: Traveling energy pulse in pure Amber Gold (#f59e0b) flowing Mother -> Child -->
           <path
             d={ray.path}
             pathLength="100"
-            class="beam-pulse"
-            on:animationend={() => handleRayFinished(ray.instanceId)}
+            class="beam-pulse" class:permanent-pulse={isMotherHovered(ray.source.id)}
+            on:animationend={() => { if (!isMotherHovered(ray.source.id)) handleRayFinished(ray.instanceId); }}
           />
 
           <!-- Target Node Aperture Bloom (Warms up as beam approaches, peaks upon arrival, fades out) -->
           <g class="aperture-group" transform="translate({ray.x2}, {ray.y2})">
-            <circle cx="0" cy="0" r="22" fill="url(#bugu-aperture-glow)" class="glow-ring target-bloom" />
-            <circle cx="0" cy="0" r="3.2" fill="#f59e0b" class="core-dot target-bloom" />
+            <circle cx="0" cy="0" r="22" fill="url(#bugu-aperture-glow)" class="glow-ring target-bloom" class:permanent-bloom={isMotherHovered(ray.source.id)} />
+            <circle cx="0" cy="0" r="3.2" fill="#f59e0b" class="core-dot target-bloom" class:permanent-bloom={isMotherHovered(ray.source.id)} />
           </g>
         </g>
       {/each}
@@ -824,5 +828,26 @@
       opacity: 0;
       transform: scale(0.85);
     }
+  }
+  :global(.permanent-track) {
+    animation: none !important;
+    opacity: 0.22 !important;
+  }
+  :global(.permanent-pulse) {
+    animation: none !important;
+    opacity: 0.92 !important;
+    stroke-dashoffset: 0 !important;
+  }
+  :global(.permanent-bloom) {
+    animation: none !important;
+    opacity: 0.92 !important;
+    transform: scale(1.25) !important;
+  }
+  :global(.permanent-badge) {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: scale(1.08) !important;
+    border-color: rgba(245, 158, 11, 0.85) !important;
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.7) !important;
   }
 </style>
