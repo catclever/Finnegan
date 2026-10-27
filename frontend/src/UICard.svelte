@@ -10,7 +10,7 @@
   import { getCardDisplayTime } from './lib/time';
   import { getCardComponent } from './components/cards/cardRegistry';
   import CardAuraGlow from './components/cards/CardAuraGlow.svelte';
-  import { OpenCardInEditor } from '../wailsjs/go/main/App.js';
+  import { OpenCardInEditor, PromoteTempCard } from '../wailsjs/go/main/App.js';
   import { cardHasTag } from './lib/tagNetwork';
 
   const dispatch = createEventDispatcher();
@@ -110,7 +110,7 @@
   })();
 
   $: isBuguEcho = card.origin === 'bugu' && Boolean(card.echoOf);
-  $: isTemporary = card.origin === 'bugu' || card.type === 'radar';
+  $: isTemporary = Boolean(card.isTemporary || card.origin === 'bugu' || card.type === 'radar');
   $: isRecentVIP = Boolean(
     card.isVIP &&
     !hasAura &&
@@ -297,6 +297,61 @@
     focusedAt = 0;
   }
 
+  let isPromoting = false;
+  let collectPromptMessage: string | null = null;
+  let collectPromptTimer: any = null;
+
+  function showCollectPrompt() {
+    collectPromptMessage = '需先收集';
+    if (collectPromptTimer) clearTimeout(collectPromptTimer);
+    collectPromptTimer = setTimeout(() => {
+      collectPromptMessage = null;
+    }, 2400);
+  }
+
+  async function handleCollect(e: MouseEvent) {
+    e.stopPropagation();
+    e.preventDefault();
+    if (isPromoting) return;
+    isPromoting = true;
+    const oldId = card.id;
+    try {
+      let promoted: any = null;
+      if (typeof PromoteTempCard === 'function') {
+        try {
+          promoted = await PromoteTempCard(card.id);
+        } catch (ipcErr) {
+          console.warn('PromoteTempCard IPC error:', ipcErr);
+        }
+      }
+
+      // 原地转为 local 卡片 (In-place promotion)
+      card.origin = 'local';
+      if (card.type === 'radar') card.type = 'local';
+      if (card.isTemporary) card.isTemporary = false;
+      if (promoted) {
+        if (promoted.id) card.id = promoted.id;
+        if (promoted.filePath) card.filePath = promoted.filePath;
+        if (promoted.type) card.type = promoted.type;
+        if (promoted.createdAt) card.createdAt = promoted.createdAt;
+      }
+      delete card.macroExpiresAt;
+      card = { ...card };
+
+      dispatch('cardPromoted', { originalId: oldId, card });
+    } catch (err) {
+      console.error('Failed to promote temp card:', err);
+      card.origin = 'local';
+      if (card.type === 'radar') card.type = 'local';
+      if (card.isTemporary) card.isTemporary = false;
+      delete card.macroExpiresAt;
+      card = { ...card };
+      dispatch('cardPromoted', { originalId: oldId, card });
+    } finally {
+      isPromoting = false;
+    }
+  }
+
   async function triggerOpenEditor() {
     try {
       await OpenCardInEditor(card.filePath || card.id);
@@ -307,6 +362,10 @@
 
   async function handleDoubleClick(e: MouseEvent) {
     e.stopPropagation();
+    if (isTemporary) {
+      showCollectPrompt();
+      return;
+    }
     if (!isFocused) return;
     // Gate: avoid accidental double-clicks while the card is transitioning into focus
     if (Date.now() - focusedAt < 250) return;
@@ -318,6 +377,10 @@
     // Option (⌥) + Click: Quick-trigger external editor directly in scattered state
     if (e.altKey) {
       e.preventDefault();
+      if (isTemporary) {
+        showCollectPrompt();
+        return;
+      }
       triggerOpenEditor();
       return;
     }
@@ -344,7 +407,7 @@
   class:aura-stage-1={auraStage === 1}
   class:aura-stage-2={auraStage === 2}
   class:aura-stage-3={auraStage === 3}
-  title={isFocused ? '双击进行编辑' : '⌥ + 单击在外部编辑'}
+  title={isTemporary ? '需先收集卡片才能编辑' : (isFocused ? '双击进行编辑' : '⌥ + 单击在外部编辑')}
   on:click={handleClick}
   on:dblclick={handleDoubleClick}
   on:wheel={(e) => { if (isFocused) e.stopPropagation(); }}
@@ -368,6 +431,29 @@
   "
 >
   <CardAuraGlow {card} {hasAura} {auraStage} {conicGradient} {isBuguEcho} {isFocused} isRecentVIP={isRecentVIP && !isFocused} {isTemporary} />
+
+  {#if collectPromptMessage}
+    <div class="collect-prompt-toast">
+      {collectPromptMessage}
+    </div>
+  {/if}
+
+  {#if isTemporary && (isFocused || (isHovered && !hasAnyFocused))}
+    <button
+      type="button"
+      class="collect-btn"
+      class:focused={isFocused}
+      class:scattered={!isFocused}
+      on:click={handleCollect}
+      title="收集转正为此地卡片"
+    >
+      <svg class="collect-icon" viewBox="0 0 20 20" fill="currentColor" width="12" height="12">
+        <path d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z" />
+        <path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z" />
+      </svg>
+      <span>收集</span>
+    </button>
+  {/if}
 
   <svelte:component
     this={getCardComponent(card.type)}
@@ -516,5 +602,104 @@
     display: none;
     width: 0;
     height: 0;
+  }
+
+  /* Collect (转正) Button for Temporary Cards in Scattered & Focused States */
+  .collect-btn {
+    position: absolute;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border: none;
+    cursor: pointer;
+    user-select: none;
+    z-index: 100;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .collect-btn.scattered {
+    top: 10px;
+    right: 10px;
+    padding: 3px 8px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.88);
+    color: #0284c7;
+    border: 1px solid rgba(56, 189, 248, 0.45);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  .collect-btn.scattered:hover {
+    background: #0284c7;
+    color: #ffffff;
+    border-color: #0284c7;
+    box-shadow: 0 4px 12px rgba(2, 132, 199, 0.28);
+    transform: scale(1.05);
+  }
+
+  .collect-btn.focused {
+    top: 18px;
+    right: 18px;
+    padding: 5px 12px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    border-radius: 9999px;
+    background: rgba(2, 132, 199, 0.12);
+    color: #0284c7;
+    border: 1px solid rgba(2, 132, 199, 0.35);
+    box-shadow: 0 2px 8px rgba(2, 132, 199, 0.12);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  .collect-btn.focused:hover {
+    background: #0284c7;
+    color: #ffffff;
+    border-color: #0284c7;
+    box-shadow: 0 4px 14px rgba(2, 132, 199, 0.3);
+    transform: translateY(-1px);
+  }
+
+  .collect-btn:active {
+    transform: scale(0.96);
+  }
+
+  .collect-icon {
+    flex-shrink: 0;
+  }
+
+  /* Collect Prompt Floating Toast */
+  .collect-prompt-toast {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.92);
+    color: #f8fafc;
+    font-size: 0.78rem;
+    font-weight: 500;
+    padding: 5px 12px;
+    border-radius: 9999px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 1002;
+    pointer-events: none;
+    white-space: nowrap;
+    animation: toast-pop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes toast-pop {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -6px) scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, 0) scale(1);
+    }
   }
 </style>

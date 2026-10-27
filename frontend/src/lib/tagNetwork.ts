@@ -21,10 +21,9 @@ export function normalizeTag(tag: string): string {
 }
 
 /**
- * Determines whether a card possesses a given tag (case-insensitive).
- * Checks both card.keywords (4D anchors) and card.tags.
+ * Determines whether a card possesses a manual tag (ending with '*' in keywords, or in tags).
  */
-export function cardHasTag(card: CosmicCard | any, queryTag: string): boolean {
+export function cardHasManualTag(card: CosmicCard | any, queryTag: string): boolean {
   if (!card || !queryTag) return false;
   const cleanQuery = normalizeTag(queryTag).toLowerCase();
   if (!cleanQuery) return false;
@@ -60,9 +59,50 @@ export function cardHasTag(card: CosmicCard | any, queryTag: string): boolean {
 }
 
 /**
+ * Determines whether a card possesses a given keyword/tag in ANY form
+ * (with or without '*'). Used for open vault recall and matching.
+ */
+export function cardHasKeyword(card: CosmicCard | any, queryTag: string): boolean {
+  if (!card || !queryTag) return false;
+  const cleanQuery = normalizeTag(queryTag).toLowerCase();
+  if (!cleanQuery) return false;
+
+  // 1. Check card.tags / card.Tags
+  const rawTags = card.tags || card.Tags;
+  if (Array.isArray(rawTags)) {
+    for (const t of rawTags) {
+      if (typeof t === 'string' && normalizeTag(t).toLowerCase() === cleanQuery) {
+        return true;
+      }
+    }
+  }
+
+  // 2. Check card.keywords: open match across all 4D dimensions
+  const kwSource = card.keywords || card.Keywords;
+  if (kwSource && typeof kwSource === 'object') {
+    for (const list of Object.values(kwSource)) {
+      if (Array.isArray(list)) {
+        for (const item of list) {
+          if (typeof item === 'string' && normalizeTag(item).toLowerCase() === cleanQuery) {
+            return true;
+          }
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Backwards compatible alias: defaults to open keyword check.
+ */
+export const cardHasTag = cardHasKeyword;
+
+/**
  * Extracts and deduplicates only manual tags (ending with '*') from a card.
  */
-export function getCardTags(card: CosmicCard | any): string[] {
+export function getCardManualTags(card: CosmicCard | any): string[] {
   if (!card) return [];
   const set = new Set<string>();
 
@@ -82,6 +122,45 @@ export function getCardTags(card: CosmicCard | any): string[] {
       if (Array.isArray(list)) {
         for (const item of list) {
           if (typeof item === 'string' && item.trim().endsWith('*')) {
+            const clean = normalizeTag(item);
+            if (clean) set.add(clean);
+          }
+        }
+      }
+    }
+  }
+
+  return Array.from(set);
+}
+
+/**
+ * Backwards compatible alias: returns manual tags.
+ */
+export const getCardTags = getCardManualTags;
+
+/**
+ * Extracts and deduplicates ALL keywords and tags from a card (with or without '*').
+ */
+export function getCardAllKeywords(card: CosmicCard | any): string[] {
+  if (!card) return [];
+  const set = new Set<string>();
+
+  const rawTags = card.tags || card.Tags;
+  if (Array.isArray(rawTags)) {
+    for (const t of rawTags) {
+      if (typeof t === 'string') {
+        const clean = normalizeTag(t);
+        if (clean) set.add(clean);
+      }
+    }
+  }
+
+  const kwSource = card.keywords || card.Keywords;
+  if (kwSource && typeof kwSource === 'object') {
+    for (const list of Object.values(kwSource)) {
+      if (Array.isArray(list)) {
+        for (const item of list) {
+          if (typeof item === 'string') {
             const clean = normalizeTag(item);
             if (clean) set.add(clean);
           }

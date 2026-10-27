@@ -1,5 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+// @ts-ignore
 import { calculateSpatialPlacement } from './stageCoords.ts';
 
 describe('Cosmic Stage Coordinates - Bugu/Radar Jitter Depth', () => {
