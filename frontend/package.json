@@ -23,7 +23,7 @@
   "dependencies": {
     "dompurify": "^3.4.17",
     "marked": "^18.1.1",
-    "rxdb": "^17.5.0",
+    "rxdb": "^17.6.0",
     "rxjs": "^7.8.2"
   }
 }
