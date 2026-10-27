@@ -277,6 +277,7 @@
           >
             <div 
               class="ray-anchor-badge"
+              class:permanent-badge={isMotherHovered(ray.source.id)}
               title={ray.target.echoReason || ray.target.matchedAnchor}
             >
               {ray.target.matchedAnchor}
@@ -725,125 +726,135 @@
   }
 
   .ray-anchor-badge {
-    font-size: 10px;
-    font-weight: 500;
-    letter-spacing: 0.08em;
-    color: rgba(253, 230, 138, 0.88);
-    background: transparent;
-    padding: 0 4px;
-    border: none;
-    box-shadow: none;
-    text-shadow: 0 0 6px rgba(245, 158, 11, 0.45);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: #fef3c7;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: 1.5px 8px;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5), 0 0 10px rgba(245, 158, 11, 0.25);
+    text-shadow: 0 0 4px rgba(245, 158, 11, 0.5);
     white-space: nowrap;
     transform-origin: center center;
     pointer-events: auto;
     cursor: default;
     user-select: none;
-    transition: opacity 0.25s ease, text-shadow 0.25s ease, transform 0.25s ease;
+    transition: opacity 0.25s ease, text-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
     animation: bugu-badge-decay 14.4s ease-in-out forwards;
   }
 
   .ray-anchor-badge:hover {
-    opacity: 0.95 !important;
-    transform: scale(1.08) !important;
-    text-shadow: 0 0 10px rgba(245, 158, 11, 0.85), 0 0 18px rgba(251, 191, 36, 0.5) !important;
+    opacity: 1 !important;
+    transform: scale(1.06) !important;
+    border-color: rgba(245, 158, 11, 0.8) !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6), 0 0 16px rgba(245, 158, 11, 0.45) !important;
+    text-shadow: 0 0 8px rgba(245, 158, 11, 0.85), 0 0 14px rgba(251, 191, 36, 0.5) !important;
   }
 
   @keyframes bugu-badge-decay {
-    /* Cycle 1 (0 ~ 4.8s): Soft ambient entrance, glowing surge when pulse passes midpoint (13%~17%), soft ambient sustain */
+    /* Cycle 1 (0 ~ 4.8s): High-contrast ambient entrance, glowing surge when pulse passes midpoint (13%~17%), high-contrast sustain */
     0% {
       opacity: 0;
-      transform: scale(0.85);
-      text-shadow: 0 0 3px rgba(245, 158, 11, 0.2);
+      transform: scale(0.9);
     }
     3% {
-      opacity: 0.38;
+      opacity: 0.88;
       transform: scale(1);
-      text-shadow: 0 0 5px rgba(245, 158, 11, 0.35);
     }
     11% {
-      opacity: 0.42;
+      opacity: 0.88;
       transform: scale(1);
     }
     14% {
       /* Pulse packet rushes across the badge */
-      opacity: 0.92;
-      transform: scale(1.06);
-      text-shadow: 0 0 10px rgba(245, 158, 11, 0.8), 0 0 18px rgba(251, 191, 36, 0.5);
+      opacity: 1;
+      transform: scale(1.05);
+      border-color: rgba(245, 158, 11, 0.8);
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6), 0 0 16px rgba(245, 158, 11, 0.4);
+      text-shadow: 0 0 8px rgba(245, 158, 11, 0.8), 0 0 14px rgba(251, 191, 36, 0.5);
     }
     17% {
-      opacity: 0.92;
-      transform: scale(1.06);
-      text-shadow: 0 0 10px rgba(245, 158, 11, 0.8), 0 0 18px rgba(251, 191, 36, 0.5);
+      opacity: 1;
+      transform: scale(1.05);
+      border-color: rgba(245, 158, 11, 0.8);
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6), 0 0 16px rgba(245, 158, 11, 0.4);
+      text-shadow: 0 0 8px rgba(245, 158, 11, 0.8), 0 0 14px rgba(251, 191, 36, 0.5);
     }
     21% {
-      /* Returns to ethereal ambient presence */
-      opacity: 0.38;
+      opacity: 0.88;
       transform: scale(1);
-      text-shadow: 0 0 5px rgba(245, 158, 11, 0.35);
+      border-color: rgba(245, 158, 11, 0.45);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5), 0 0 10px rgba(245, 158, 11, 0.25);
     }
     33.3% {
-      opacity: 0.35;
+      opacity: 0.85;
       transform: scale(1);
-      text-shadow: 0 0 5px rgba(245, 158, 11, 0.35);
     }
 
     /* Cycle 2 (4.8s ~ 9.6s): Second pulse wave */
     33.4% {
-      opacity: 0.35;
+      opacity: 0.85;
       transform: scale(1);
     }
     44% {
-      opacity: 0.38;
+      opacity: 0.85;
       transform: scale(1);
     }
     47% {
       /* Pulse 2 crosses midpoint */
-      opacity: 0.78;
-      transform: scale(1.04);
+      opacity: 1;
+      transform: scale(1.05);
+      border-color: rgba(245, 158, 11, 0.7);
       text-shadow: 0 0 8px rgba(245, 158, 11, 0.7), 0 0 14px rgba(251, 191, 36, 0.4);
     }
     50% {
-      opacity: 0.78;
-      transform: scale(1.04);
+      opacity: 1;
+      transform: scale(1.05);
+      border-color: rgba(245, 158, 11, 0.7);
       text-shadow: 0 0 8px rgba(245, 158, 11, 0.7), 0 0 14px rgba(251, 191, 36, 0.4);
     }
     54% {
-      opacity: 0.32;
+      opacity: 0.82;
       transform: scale(1);
-      text-shadow: 0 0 4px rgba(245, 158, 11, 0.3);
+      border-color: rgba(245, 158, 11, 0.45);
     }
     66.6% {
-      opacity: 0.28;
+      opacity: 0.80;
       transform: scale(1);
     }
 
     /* Cycle 3 (9.6s ~ 14.4s): Final gentle whisper */
     66.7% {
-      opacity: 0.26;
+      opacity: 0.80;
       transform: scale(1);
     }
     77% {
-      opacity: 0.28;
+      opacity: 0.80;
     }
     80% {
       /* Pulse 3 subtle illumination */
-      opacity: 0.58;
-      transform: scale(1.02);
+      opacity: 0.95;
+      transform: scale(1.03);
+      border-color: rgba(245, 158, 11, 0.6);
       text-shadow: 0 0 7px rgba(245, 158, 11, 0.55);
     }
     83% {
-      opacity: 0.58;
-      transform: scale(1.02);
+      opacity: 0.95;
+      transform: scale(1.03);
+      border-color: rgba(245, 158, 11, 0.6);
       text-shadow: 0 0 7px rgba(245, 158, 11, 0.55);
     }
     87% {
-      opacity: 0.2;
+      opacity: 0.75;
       transform: scale(1);
-      text-shadow: 0 0 3px rgba(245, 158, 11, 0.2);
+      border-color: rgba(245, 158, 11, 0.4);
     }
     94% {
-      opacity: 0.12;
+      opacity: 0.4;
       transform: scale(0.96);
     }
     100% {
@@ -867,8 +878,10 @@
   }
   :global(.permanent-badge) {
     animation: none !important;
-    opacity: 0.85 !important;
+    opacity: 1 !important;
     transform: scale(1) !important;
-    text-shadow: 0 0 8px rgba(245, 158, 11, 0.6) !important;
+    border-color: rgba(245, 158, 11, 0.75) !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5), 0 0 12px rgba(245, 158, 11, 0.35) !important;
+    text-shadow: 0 0 8px rgba(245, 158, 11, 0.7) !important;
   }
 </style>
