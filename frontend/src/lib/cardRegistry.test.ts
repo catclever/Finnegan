@@ -1,16 +1,7 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  CardRegistry,
-  createCardRegistry,
-  normalizeCardType,
-  isCoreCardType,
-  getCardDefaultTitle,
-  CORE_CARD_TYPES,
-  SHARED_CARD_TYPES,
-  BUILTIN_CARD_DEFINITIONS,
-  DEFAULT_CARD_TYPE
-} from './cardRegistry.ts';
+// @ts-ignore
+import { CardRegistry, createCardRegistry, normalizeCardType, isCoreCardType, getCardDefaultTitle, CORE_CARD_TYPES, SHARED_CARD_TYPES, BUILTIN_CARD_DEFINITIONS, DEFAULT_CARD_TYPE } from './cardRegistry.ts';
 import type { CardTypeDefinition } from '../types/card';
 
 describe('Card Type Registry & Morphology Decoupling Engine', () => {
@@ -139,7 +130,7 @@ describe('Card Type Registry & Morphology Decoupling Engine', () => {
 
       const updatedDefs = registry.getAllDefinitions();
       assert.equal(updatedDefs.length, initialDefs.length + 1);
-      assert.ok(updatedDefs.some(d => d.type === 'todo' && d.defaultTitle === 'Todo List'));
+      assert.ok(updatedDefs.some((d: CardTypeDefinition) => d.type === 'todo' && d.defaultTitle === 'Todo List'));
     });
 
     it('clears custom registrations and resets definitions to built-in presets', () => {

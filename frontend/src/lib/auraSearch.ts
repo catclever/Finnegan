@@ -4,7 +4,6 @@
  */
 
 import type { AuraTrace, CosmicCard } from '../types/card';
-import { getCardDefaultTitle } from './cardRegistry.ts';
 export { toCosmicCard } from './stageDecay';
 
 /**
@@ -121,7 +120,7 @@ export function transformSearchResults(
     if (!title || title === 'Thought') {
       const rawContent = r.content || r.translatedText || r.originalText || '';
       const firstLine = rawContent.split('\n')[0].replace(/^[#\s\-*]+/, '').trim();
-      title = firstLine ? (firstLine.length > 20 ? firstLine.slice(0, 20) + '...' : firstLine) : getCardDefaultTitle(r.type);
+      title = firstLine ? (firstLine.length > 20 ? firstLine.slice(0, 20) + '...' : firstLine) : (r.type === 'babel' ? 'Babel Echo' : 'Thought');
     }
 
     return {

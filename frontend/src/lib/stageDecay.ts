@@ -1,6 +1,5 @@
 import type { CosmicCard, SearchSession } from '../types/card';
 import { calculateSpatialPlacement } from './stageCoords';
-import { getCardDefaultTitle } from './cardRegistry.ts';
 
 // --- Cosmic Stage Configuration Constants ---
 export const BASE_CAPACITY = 10;                      // Base single-screen card count (8~12)
@@ -30,7 +29,7 @@ export function toCosmicCard(
   let title = c.title || c.Title;
   if (!title || title === 'Thought') {
     const firstLine = rawContent.split('\n')[0].replace(/^[#\s\-*]+/, '').trim();
-    title = firstLine ? (firstLine.length > 20 ? firstLine.slice(0, 20) + '...' : firstLine) : getCardDefaultTitle(type);
+    title = firstLine ? (firstLine.length > 20 ? firstLine.slice(0, 20) + '...' : firstLine) : (type === 'babel' ? 'Babel Echo' : 'Thought');
   }
   const rawImages = c.images || c.Images;
   const images = rawImages ? (Array.isArray(rawImages) ? rawImages : [rawImages]) : undefined;
