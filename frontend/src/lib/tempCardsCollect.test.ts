@@ -187,4 +187,126 @@ describe('Temporary Card Collection & Jitter Depth Logic', () => {
       assert.equal(editorTriggered, true);
     });
   });
+
+  describe('4. Focus-Driven Two-Stage Decay for Temporary Cards', () => {
+    function simulateWindowFocusDecay(cards: any[], now: number, focusedCardId: string | null = null): { updatedCards: any[]; fadingIds: string[] } {
+      const fadingIds: string[] = [];
+      const updatedCards = cards.map(c => {
+        if (c.id === focusedCardId) return c;
+        if (c.isVIP || c.isSearchResult) return c;
+        if (c.isFadingOut) return c;
+
+        const isTemporary = Boolean(c.isTemporary || c.origin === 'bugu' || c.type === 'radar');
+        if (isTemporary && c.decayDuration && (now - c.spawnTime >= c.decayDuration)) {
+          if (c.z < 65) {
+            return {
+              ...c,
+              z: c.z + 20 + 2.5,
+              spawnTime: now
+            };
+          } else {
+            fadingIds.push(c.id);
+            return {
+              ...c,
+              isFadingOut: true
+            };
+          }
+        }
+        return c;
+      });
+      return { updatedCards, fadingIds };
+    }
+
+    it('midground/foreground temporary card (z < 65) steps back into deep space when half-life expires', () => {
+      const now = 1000000;
+      const initialCard = {
+        id: 'bugu-1',
+        origin: 'bugu',
+        type: 'babel',
+        z: 30,
+        spawnTime: now - 3600000,
+        decayDuration: 3600000,
+        isFadingOut: false
+      };
+
+      const { updatedCards, fadingIds } = simulateWindowFocusDecay([initialCard], now);
+      assert.equal(fadingIds.length, 0);
+      assert.ok(updatedCards[0].z >= 50 && updatedCards[0].z <= 55);
+      assert.equal(updatedCards[0].spawnTime, now);
+      assert.equal(updatedCards[0].isFadingOut, false);
+    });
+
+    it('deep space temporary card (z >= 65) triggers isFadingOut = true when half-life expires', () => {
+      const now = 1000000;
+      const deepCard = {
+        id: 'bugu-2',
+        origin: 'bugu',
+        type: 'babel',
+        z: 70,
+        spawnTime: now - 4000000,
+        decayDuration: 3600000,
+        isFadingOut: false
+      };
+
+      const { updatedCards, fadingIds } = simulateWindowFocusDecay([deepCard], now);
+      assert.equal(fadingIds.length, 1);
+      assert.equal(fadingIds[0], 'bugu-2');
+      assert.equal(updatedCards[0].isFadingOut, true);
+    });
+
+    it('temporary card does not decay if half-life has not been reached', () => {
+      const now = 1000000;
+      const freshCard = {
+        id: 'bugu-3',
+        origin: 'bugu',
+        type: 'babel',
+        z: 25,
+        spawnTime: now - 1000,
+        decayDuration: 3600000,
+        isFadingOut: false
+      };
+
+      const { updatedCards, fadingIds } = simulateWindowFocusDecay([freshCard], now);
+      assert.equal(fadingIds.length, 0);
+      assert.equal(updatedCards[0].z, 25);
+      assert.equal(updatedCards[0].spawnTime, now - 1000);
+      assert.equal(updatedCards[0].isFadingOut, false);
+    });
+
+    it('permanent local cards never decay on window focus', () => {
+      const now = 1000000;
+      const localCard = {
+        id: 'local-1',
+        origin: 'local',
+        type: 'thought',
+        z: 20,
+        spawnTime: now - 10000000,
+        decayDuration: 3600000,
+        isFadingOut: false
+      };
+
+      const { updatedCards, fadingIds } = simulateWindowFocusDecay([localCard], now);
+      assert.equal(fadingIds.length, 0);
+      assert.equal(updatedCards[0].z, 20);
+      assert.equal(updatedCards[0].isFadingOut, false);
+    });
+
+    it('currently focused temporary card is protected from focus decay', () => {
+      const now = 1000000;
+      const focusedCard = {
+        id: 'bugu-focused',
+        origin: 'bugu',
+        type: 'radar',
+        z: 25,
+        spawnTime: now - 5000000,
+        decayDuration: 3600000,
+        isFadingOut: false
+      };
+
+      const { updatedCards, fadingIds } = simulateWindowFocusDecay([focusedCard], now, 'bugu-focused');
+      assert.equal(fadingIds.length, 0);
+      assert.equal(updatedCards[0].z, 25);
+      assert.equal(updatedCards[0].isFadingOut, false);
+    });
+  });
 });

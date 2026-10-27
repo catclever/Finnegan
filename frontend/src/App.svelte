@@ -64,22 +64,6 @@
     canSleep: () => focusedCardId === null && !searchSession.isActive && !isOmnibarFocused,
   });
 
-  function resetTideTimer() {
-    if (tideTimer) clearTimeout(tideTimer);
-    tideTimer = setTimeout(() => {
-      scrollTarget = 0;
-      scrollExpansion.set(0);
-      setTimeout(() => {
-        cards.forEach(c => {
-          if (c.y > 400 && c.origin === 'local' && !isProtectedCard(c, cards, activeBuguBeacon?.sourceCardId) && !c.isFadingOut) {
-            c.isFadingOut = true;
-            setTimeout(() => { cards = cards.filter(item => item.id !== c.id); }, 2500);
-          }
-        });
-      }, 1000);
-    }, 45000);
-  }
-
   function handleWheel(e: WheelEvent) {
     if (focusedCardId !== null || isOmnibarFocused) return;
     stageActivity.resetActivityTimer();
@@ -103,7 +87,6 @@
     const totalAvailable = cards.length + memoryPool.length + localVaultPool.length;
     scrollTarget = computeNextScrollTarget(baseTarget, e.deltaY, e.deltaMode, cards, totalAvailable);
     scrollExpansion.set(scrollTarget);
-    resetTideTimer();
     if (e.deltaY > 0) replenishStage();
   }
 
@@ -360,7 +343,6 @@
   function activateConstellationTag(tag: string) {
     activeConstellationTag = tag;
     stageActivity.resetActivityTimer();
-    resetTideTimer();
 
     // Query unstaged matching cards from memoryPool and localVaultPool
     const unstaged = findUnstagedMatchingCards(tag, cards, memoryPool, localVaultPool);
@@ -456,13 +438,11 @@
 
   function handleMouseMove(e: MouseEvent) {
     stageActivity.resetActivityTimer();
-    resetTideTimer();
     const mX = (e.clientX / window.innerWidth) * 2 - 1, mY = (e.clientY / window.innerHeight) * 2 - 1;
     globalTilt.set(focusedCardId === null ? { rx: mY * 4.5, ry: -mX * 4.5 } : { rx: 0, ry: 0 });
   }
 
   function toggleFocus(id: string) {
-    resetTideTimer();
     focusedCardId = focusedCardId === id ? null : id;
     focusNavDirection = null;
     if (focusedCardId !== null) {
@@ -513,12 +493,9 @@
         }
       }, 500);
     }
-
-    resetTideTimer();
   }
 
   function handleWindowClick(e: MouseEvent) {
-    resetTideTimer();
     const target = e.target as Element | null;
     if (target?.closest('.omnibar-container')) return;
     omniBarRef?.blurInput();
@@ -683,6 +660,38 @@
           if (refreshed) applyCardUpdate(refreshed);
         }).catch(() => {});
       }
+
+      const now = Date.now();
+      const fadingIds: string[] = [];
+      cards = cards.map(c => {
+        if (c.id === focusedCardId) return c;
+        if (isProtectedCard(c, cards, activeBuguBeacon?.sourceCardId)) return c;
+        if (c.isFadingOut) return c;
+
+        const isTemporary = Boolean(c.isTemporary || c.origin === 'bugu' || c.type === 'radar');
+        if (isTemporary && c.decayDuration && (now - c.spawnTime >= c.decayDuration)) {
+          if (c.z < 65) {
+            return {
+              ...c,
+              z: c.z + 20 + Math.random() * 5,
+              spawnTime: now
+            };
+          } else {
+            fadingIds.push(c.id);
+            return {
+              ...c,
+              isFadingOut: true
+            };
+          }
+        }
+        return c;
+      });
+
+      if (fadingIds.length > 0) {
+        setTimeout(() => {
+          cards = cards.filter(c => !fadingIds.includes(c.id));
+        }, 2500);
+      }
     };
     window.addEventListener('focus', handleWindowFocus);
 
@@ -702,10 +711,6 @@
       cards.forEach(c => {
         if (c.id === focusedCardId) return;
         if (c.isFresh && now - c.spawnTime > 8 * 60 * 1000) c.isFresh = false;
-        if (!isProtectedCard(c, cards, activeBuguBeacon?.sourceCardId) && !c.isFadingOut && (now - c.spawnTime > c.decayDuration)) {
-          c.isFadingOut = true;
-          setTimeout(() => { cards = cards.filter(card => card.id !== c.id); }, 2500);
-        }
       });
       replenishStage();
     }, 45000);
@@ -713,7 +718,6 @@
     return () => {
       window.removeEventListener('focus', handleWindowFocus);
       clearInterval(metabolicInterval);
-      if (tideTimer) clearTimeout(tideTimer);
       if (scrollIdleTimer) clearTimeout(scrollIdleTimer);
       if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
       buguController.destroy();
@@ -736,7 +740,7 @@
     isSearchActive={searchSession.isActive} {isStageSleeping} {isWindowFocused}
     {lastScrollDirection}
     {activeConstellationTag}
-    onToggleFocus={toggleFocus} onHoverCard={(id) => { hoveredCardId = id; resetTideTimer(); }}
+    onToggleFocus={toggleFocus} onHoverCard={(id) => { hoveredCardId = id; }}
     onLeaveCard={() => hoveredCardId = null} onBgClick={handleWindowClick}
     on:navigate={(e) => navigateFocus(e.detail)}
     on:tagClick={(e) => handleTagClick(e.detail)}
