@@ -150,14 +150,22 @@ export function calculateSpatialPlacement(
       const ageMs = now - createdAtDate;
       const ageDays = ageMs / (1000 * 60 * 60 * 24);
 
-      if (ageDays <= 1) {
-        z = 15 + Math.random() * 20;
+      if (ageDays > 365) {
+        // 回光返照 (Resurgence Echo of memories > 1 year):
+        // Does not sit in foreground, but resurfaces close to the 1-week depth tier (~45..55)
+        z = 45 + Math.random() * 10;
+      } else if (ageDays <= 1) {
+        z = 15 + Math.random() * 12; // 今日 (0~24h): 15 ~ 27
       } else if (ageDays <= 3) {
-        z = 35 + Math.random() * 20;
+        z = 27 + Math.random() * 12; // 近 3 天: 27 ~ 39
       } else if (ageDays <= 7) {
-        z = 55 + Math.random() * 20;
+        z = 39 + Math.random() * 13; // 近 1 周: 39 ~ 52
+      } else if (ageDays <= 30) {
+        z = 52 + Math.random() * 13; // 近 1 个月: 52 ~ 65
+      } else if (ageDays <= 90) {
+        z = 65 + Math.random() * 12; // 近 3 个月: 65 ~ 77
       } else {
-        z = 75 + Math.random() * 15;
+        z = 77 + Math.random() * 11; // 3 个月 ~ 1 年: 77 ~ 88
       }
     }
   } else {
