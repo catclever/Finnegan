@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"Finnegan/modules/atproto/models"
@@ -21,6 +22,7 @@ type BSkySearchResponse struct {
 		Author struct {
 			Handle string `json:"handle"`
 			DID    string `json:"did"`
+			Avatar string `json:"avatar"`
 		} `json:"author"`
 		Record struct {
 			Text      string `json:"text"`
@@ -37,6 +39,7 @@ type BSkyThreadResponse struct {
 			URI    string `json:"uri"`
 			Author struct {
 				Handle string `json:"handle"`
+				Avatar string `json:"avatar"`
 			} `json:"author"`
 			Record struct {
 				Text string `json:"text"`
@@ -48,6 +51,7 @@ type BSkyThreadResponse struct {
 				URI    string `json:"uri"`
 				Author struct {
 					Handle string `json:"handle"`
+					Avatar string `json:"avatar"`
 				} `json:"author"`
 				Record struct {
 					Text string `json:"text"`
@@ -60,18 +64,21 @@ type BSkyThreadResponse struct {
 // Fetcher handles read-only (Discovery) requests to the AT Protocol
 type Fetcher struct {
 	HTTPClient *http.Client
+	Endpoint   string
 }
 
 func NewFetcher() *Fetcher {
 	return &Fetcher{
 		HTTPClient: &http.Client{Timeout: 10 * time.Second},
+		Endpoint:   PublicAPIEndpoint,
 	}
 }
 
 // SearchSimilar fetches posts matching a semantic keyword query
 // Returns them mapped to Finnegan's internal Post model for saving to Inbox
-func (f *Fetcher) SearchSimilar(query string, limit int) ([]*models.Post, error) {
-	reqURL := fmt.Sprintf("%s/app.bsky.feed.searchPosts?q=%s&limit=%d", PublicAPIEndpoint, url.QueryEscape(query), limit)
+func (f *Fetcher) SearchSimilar(keywords []string, limit int, echoOfDocID string) ([]models.Post, error) {
+	query := strings.Join(keywords, " ")
+	reqURL := fmt.Sprintf("%s/app.bsky.feed.searchPosts?q=%s&limit=%d", f.Endpoint, url.QueryEscape(query), limit)
 	
 	resp, err := f.HTTPClient.Get(reqURL)
 	if err != nil {
@@ -85,16 +92,30 @@ func (f *Fetcher) SearchSimilar(query string, limit int) ([]*models.Post, error)
 		return nil, fmt.Errorf("failed to parse search results: %v", err)
 	}
 
-	var results []*models.Post
+	var results []models.Post
 	for _, p := range searchResp.Posts {
+		uriParts := strings.Split(p.URI, "/")
+		rkey := ""
+		if len(uriParts) > 0 {
+			rkey = uriParts[len(uriParts)-1]
+		}
+		sourceURL := fmt.Sprintf("https://bsky.app/profile/%s/post/%s", p.Author.Handle, rkey)
+
 		// Convert external post to our local model
-		post := &models.Post{
+		post := models.Post{
 			Metadata: models.PostMetadata{
 				URI:  p.URI,
 				CID:  p.CID,
 				Tags: []string{"#External", "#Discovery"},
 			},
-			Content: fmt.Sprintf("> [@%s](https://bsky.app/profile/%s)\n\n%s", p.Author.Handle, p.Author.Handle, p.Record.Text),
+			Content:      p.Record.Text,
+			Type:         "babel",
+			Origin:       "atproto",
+			SourceURL:    sourceURL,
+			AuthorName:   p.Author.Handle,
+			AuthorAvatar: p.Author.Avatar,
+			OriginalText: p.Record.Text,
+			EchoOf:       echoOfDocID,
 			// FilePath will be determined by the caller (Inbox logic)
 		}
 		results = append(results, post)
@@ -104,8 +125,8 @@ func (f *Fetcher) SearchSimilar(query string, limit int) ([]*models.Post, error)
 }
 
 // FetchComments retrieves the thread of replies for a given Post URI
-func (f *Fetcher) FetchComments(postURI string) ([]*models.Post, error) {
-	reqURL := fmt.Sprintf("%s/app.bsky.feed.getPostThread?uri=%s", PublicAPIEndpoint, url.QueryEscape(postURI))
+func (f *Fetcher) FetchComments(postURI string, parentCardID string) ([]models.Post, error) {
+	reqURL := fmt.Sprintf("%s/app.bsky.feed.getPostThread?uri=%s", f.Endpoint, url.QueryEscape(postURI))
 	
 	resp, err := f.HTTPClient.Get(reqURL)
 	if err != nil {
@@ -119,19 +140,33 @@ func (f *Fetcher) FetchComments(postURI string) ([]*models.Post, error) {
 		return nil, fmt.Errorf("failed to parse thread: %v", err)
 	}
 
-	var comments []*models.Post
+	var comments []models.Post
 	for _, reply := range threadResp.Thread.Replies {
 		// Only parse valid post nodes
 		if reply.Type != "app.bsky.feed.defs#threadViewPost" {
 			continue
 		}
 		
-		comment := &models.Post{
+		uriParts := strings.Split(reply.Post.URI, "/")
+		rkey := ""
+		if len(uriParts) > 0 {
+			rkey = uriParts[len(uriParts)-1]
+		}
+		sourceURL := fmt.Sprintf("https://bsky.app/profile/%s/post/%s", reply.Post.Author.Handle, rkey)
+
+		comment := models.Post{
 			Metadata: models.PostMetadata{
 				URI:  reply.Post.URI,
 				Tags: []string{"#Comment", "#Interaction"},
 			},
-			Content: fmt.Sprintf("> Reply from @%s\n\n%s", reply.Post.Author.Handle, reply.Post.Record.Text),
+			Content:      reply.Post.Record.Text,
+			Type:         "babel",
+			Origin:       "atproto",
+			SourceURL:    sourceURL,
+			AuthorName:   reply.Post.Author.Handle,
+			AuthorAvatar: reply.Post.Author.Avatar,
+			OriginalText: reply.Post.Record.Text,
+			EchoOf:       parentCardID,
 		}
 		comments = append(comments, comment)
 	}
