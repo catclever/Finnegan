@@ -12,6 +12,7 @@
   import NoteCardBody from './components/cards/NoteCardBody.svelte';
   import BabelCardBody from './components/cards/BabelCardBody.svelte';
   import CardAuraGlow from './components/cards/CardAuraGlow.svelte';
+  import { OpenCardInEditor } from '../wailsjs/go/main/App.js';
 
   export let card: any;
 
@@ -100,6 +101,12 @@
 
   $: isBuguEcho = card.type === 'babel' && Boolean(card.echoOf);
   $: isTemporary = card.origin === 'bugu' || card.type === 'babel';
+  $: isRecentVIP = Boolean(
+    card.isVIP &&
+    !hasAura &&
+    !isBuguEcho &&
+    (Date.now() - (card.spawnTime || (card.createdAt ? new Date(card.createdAt).getTime() : 0)) < 30 * 60 * 1000)
+  );
 
   // Dynamic box-shadow accounting for focus, temporary state & aura decay stages
   $: dynamicBoxShadow = (() => {
@@ -112,6 +119,9 @@
         : '0 40px 100px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.9)';
     }
     if (!hasAura) {
+      if (isRecentVIP) {
+        return '';
+      }
       return '0 8px 24px rgba(0, 0, 0, 0.04)';
     }
     if (auraStage === 1) {
@@ -264,6 +274,42 @@
 
   $: babelTime = card.type === 'babel' ? getCardDisplayTime(card) : '';
   $: thoughtTime = card.type !== 'babel' ? getCardDisplayTime(card) : '';
+
+  let focusedAt = 0;
+  $: if (isFocused) {
+    if (focusedAt === 0) focusedAt = Date.now();
+  } else {
+    focusedAt = 0;
+  }
+
+  async function triggerOpenEditor() {
+    try {
+      await OpenCardInEditor(card.filePath || card.id);
+    } catch (err) {
+      console.error('Failed to open card in editor:', err);
+    }
+  }
+
+  async function handleDoubleClick(e: MouseEvent) {
+    e.stopPropagation();
+    if (!isFocused) return;
+    // Gate: avoid accidental double-clicks while the card is transitioning into focus
+    if (Date.now() - focusedAt < 250) return;
+    await triggerOpenEditor();
+  }
+
+  function handleClick(e: MouseEvent) {
+    e.stopPropagation();
+    // Option (⌥) + Click: Quick-trigger external editor directly in scattered state
+    if (e.altKey) {
+      e.preventDefault();
+      triggerOpenEditor();
+      return;
+    }
+    if (!isFocused) {
+      onToggleFocus();
+    }
+  }
 </script>
 
 <!-- svelte-ignore a11y-click-events-have-key-events -->
@@ -275,11 +321,14 @@
   class:temporary={isTemporary}
   class:focused={isFocused}
   class:hovered={isHovered && !isFocused}
+  class:inspiration-vip={isRecentVIP && !isFocused}
   class:has-aura={hasAura}
   class:aura-stage-1={auraStage === 1}
   class:aura-stage-2={auraStage === 2}
   class:aura-stage-3={auraStage === 3}
-  on:click={(e) => { e.stopPropagation(); onToggleFocus(); }}
+  title={isFocused ? '双击进行编辑' : '⌥ + 单击在外部编辑'}
+  on:click={handleClick}
+  on:dblclick={handleDoubleClick}
   on:wheel={(e) => { if (isFocused) e.stopPropagation(); }}
   on:mouseenter={onHover}
   on:mouseleave={onLeave}
@@ -371,6 +420,20 @@
     }
     50% {
       opacity: 0.95;
+    }
+  }
+
+  .card.inspiration-vip {
+    border: 1.2px solid rgba(245, 158, 11, 0.75) !important;
+    animation: inspiration-breathe 4s ease-in-out infinite;
+  }
+
+  @keyframes inspiration-breathe {
+    0%, 100% {
+      box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.45), 0 0 14px rgba(245, 158, 11, 0.22), 0 8px 24px rgba(0, 0, 0, 0.04);
+    }
+    50% {
+      box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.85), 0 0 24px rgba(245, 158, 11, 0.45), 0 0 45px rgba(245, 158, 11, 0.18), 0 10px 28px rgba(0, 0, 0, 0.06);
     }
   }
 

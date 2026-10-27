@@ -54,6 +54,7 @@ export function toCosmicCard(
     images,
     keywords: c.keywords || c.Keywords,
     isEnriching: c.isEnriching !== undefined ? c.isEnriching : false,
+    filePath: c.filePath || c.FilePath || '',
     x: 0, y: 0, rotation: 0, z: 50,
     spawnTime: Date.now(), decayDuration: BASE_STAGE_DECAY_MS, isFresh: true, isVIP: false, origin,
     macroExpiresAt: ttl ? Date.now() + ttl : undefined
@@ -185,6 +186,71 @@ export function stageCandidate(
   }
 
   return { stagedCard, updatedActiveCards: currentActiveCards, updatedMemoryPool };
+}
+
+/**
+ * Ensures a card is staged and present in the user's active viewport (current screen):
+ * 1. If card is already on stage within the viewport comfort zone (|c.y - viewportY| <= 260),
+ *    illuminates/elevates it (VIP protection) without displacing its coordinates.
+ * 2. If card is on another screen (|c.y - viewportY| > 260) or not on stage at all (vault/memory),
+ *    summons it directly to the active viewport (explicitTargetY = viewportY), running Mitchell
+ *    best-candidate spatial placement and triggering downward domino cascade if screen is full.
+ */
+export function ensureCardStagedInViewport(
+  card: CosmicCard,
+  scrollExpansion: number,
+  cards: CosmicCard[],
+  memoryPool: CosmicCard[],
+  options?: { isVIP?: boolean; decayDuration?: number }
+): { updatedCards: CosmicCard[]; updatedMemoryPool: CosmicCard[]; stagedCard: CosmicCard } {
+  const viewportY = Math.round(scrollExpansion * 300);
+  const existingCard = cards.find(c => c.id === card.id);
+
+  let nextCards = [...cards];
+  let nextMemoryPool = [...memoryPool];
+
+  const isVIP = options?.isVIP ?? true;
+  const decayDuration = options?.decayDuration ?? (12 * 3600 * 1000);
+
+  // Case 1: Already on stage and within current viewport comfort zone
+  if (existingCard && Math.abs(existingCard.y - viewportY) <= 260) {
+    nextCards = nextCards.map(c => c.id === card.id
+      ? { ...c, isVIP: isVIP || c.isVIP, decayDuration: Math.max(c.decayDuration || 0, decayDuration) }
+      : c
+    );
+    return {
+      updatedCards: nextCards,
+      updatedMemoryPool: nextMemoryPool,
+      stagedCard: nextCards.find(c => c.id === card.id)!
+    };
+  }
+
+  // Case 2: In other screens or offline in vault/memory -> summon into active viewport
+  let currentCards = nextCards.filter(c => c.id !== card.id);
+  const { stagedCard, updatedActiveCards, updatedMemoryPool: newMemPool } = stageCandidate(
+    card,
+    false,
+    scrollExpansion,
+    currentCards,
+    nextMemoryPool,
+    undefined,
+    viewportY
+  );
+
+  if (newMemPool) nextMemoryPool = newMemPool;
+  const finalStagedCard = {
+    ...stagedCard,
+    isVIP: isVIP || stagedCard.isVIP,
+    decayDuration: Math.max(stagedCard.decayDuration || 0, decayDuration)
+  };
+
+  nextCards = [...updatedActiveCards.filter(c => c.id !== finalStagedCard.id), finalStagedCard];
+
+  return {
+    updatedCards: nextCards,
+    updatedMemoryPool: nextMemoryPool,
+    stagedCard: finalStagedCard
+  };
 }
 
 export function getUnstagedMemoryCards(

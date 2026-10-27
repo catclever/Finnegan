@@ -172,11 +172,13 @@ func (b *BuguModule) GetCommands() []module.CommandDef {
 			Description: "吾道不孤",
 			Params: []module.ParamSpec{
 				{
-					Name:            "card",
-					Type:            module.ParamTypeCard,
-					Description:     "吾道不孤",
-					DataSource:      "cards",
-					RequireKeywords: true,
+					Name:                "card",
+					Type:                module.ParamTypeCard,
+					Description:         "吾道不孤",
+					DataSource:          "cards",
+					RequireKeywords:     true,
+					ExcludedTypes:       []string{"note"},
+					AutoStageToViewport: true,
 				},
 			},
 		},

@@ -13,11 +13,14 @@ const (
 
 // ParamSpec specifies an expected parameter for a module command
 type ParamSpec struct {
-	Name            string    `json:"name"`
-	Type            ParamType `json:"type"`
-	Description     string    `json:"description"`
-	DataSource      string    `json:"dataSource"`
-	RequireKeywords bool      `json:"requireKeywords,omitempty"`
+	Name                string    `json:"name"`
+	Type                ParamType `json:"type"`
+	Description         string    `json:"description"`
+	DataSource          string    `json:"dataSource"`
+	RequireKeywords     bool      `json:"requireKeywords,omitempty"`
+	ExcludedTypes       []string  `json:"excludedTypes,omitempty"`
+	AllowedTypes        []string  `json:"allowedTypes,omitempty"`
+	AutoStageToViewport bool      `json:"autoStageToViewport,omitempty"`
 }
 
 // CommandDef defines an Omnibar command provided by a module

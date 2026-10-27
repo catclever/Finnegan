@@ -57,7 +57,7 @@ export function createOptimisticChatLogCard(params: CreateOptimisticChatLogParam
     images: images || stagedCard.images,
     isVIP: true,
     decayDuration: 12 * 3600 * 1000,
-    z: 12,
+    z: stagedCard.z ?? 3,
     isEnriching: !hasUserTitle,
   };
 
@@ -142,10 +142,25 @@ export interface CreateNoteCardParams {
   localVaultPool: CosmicCard[];
   scrollExpansion: number;
   sourceCardId?: string;
+  latestManualCardId?: string | null;
 }
 
 export function createNoteCard(params: CreateNoteCardParams) {
-  const { docId, text, cards, memoryPool, localVaultPool, scrollExpansion, sourceCardId } = params;
+  const { docId, text, memoryPool, localVaultPool, scrollExpansion, sourceCardId } = params;
+  let { cards, latestManualCardId } = params;
+
+  if (latestManualCardId) {
+    const prevVIP = cards.find(c => c.id === latestManualCardId);
+    if (prevVIP && !isProtectedCard({ ...prevVIP, isVIP: false }, cards, sourceCardId)) {
+      cards = cards.map(c =>
+        c.id === latestManualCardId
+          ? { ...c, isVIP: false, decayDuration: BASE_STAGE_DECAY_MS }
+          : c
+      );
+    }
+  }
+  latestManualCardId = docId;
+
   const { title, cleanText } = extractHashTitle(text);
   const noteBody = (title && cleanText.trim()) ? cleanText.trim() : text;
   const noteTitle = title || (noteBody.length > 20 ? noteBody.slice(0, 20) + '...' : noteBody);
@@ -166,13 +181,20 @@ export function createNoteCard(params: CreateNoteCardParams) {
     sourceCardId
   );
   const nextMemoryPool = updatedMemoryPool || memoryPool;
-  const nextCards = [...updatedActiveCards.filter(c => c.id !== stagedCard.id), stagedCard];
-  const nextLocalVaultPool = [stagedCard, ...localVaultPool.filter(c => c.id !== docId)];
+  const newCard = {
+    ...stagedCard,
+    isVIP: true,
+    decayDuration: 12 * 3600 * 1000,
+    z: stagedCard.z ?? 3,
+  };
+  const nextCards = [...updatedActiveCards.filter(c => c.id !== newCard.id), newCard];
+  const nextLocalVaultPool = [newCard, ...localVaultPool.filter(c => c.id !== docId)];
 
   return {
     cards: nextCards,
     memoryPool: nextMemoryPool,
     localVaultPool: nextLocalVaultPool,
+    latestManualCardId,
   };
 }
 
@@ -296,7 +318,7 @@ export function mergeCapturedThought(params: MergeCapturedThoughtParams) {
     images: data.Images || data.images || stagedCard.images,
     isVIP: true,
     decayDuration: 12 * 3600 * 1000,
-    z: 12
+    z: stagedCard.z ?? 3
   };
 
   return {

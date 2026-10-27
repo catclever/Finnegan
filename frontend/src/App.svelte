@@ -8,12 +8,12 @@
   import { spring } from 'svelte/motion';
   import OmniBar from './components/OmniBar.svelte';
   import CosmicStage from './components/CosmicStage.svelte';
-  import { CaptureThought, CaptureThoughtWithImages, CaptureChatLog, CaptureChatLogWithImages, CaptureNote, GetTempCards, LoadLocalCards, SearchLocalCards, GetRegisteredCommands, ExecuteModuleCommand, EvictTempCard } from '../wailsjs/go/main/App.js';
+  import { CaptureThought, CaptureThoughtWithImages, CaptureChatLog, CaptureChatLogWithImages, CaptureNote, GetTempCards, LoadLocalCards, SearchLocalCards, GetRegisteredCommands, ExecuteModuleCommand, EvictTempCard, ReloadCard } from '../wailsjs/go/main/App.js';
   import { EventsOn } from '../wailsjs/runtime/runtime.js';
   import type { CosmicCard, SearchSession, CommandDef } from './types/card';
   import type { BuguSession, BuguBeacon } from './modules/bugu/types';
   import { generateAuraColor, transformSearchResults, calculateSearchRepulsion, commitUnallocatedSearchResults } from './lib/auraSearch';
-  import { BASE_CAPACITY, MACRO_TTL_MS, BASE_STAGE_DECAY_MS, stageCandidate, replenishStageCandidates, isProtectedCard, toCosmicCard } from './lib/stageDecay';
+  import { BASE_CAPACITY, MACRO_TTL_MS, BASE_STAGE_DECAY_MS, stageCandidate, replenishStageCandidates, isProtectedCard, toCosmicCard, ensureCardStagedInViewport } from './lib/stageDecay';
   import { computeNextScrollTarget } from './lib/stageCoords';
   import { isChatLogFormat } from './lib/chatlog';
   import { createBuguSessionController } from './modules/bugu/buguSession';
@@ -278,10 +278,12 @@
         localVaultPool,
         scrollExpansion: $scrollExpansion,
         sourceCardId: activeBuguBeacon?.sourceCardId,
+        latestManualCardId,
       });
       cards = note.cards;
       memoryPool = note.memoryPool;
       localVaultPool = note.localVaultPool;
+      if (note.latestManualCardId) latestManualCardId = note.latestManualCardId;
 
       if (searchSession.isActive) finishCaptureSearch();
     } catch (err) {
@@ -293,6 +295,15 @@
   }
 
   async function handleExecuteCommand(cmd: CommandDef, card: CosmicCard) {
+    const paramSpec = cmd.params?.[0];
+    const shouldAutoStage = Boolean(paramSpec?.autoStageToViewport || cmd.id.startsWith('bugu:'));
+
+    if (shouldAutoStage) {
+      const res = ensureCardStagedInViewport(card, $scrollExpansion, cards, memoryPool, { isVIP: true });
+      cards = res.updatedCards;
+      if (res.updatedMemoryPool) memoryPool = res.updatedMemoryPool;
+    }
+
     if (cmd.id.startsWith('bugu:')) {
       buguController.startRadar(card.id, cards, memoryPool, localVaultPool);
     }
@@ -402,6 +413,66 @@
     if (e.key === 'Enter') omniBarRef?.handleGlobalEnter();
   }
 
+  function applyCardUpdate(updatedCard: any) {
+    if (!updatedCard) return;
+    const updated = toCosmicCard(updatedCard, updatedCard.type || 'thought', 'local');
+
+    cards = cards.map(existing => {
+      const isMatch = existing.id === updated.id || 
+        (Boolean(existing.filePath) && Boolean(updated.filePath) && existing.filePath === updated.filePath) ||
+        (Boolean(existing.filePath) && existing.filePath.endsWith(updated.id)) ||
+        (Boolean(updated.filePath) && updated.filePath.endsWith(existing.id));
+      if (isMatch) {
+        return {
+          ...existing,
+          title: updated.title,
+          content: updated.content,
+          originalText: updated.originalText,
+          translatedText: updated.translatedText,
+          images: updated.images,
+          keywords: updated.keywords || existing.keywords,
+          type: updated.type || existing.type,
+          filePath: updated.filePath || existing.filePath,
+        };
+      }
+      return existing;
+    });
+
+    localVaultPool = localVaultPool.map(existing => {
+      const isMatch = existing.id === updated.id || 
+        (Boolean(existing.filePath) && Boolean(updated.filePath) && existing.filePath === updated.filePath);
+      if (isMatch) {
+        return {
+          ...existing,
+          title: updated.title,
+          content: updated.content,
+          images: updated.images,
+          keywords: updated.keywords || existing.keywords,
+          type: updated.type || existing.type,
+          filePath: updated.filePath || existing.filePath,
+        };
+      }
+      return existing;
+    });
+
+    memoryPool = memoryPool.map(existing => {
+      const isMatch = existing.id === updated.id || 
+        (Boolean(existing.filePath) && Boolean(updated.filePath) && existing.filePath === updated.filePath);
+      if (isMatch) {
+        return {
+          ...existing,
+          title: updated.title,
+          content: updated.content,
+          images: updated.images,
+          keywords: updated.keywords || existing.keywords,
+          type: updated.type || existing.type,
+          filePath: updated.filePath || existing.filePath,
+        };
+      }
+      return existing;
+    });
+  }
+
   onMount(() => {
     GetRegisteredCommands().then(cmds => { if (Array.isArray(cmds)) availableCommands = cmds; }).catch(console.warn);
 
@@ -441,6 +512,32 @@
       buguController.finishRadar();
     });
 
+    EventsOn("card:updated", (c: any) => {
+      applyCardUpdate(c);
+    });
+
+    EventsOn("card:deleted", (data: any) => {
+      const id = data?.id;
+      const filePath = data?.filePath;
+      if (id || filePath) {
+        cards = cards.filter(c => c.id !== id && (!filePath || c.filePath !== filePath));
+        localVaultPool = localVaultPool.filter(c => c.id !== id && (!filePath || c.filePath !== filePath));
+        memoryPool = memoryPool.filter(c => c.id !== id && (!filePath || c.filePath !== filePath));
+        if (focusedCardId === id) focusedCardId = null;
+      }
+    });
+
+    const handleWindowFocus = () => {
+      if (focusedCardId) {
+        const focusedCard = cards.find(c => c.id === focusedCardId);
+        const target = focusedCard?.filePath || focusedCardId;
+        ReloadCard(target).then(refreshed => {
+          if (refreshed) applyCardUpdate(refreshed);
+        }).catch(() => {});
+      }
+    };
+    window.addEventListener('focus', handleWindowFocus);
+
     const metabolicInterval = setInterval(() => {
       if (searchSession.isActive && !searchSession.isConfirmed) return;
       const now = Date.now();
@@ -466,6 +563,7 @@
     }, 2000);
 
     return () => {
+      window.removeEventListener('focus', handleWindowFocus);
       clearInterval(metabolicInterval);
       if (tideTimer) clearTimeout(tideTimer);
       if (scrollIdleTimer) clearTimeout(scrollIdleTimer);
@@ -496,7 +594,7 @@
 
   <OmniBar
     bind:this={omniBarRef} {availableCommands} {searchSession} {focusedCardId} {cards} {localVaultPool} {capturePending}
-    {isScrolling}
+    {isScrolling} scrollExpansion={$scrollExpansion}
     bind:isOmnibarFocused onCaptureThought={handleCaptureThought} onCaptureChatLog={handleCaptureChatLog} onCaptureNote={handleCaptureNote} onFreeSearch={handleFreeSearch}
     onRevertSearch={revertSearchView} onCommitSearch={confirmSearchView} onRestoreSearch={restoreConfirmedSearch}
     onExecuteCommand={handleExecuteCommand} onSearchLocalCards={SearchLocalCards}

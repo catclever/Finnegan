@@ -48,28 +48,13 @@ export function createBuguSessionController(callbacks: BuguSessionCallbacks) {
     radarBackendFinished = false;
     buguBabelCount = 0;
 
-    const isAlreadyOnStage = cards.some(c => c.id === sourceCardId);
-    let motherCard = cards.find(c => c.id === sourceCardId) ||
-      localVaultPool.find(c => c.id === sourceCardId) ||
-      memoryPool.find(c => c.id === sourceCardId);
+    // The mother card has already been guaranteed into active viewport by global ensureCardStagedInViewport
+    let nextCards = cards.map(c => c.id === sourceCardId
+      ? { ...c, isVIP: true, decayDuration: Math.max(c.decayDuration, 12 * 3600 * 1000) }
+      : c
+    );
 
-    const viewportY = Math.round(callbacks.getScrollExpansion() * 300);
-
-    let nextCards = [...cards];
-    let nextMemoryPool = [...memoryPool];
-
-    if (motherCard && (!isAlreadyOnStage || Math.abs(motherCard.y - viewportY) > 260)) {
-      let currentCards = nextCards.filter(c => c.id !== sourceCardId);
-      const { stagedCard, updatedActiveCards, updatedMemoryPool } = callbacks.stageCandidate(
-        motherCard, false, callbacks.getScrollExpansion(), currentCards, nextMemoryPool, sourceCardId, viewportY
-      );
-      if (updatedMemoryPool) nextMemoryPool = updatedMemoryPool;
-      nextCards = [...updatedActiveCards.filter((c: any) => c.id !== stagedCard.id), { ...stagedCard, isVIP: true, decayDuration: Math.max(stagedCard.decayDuration, 12 * 3600 * 1000) }];
-    } else if (motherCard) {
-      nextCards = nextCards.map(c => c.id === sourceCardId ? { ...c, isVIP: true, decayDuration: Math.max(c.decayDuration, 12 * 3600 * 1000) } : c);
-    }
-
-    callbacks.onUpdateStage(nextCards, nextMemoryPool);
+    callbacks.onUpdateStage(nextCards, memoryPool);
     updateBeacon({ sourceCardId, status: 'scanning' });
     resetBeaconSafetyTimer(sourceCardId);
   }

@@ -83,15 +83,27 @@ export function calculateSpatialPlacement(
   let globalBestPoint: { x: number; y: number } | null = null;
   let globalMaxDistance = -Infinity;
 
+  const isManualNew = isNewlyCreated && candidate?.origin === 'manual';
+  const sampleXRange = isManualNew ? 340 : 500;
+
   for (const zone of screenZones) {
     let zoneBestPoint: { x: number; y: number } | null = null;
     let zoneMaxDistance = -Infinity;
 
     for (let i = 0; i < SAMPLES_PER_ZONE; i++) {
       const pt = {
-        x: -500 + Math.random() * 1000,
+        x: -sampleXRange + Math.random() * (sampleXRange * 2),
         y: zone.minY + Math.random() * (zone.maxY - zone.minY)
       };
+
+      // Center-proximate placement for newly created manual cards: keep within 380px radius to avoid peripheral edge blur (> 400px)
+      if (isManualNew) {
+        const viewY = pt.y - zone.centerY;
+        const distFromCenter = Math.sqrt(pt.x * pt.x + viewY * viewY);
+        if (distFromCenter > 380) {
+          continue;
+        }
+      }
 
       // Deadzone: card center must not be positioned underneath the central Omnibar on any screen
       if (Math.abs(pt.x) < OMNIBAR_DEADZONE.halfWidth && Math.abs(pt.y - zone.centerY) < OMNIBAR_DEADZONE.halfHeight) {
@@ -126,15 +138,17 @@ export function calculateSpatialPlacement(
   }
 
   // Fallback to the globally best candidate if all zones were crowded
-  const finalPoint = chosenPoint || globalBestPoint || { x: Math.random() < 0.5 ? -380 : 380, y: viewCenterY };
+  const fallbackX = isManualNew ? (Math.random() < 0.5 ? -260 : 260) : (Math.random() < 0.5 ? -380 : 380);
+  const finalPoint = chosenPoint || globalBestPoint || { x: fallbackX, y: viewCenterY };
   const finalX = Math.round(finalPoint.x);
   const finalY = Math.round(finalPoint.y);
   const rotation = Number(((Math.random() - 0.5) * 50).toFixed(1));
 
   let z = 50;
   if (candidate) {
-    if (isNewlyCreated && candidate.origin === 'manual') {
-      z = 5 + Math.random() * 10;
+    if ((isNewlyCreated && candidate.origin === 'manual') || candidate.isVIP) {
+      // Extreme foreground: sits at the absolute closest layer (translateZ ~ +95px, scale ~ 1.07x)
+      z = Number((1.5 + Math.random() * 3.5).toFixed(1)); // z: 1.5 ~ 5.0
     } else if (candidate.isSearchResult) {
       z = Math.random() * 15;
     } else if (candidate.origin === 'bugu' || candidate.type === 'babel' || candidate.macroExpiresAt) {

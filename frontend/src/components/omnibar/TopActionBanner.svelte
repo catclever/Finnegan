@@ -69,9 +69,9 @@
         <span class="banner-dot"></span> 探针共鸣中
       </span>
       {#if !searchSession.isConfirmed}
-        <button type="button" class="banner-clickable-action" on:click={onSolidifySearch} title="按 Shift+Enter 确认搜索">
+        <button type="button" class="banner-clickable-action" on:click={onSolidifySearch} title="按 Shift+Enter 保留搜索结果">
           <span class="banner-key">⇧ ↵</span>
-          <span class="banner-action">确认搜索</span>
+          <span class="banner-action">保留搜索结果</span>
         </button>
         <span class="banner-sep">·</span>
       {/if}
@@ -79,32 +79,23 @@
         <span class="banner-key">Esc</span>
         <span class="banner-action">{searchSession.isConfirmed ? '恢复全部' : '清除'}</span>
       </button>
-      <span class="banner-sep">·</span>
-      <span class="banner-key">⌘ ↵</span>
-      <span class="banner-action">录入</span>
     {:else if isNoteFormat}
-      <span class="banner-badge note-badge">📝 {explicitNoteTitle ? `记录备忘「${explicitNoteTitle}」` : '记录备忘'}</span>
-      <span class="banner-key">⌘ ↵</span>
-      <span class="banner-action">保存备忘</span>
-      <span class="banner-sep">·</span>
+      <span class="banner-badge note-badge">📝 {explicitNoteTitle ? `备忘「${explicitNoteTitle}」` : '备忘'}</span>
       <span class="banner-key">↵</span>
       <span class="banner-action">换行</span>
       <span class="banner-sep">·</span>
       <span class="banner-key">Esc</span>
       <span class="banner-action">取消</span>
     {:else if isDialogueFormat}
-      <span class="banner-key">⌘ ↵</span>
-      <span class="banner-action">{explicitUserTitle ? `记录对话录「${explicitUserTitle}」` : '记录对话录'}</span>
-      <span class="banner-sep">·</span>
+      {#if explicitUserTitle}
+        <span class="banner-badge dialogue-badge">💬 对话录「{explicitUserTitle}」</span>
+      {/if}
       <span class="banner-key">↵</span>
       <span class="banner-action">换行</span>
       <span class="banner-sep">·</span>
       <span class="banner-key">/</span>
       <span class="banner-action">命令</span>
     {:else}
-      <span class="banner-key">⌘ ↵</span>
-      <span class="banner-action">发送思绪</span>
-      <span class="banner-sep">·</span>
       <span class="banner-key">↵</span>
       <span class="banner-action">换行</span>
       <span class="banner-sep">·</span>
@@ -165,6 +156,11 @@
   .banner-badge.note-badge {
     background: rgba(139, 92, 246, 0.12);
     color: #7c3aed;
+  }
+
+  .banner-badge.dialogue-badge {
+    background: rgba(16, 185, 129, 0.12);
+    color: #059669;
   }
 
   .banner-badge.param-badge {

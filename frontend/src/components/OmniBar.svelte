@@ -14,14 +14,16 @@
 -->
 <script lang="ts">
   import { createEventDispatcher, onDestroy } from 'svelte';
-  import type { CosmicCard, SearchSession, CommandDef } from '../types/card';
+  import type { CosmicCard, SearchSession, CommandDef, CandidateCardItem } from '../types/card';
   import AttachmentTray from './omnibar/AttachmentTray.svelte';
   import TopActionBanner from './omnibar/TopActionBanner.svelte';
   import CommandDropdown from './omnibar/CommandDropdown.svelte';
   import CardCandidateDropdown from './omnibar/CardCandidateDropdown.svelte';
+  import WritingPaper from './omnibar/WritingPaper.svelte';
   import { isChatLogFormat, extractHashTitle } from '../lib/chatlog';
-  import { parseDate } from '../lib/time';
   import { getCardDisplayTitle } from '../lib/cardTitle';
+  import { parseCardTypePrefix } from '../lib/cardType';
+  import { partitionCardTiers, rankSearchCandidates } from '../lib/paramCandidateEngine';
   import { CaptureChatLog, CaptureChatLogWithImages } from '../../wailsjs/go/main/App.js';
 
   // Props
@@ -30,6 +32,7 @@
   export let focusedCardId: string | null = null;
   export let cards: CosmicCard[] = [];
   export let localVaultPool: CosmicCard[] = [];
+  export let scrollExpansion: number = 0;
   export let capturePending: boolean = false;
   export let isOmnibarFocused: boolean = false;
   export let isScrolling: boolean = false;
@@ -142,9 +145,12 @@
   let commandParamMode: boolean = false;
   let selectedCommand: CommandDef | null = null;
   let lockedCard: CosmicCard | null = null;
+  let candidateItems: CandidateCardItem[] = [];
   let paramCardCandidates: CosmicCard[] = [];
   let highlightedCardIndex: number = 0;
   let paramSearchDebounceTimer: any = null;
+  let vaultLimit: number = 20;
+  let hasMoreVault: boolean = false;
 
   // Toast feedback state
   let toastMessage: string | null = null;
@@ -159,14 +165,18 @@
   }
 
   // Reactive expressions
-  $: hashTitleInfo = extractHashTitle(omniText);
-  $: explicitUserTitle = hashTitleInfo.title;
-  $: isDialogueFormat = isChatLogFormat(omniText);
-  $: isNoteFormat = /^\/note(\s+[\s\S]*)?$/i.test(omniText.trim());
-  $: noteContent = omniText.trim().replace(/^\/note\s*/i, '');
+  $: parsedCardType = parseCardTypePrefix(omniText);
+  $: isNoteFormat = parsedCardType.hasTypePrefix && parsedCardType.type === 'note';
+  $: noteContent = isNoteFormat ? parsedCardType.content : '';
   $: noteHashInfo = extractHashTitle(noteContent);
   $: explicitNoteTitle = noteHashInfo.title;
-  $: showTopBanner = (omniText.trim().length > 0) || (attachedImages.length > 0) || commandParamMode || commandSelectMode || (searchSession.isActive && !searchSession.isConfirmed) || isNoteFormat;
+  $: hashTitleInfo = extractHashTitle(omniText);
+  $: explicitUserTitle = hashTitleInfo.title;
+  $: isDialogueFormat = !isNoteFormat && isChatLogFormat(omniText);
+  $: writingText = isNoteFormat ? noteContent : omniText;
+  $: isWritingMode = !commandSelectMode && !commandParamMode && (writingText.trim().length >= 80 || (writingText.split('\n').length >= 4 && writingText.trim().length > 10));
+  $: showTopBanner = !isWritingMode && ((omniText.trim().length > 0) || (attachedImages.length > 0) || commandParamMode || commandSelectMode || (searchSession.isActive && !searchSession.isConfirmed) || isNoteFormat);
+  $: canSubmit = (isNoteFormat ? noteContent.trim().length > 0 : omniText.trim().length > 0) || attachedImages.length > 0;
 
   $: omnibarPlaceholder = commandParamMode
     ? (selectedCommand?.params?.[0]?.description || "吾道不孤")
@@ -184,28 +194,21 @@
     : [];
 
   function selectCommand(cmd: CommandDef) {
-    const trigger = (cmd.trigger || '').replace(/^\//, '').toLowerCase();
-    if (trigger === 'note' || cmd.id === 'core:note') {
-      commandSelectMode = false;
-      commandParamMode = false;
-      omniText = `/${trigger} `;
-      if (omnibarInputEl) {
-        omnibarInputEl.style.height = 'auto';
-        omnibarInputEl.focus();
-      }
-      return;
-    }
     selectedCommand = cmd;
     commandSelectMode = false;
     commandParamMode = true;
     omniText = "";
     lockedCard = null;
+    candidateItems = [];
+    paramCardCandidates = [];
+    vaultLimit = 20;
     highlightedCardIndex = 0;
     searchParamCards("");
   }
 
   function lockCard(candidate: CosmicCard) {
     lockedCard = candidate;
+    candidateItems = [];
     paramCardCandidates = [];
     omniText = "";
     if (omnibarInputEl) {
@@ -220,6 +223,7 @@
   function unlockCard() {
     lockedCard = null;
     omniText = "";
+    vaultLimit = 20;
     if (omnibarInputEl) {
       omnibarInputEl.style.height = 'auto';
       omnibarInputEl.focus();
@@ -235,7 +239,10 @@
     commandSelectMode = false;
     selectedCommand = null;
     lockedCard = null;
+    candidateItems = [];
     paramCardCandidates = [];
+    vaultLimit = 20;
+    hasMoreVault = false;
     omniText = "";
     if (omnibarInputEl) {
       omnibarInputEl.style.height = 'auto';
@@ -353,85 +360,46 @@
     }
   }
 
+  function handleLoadMoreCandidates() {
+    if (omniText.trim()) return;
+    if (!hasMoreVault) return;
+    vaultLimit += 15;
+    const res = partitionCardTiers(cards, localVaultPool, scrollExpansion, selectedCommand?.params?.[0], vaultLimit);
+    candidateItems = res.items;
+    paramCardCandidates = res.items.map(it => it.card);
+    hasMoreVault = res.totalVaultAvailable > vaultLimit;
+  }
+
   function searchParamCards(text: string) {
     if (paramSearchDebounceTimer) clearTimeout(paramSearchDebounceTimer);
     const q = text.trim();
-    const requireKeywords = Boolean(selectedCommand?.params?.[0]?.requireKeywords || (selectedCommand?.trigger || '').replace(/^\//, '').toLowerCase() === 'bugu');
+    const paramSpec = selectedCommand?.params?.[0];
     paramSearchDebounceTimer = setTimeout(async () => {
       try {
         if (!q) {
-          let rawPool = [...cards.filter(c => !c.isFadingOut), ...localVaultPool];
-
-          if (requireKeywords) {
-            rawPool = rawPool.filter(c => c.type !== 'note' && Boolean(c.keywords && Object.values(c.keywords).some(arr => Array.isArray(arr) && arr.length > 0)));
-          }
-
-          rawPool.sort((a, b) => {
-            const timeA = parseDate(a.createdAt)?.getTime() ?? (typeof a.spawnTime === 'number' ? a.spawnTime : 0);
-            const timeB = parseDate(b.createdAt)?.getTime() ?? (typeof b.spawnTime === 'number' ? b.spawnTime : 0);
-            return timeB - timeA;
-          });
-
-          const seenIds = new Set<string>();
-          const seenContent = new Set<string>();
-          const uniqueCandidates: CosmicCard[] = [];
-
-          for (const c of rawPool) {
-            const normContent = (c.content || '').trim();
-            if (c.id && seenIds.has(c.id)) continue;
-            if (normContent && seenContent.has(normContent)) continue;
-            if (c.id) seenIds.add(c.id);
-            if (normContent) seenContent.add(normContent);
-            uniqueCandidates.push(c);
-            if (uniqueCandidates.length >= 6) break;
-          }
-
-          paramCardCandidates = uniqueCandidates;
-          highlightedCardIndex = 0;
+          const res = partitionCardTiers(cards, localVaultPool, scrollExpansion, paramSpec, vaultLimit);
+          candidateItems = res.items;
+          paramCardCandidates = res.items.map(it => it.card);
+          hasMoreVault = res.totalVaultAvailable > vaultLimit;
+          highlightedCardIndex = Math.min(highlightedCardIndex, Math.max(0, candidateItems.length - 1));
           return;
         }
 
         const results = onSearchLocalCards ? await onSearchLocalCards(q) : [];
         if (results && results.length > 0) {
-          const filteredResults = requireKeywords
-            ? results.filter((r: any) => r.type !== 'note' && Boolean(r.keywords && Object.values(r.keywords).some((arr: any) => Array.isArray(arr) && arr.length > 0)))
-            : results;
-
-          const seenIds = new Set<string>();
-          const seenContent = new Set<string>();
-          const uniqueResults: CosmicCard[] = [];
-
-          for (const r of filteredResults) {
-            const normContent = (r.content || '').trim();
-            if (r.id && seenIds.has(r.id)) continue;
-            if (normContent && seenContent.has(normContent)) continue;
-            if (r.id) seenIds.add(r.id);
-            if (normContent) seenContent.add(normContent);
-
-            uniqueResults.push({
-              id: r.id,
-              type: r.type || 'thought',
-              title: r.title || 'Card',
-              content: r.content || '',
-              originalText: r.originalText || '',
-              translatedText: r.translatedText || '',
-              sourceUrl: r.sourceUrl || '',
-              createdAt: r.createdAt || r.CreatedAt,
-              x: 0, y: 0, rotation: 0, z: 50,
-              keywords: r.keywords || r.Keywords,
-              spawnTime: 0, decayDuration: 0, isFresh: false, isVIP: false,
-              origin: r.type === 'babel' ? 'bugu' : 'local'
-            });
-            if (uniqueResults.length >= 8) break;
-          }
-          paramCardCandidates = uniqueResults;
+          candidateItems = rankSearchCandidates(results, cards, scrollExpansion, paramSpec, 40);
+          paramCardCandidates = candidateItems.map(it => it.card);
         } else {
+          candidateItems = [];
           paramCardCandidates = [];
         }
+        hasMoreVault = false;
         highlightedCardIndex = 0;
       } catch (err) {
         console.error("searchParamCards error:", err);
+        candidateItems = [];
         paramCardCandidates = [];
+        hasMoreVault = false;
       }
     }, 250);
   }
@@ -506,18 +474,27 @@
     }
   }
 
+  async function handleSubmit() {
+    if (!canSubmit || capturePending) return;
+    if (isNoteFormat) {
+      if (noteContent.trim()) {
+        await captureCurrentNote(noteContent);
+      }
+      return;
+    }
+    await captureCurrentThought();
+  }
+
   async function handleOmnibarKeydown(e: KeyboardEvent) {
     if (e.key !== 'Backspace' && deleteHighlightIndex !== -1) {
       deleteHighlightIndex = -1;
     }
 
-    // Note Capture Mode: /note <content>
+    // Note Capture Mode: :note <content>
     if (isNoteFormat) {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault();
-        if (noteContent.trim()) {
-          await captureCurrentNote(noteContent);
-        }
+        await handleSubmit();
         return;
       }
       if (e.key === 'Escape') {
@@ -580,11 +557,6 @@
     // Space trigger: Typing a valid command name (e.g. "/bugu" or "bugu") + Space enters param mode immediately
     if ((e.key === ' ' || e.key === 'Spacebar') && !commandParamMode) {
       const clean = omniText.trim().replace(/^\//, '').toLowerCase();
-      if (clean === 'note') {
-        commandSelectMode = false;
-        commandParamMode = false;
-        return;
-      }
       const exactCmd = availableCommands.find(cmd => (cmd.trigger || '').replace(/^\//, '').toLowerCase() === clean);
       if (exactCmd) {
         e.preventDefault();
@@ -610,6 +582,9 @@
         if (e.key === 'ArrowDown') {
           e.preventDefault();
           if (paramCardCandidates.length > 0) {
+            if (highlightedCardIndex >= paramCardCandidates.length - 1 && hasMoreVault) {
+              handleLoadMoreCandidates();
+            }
             highlightedCardIndex = (highlightedCardIndex + 1) % paramCardCandidates.length;
           }
           return;
@@ -655,13 +630,7 @@
     // Mode 3: Normal Mode Thought Capture vs Search Solidify
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
       e.preventDefault();
-      if (isNoteFormat) {
-        if (noteContent) {
-          await captureCurrentNote(noteContent);
-        }
-        return;
-      }
-      await captureCurrentThought();
+      await handleSubmit();
       return;
     }
 
@@ -694,11 +663,6 @@
       const spaceIdx = omniText.indexOf(' ');
       if (spaceIdx > 0) {
         const cmdPart = omniText.slice(0, spaceIdx).trim().replace(/^\//, '').toLowerCase();
-        if (cmdPart === 'note') {
-          commandSelectMode = false;
-          commandParamMode = false;
-          return;
-        }
         const found = availableCommands.find(c => (c.trigger || '').replace(/^\//, '').toLowerCase() === cmdPart);
         if (found) {
           const restText = omniText.slice(spaceIdx + 1);
@@ -717,11 +681,19 @@
         searchParamCards(omniText);
       }
     } else if (omniText.startsWith('/')) {
-      if (isNoteFormat) {
-        commandSelectMode = false;
-      } else {
-        commandSelectMode = true;
-        highlightedCmdIndex = 0;
+      commandSelectMode = true;
+      highlightedCmdIndex = 0;
+    } else if (isWritingMode || writingText.trim().length >= 80 || (writingText.split('\n').length >= 4 && writingText.trim().length > 10)) {
+      commandSelectMode = false;
+      if (searchSession.isActive) {
+        if (onRevertSearch) onRevertSearch();
+        dispatch('revertSearch');
+      }
+    } else if (isNoteFormat || omniText.startsWith(':')) {
+      commandSelectMode = false;
+      if (searchSession.isActive) {
+        if (onRevertSearch) onRevertSearch();
+        dispatch('revertSearch');
       }
     } else {
       commandSelectMode = false;
@@ -760,7 +732,7 @@
 </script>
 
 <!-- Omnibar Container with Universal Two-Stage Assembly & Command Badges -->
-<div class="omnibar-container" class:faded={focusedCardId !== null || isScrolling} class:hidden={focusedCardId !== null}>
+<div class="omnibar-container" class:writing-mode={isWritingMode} class:faded={focusedCardId !== null || isScrolling} class:hidden={focusedCardId !== null}>
   <!-- Floating Toast Feedback Banner -->
   {#if toastMessage}
     <div class="toast-feedback">
@@ -786,66 +758,118 @@
     onRestoreSearch={handleRestoreSearch}
   />
 
-  <!-- svelte-ignore a11y-click-events-have-key-events -->
-  <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <div 
-    class="omnibar-box" 
-    class:command-mode={commandParamMode}
-    class:drag-over={isDraggingOver}
-    on:click={() => omnibarInputEl?.focus()}
-    on:paste={handlePaste}
-    on:dragover={handleDragOver}
-    on:dragleave={handleDragLeave}
-    on:drop={handleDrop}
-    on:wheel|stopPropagation={(e) => {
-      if (e.target !== omnibarInputEl) {
-        e.preventDefault();
-      }
-    }}
-  >
-    <!-- Command Chip Badge: [🔭 /cmd] -->
-    {#if commandParamMode && selectedCommand}
-      <div class="omnibar-chip command-chip">
-        <span class="chip-icon">🔭</span>
-        <span class="chip-label">/{selectedCommand.trigger.replace(/^\//, '')}</span>
-        <button class="chip-close" on:click={exitCommandMode} title="退出命令模式">✕</button>
-      </div>
-    {/if}
-
-    <!-- Locked Card Parameter Chip Badge: [📄 <Card Title> ✕] -->
-    {#if commandParamMode && lockedCard}
-      <div class="omnibar-chip card-chip">
-        <span class="chip-icon">📄</span>
-        <span class="chip-label">{getCardDisplayTitle(lockedCard)}</span>
-        <button class="chip-close" on:click={unlockCard} title="按 Esc 重新选择">✕</button>
-      </div>
-    {/if}
-
-    <!-- Omnibar Input: Always mounted to preserve DOM focus and keydown events -->
-    <textarea 
-      bind:this={omnibarInputEl}
-      class="omnibar-input" 
-      class:locked-mode={commandParamMode && lockedCard !== null}
-      placeholder={commandParamMode && lockedCard ? "" : omnibarPlaceholder} 
-      bind:value={omniText}
-      on:keydown={handleOmnibarKeydown}
-      on:input={handleInput}
-      on:paste={handlePaste}
-      on:focus={() => isOmnibarFocused = true}
-      on:blur={() => isOmnibarFocused = false}
-      on:wheel={handleInputWheel}
-      disabled={capturePending}
-      rows="1"
-    ></textarea>
-
-    <!-- AttachmentTray below textarea inside .omnibar-box -->
-    <AttachmentTray 
-      images={attachedImages} 
-      deleteHighlightIndex={deleteHighlightIndex} 
-      on:remove={(e) => removeImage(e.detail)} 
-      onRemove={removeImage}
+  {#if isWritingMode}
+    <WritingPaper
+      bind:omniText
+      {isNoteFormat}
+      {noteContent}
+      {explicitNoteTitle}
+      {attachedImages}
+      {deleteHighlightIndex}
+      {canSubmit}
+      {capturePending}
+      onSubmit={handleSubmit}
+      onRemoveImage={removeImage}
+      onKeydown={handleOmnibarKeydown}
+      onPaste={handlePaste}
+      onInput={handleInput}
+      onWheel={handleInputWheel}
     />
-  </div>
+  {:else}
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <!-- svelte-ignore a11y-no-static-element-interactions -->
+    <div 
+      class="omnibar-box" 
+      class:command-mode={commandParamMode}
+      class:drag-over={isDraggingOver}
+      on:click={() => omnibarInputEl?.focus()}
+      on:paste={handlePaste}
+      on:dragover={handleDragOver}
+      on:dragleave={handleDragLeave}
+      on:drop={handleDrop}
+      on:wheel|stopPropagation={(e) => {
+        if (e.target !== omnibarInputEl) {
+          e.preventDefault();
+        }
+      }}
+    >
+      <div class="omnibar-main-row">
+        <!-- Command Chip Badge: [🔭 /cmd] -->
+        {#if commandParamMode && selectedCommand}
+          <div class="omnibar-chip command-chip">
+            <span class="chip-icon">🔭</span>
+            <span class="chip-label">/{selectedCommand.trigger.replace(/^\//, '')}</span>
+            <button class="chip-close" on:click={exitCommandMode} title="退出命令模式">✕</button>
+          </div>
+        {/if}
+
+        <!-- Locked Card Parameter Chip Badge: [📄 <Card Title> ✕] -->
+        {#if commandParamMode && lockedCard}
+          <div class="omnibar-chip card-chip">
+            <span class="chip-icon">📄</span>
+            <span class="chip-label">{getCardDisplayTitle(lockedCard)}</span>
+            <button class="chip-close" on:click={unlockCard} title="按 Esc 重新选择">✕</button>
+          </div>
+        {/if}
+
+        <!-- Omnibar Input: Always mounted to preserve DOM focus and keydown events -->
+        <textarea 
+          bind:this={omnibarInputEl}
+          class="omnibar-input" 
+          class:locked-mode={commandParamMode && lockedCard !== null}
+          placeholder={commandParamMode && lockedCard ? "" : omnibarPlaceholder} 
+          bind:value={omniText}
+          on:keydown={handleOmnibarKeydown}
+          on:input={handleInput}
+          on:paste={handlePaste}
+          on:focus={() => isOmnibarFocused = true}
+          on:blur={() => isOmnibarFocused = false}
+          on:wheel={handleInputWheel}
+          disabled={capturePending}
+          rows="1"
+        ></textarea>
+
+        <!-- Submit Button: Shown only when focused, rounded quill writing icon with dashed text lines -->
+        {#if isOmnibarFocused && !commandSelectMode && !commandParamMode}
+          <button 
+            type="button"
+            class="omnibar-submit-btn" 
+            class:active={canSubmit && !capturePending}
+            class:note-mode={isNoteFormat}
+            disabled={!canSubmit || capturePending}
+            on:mousedown|preventDefault
+            on:click|stopPropagation={handleSubmit}
+            title={isNoteFormat ? "保存备忘 (⌘↵)" : "录入思绪 (⌘↵)"}
+          >
+            <svg class="quill-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+              <!-- Feather Plume: Soft, rounded organic feather vane with subtle translucent fill -->
+              <path 
+                d="M19.5 3.5c-3.5.2-6.8 1.8-8.8 4.5-1 1.2-1.8 2-3 2.4-1.3.4-2.4 1.4-3 2.6-.7 1.2-.8 2.2-1.8 3.2-.8.8-1.5 1.4-1.7 1.8.4.3 1 .3 1.8-.2 1-.7 2-1.6 3.2-2.2 1.2-.6 2.2-.6 3.3-1.4 1.6-1 2.8-2.4 4-4.2 1.4-2.2 2.6-4.2 4-5.2 1-.7 1.8-1 2-1.3Z" 
+                fill="currentColor" 
+                fill-opacity="0.14" 
+                stroke-width="1.6"
+              />
+              <!-- Feather Shaft: Sweeping central rachis from plume tip to nib -->
+              <path d="M19.5 3.5C14.5 9 9.5 13.5 4 18" stroke-width="1.8" />
+              <!-- Feather Barb Detail: Soft inner barb split -->
+              <path d="M13.5 9c-1.8 1.2-3 2.8-3.8 4.5" stroke-width="1.3" opacity="0.75" />
+              <!-- Written Text: Two lines of rounded dashed handwriting -->
+              <path d="M8 18.5h11" stroke-dasharray="2 3" stroke-width="2" />
+              <path d="M4 21.5h11" stroke-dasharray="2 3" stroke-width="2" />
+            </svg>
+          </button>
+        {/if}
+      </div>
+
+      <!-- AttachmentTray below textarea inside .omnibar-box -->
+      <AttachmentTray 
+        images={attachedImages} 
+        deleteHighlightIndex={deleteHighlightIndex} 
+        on:remove={(e) => removeImage(e.detail)} 
+        onRemove={removeImage}
+      />
+    </div>
+  {/if}
 
   <!-- Dropdown 1: Command Selection Suggestions -->
   {#if commandSelectMode && matchedCommands.length > 0}
@@ -858,13 +882,16 @@
   {/if}
 
   <!-- Dropdown 2: Parameter Card Candidates -->
-  {#if commandParamMode && !lockedCard && paramCardCandidates.length > 0}
+  {#if commandParamMode && !lockedCard && (candidateItems.length > 0 || paramCardCandidates.length > 0)}
     <CardCandidateDropdown
+      {candidateItems}
       {paramCardCandidates}
       {highlightedCardIndex}
       {omniText}
+      {hasMoreVault}
       onHighlight={(idx) => highlightedCardIndex = idx}
       onSelect={lockCard}
+      onLoadMore={handleLoadMoreCandidates}
     />
   {/if}
 </div>
@@ -876,9 +903,13 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), filter 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), filter 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     width: 580px;
     max-width: 90vw;
+  }
+
+  .omnibar-container.writing-mode {
+    width: 620px;
   }
 
   .omnibar-container.faded {
@@ -897,10 +928,10 @@
   .omnibar-box {
     width: 100%;
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
+    flex-direction: column;
+    justify-content: center;
     gap: 8px;
-    padding: 12px 22px;
+    padding: 12px 18px 12px 22px;
     border-radius: 30px;
     border: 2px solid rgba(255, 255, 255, 0.9);
     background: rgba(255, 255, 255, 0.88);
@@ -910,6 +941,14 @@
     transition: background 0.3s ease, border 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease;
     box-sizing: border-box;
     min-height: 60px;
+  }
+
+  .omnibar-main-row {
+    width: 100%;
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    min-height: 32px;
   }
 
   .omnibar-box.drag-over {
@@ -967,6 +1006,84 @@
     user-select: none;
     white-space: nowrap;
     animation: chip-appear 0.2s cubic-bezier(0.2, 0.9, 0.3, 1);
+    margin-bottom: 2px;
+    flex-shrink: 0;
+  }
+
+  /* Submit Button: Quill Icon Button */
+  .omnibar-submit-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    background: rgba(0, 0, 0, 0.04);
+    color: rgba(0, 0, 0, 0.28);
+    cursor: not-allowed;
+    flex-shrink: 0;
+    align-self: flex-end;
+    margin-bottom: 2px;
+    user-select: none;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    outline: none;
+    padding: 0;
+    animation: button-pop 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes button-pop {
+    from {
+      opacity: 0;
+      transform: scale(0.8);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .quill-icon {
+    width: 18px;
+    height: 18px;
+    display: block;
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform-origin: 20% 80%;
+  }
+
+  .omnibar-submit-btn.active {
+    background: #18181b;
+    color: #f4f4f5;
+    border-color: rgba(255, 255, 255, 0.15);
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  }
+
+  .omnibar-submit-btn.active.note-mode {
+    background: #5b21b6;
+    color: #f5f3ff;
+    border-color: rgba(167, 139, 250, 0.3);
+    box-shadow: 0 2px 10px rgba(91, 33, 182, 0.35);
+  }
+
+  .omnibar-submit-btn.active:hover {
+    background: #09090b;
+    transform: translateY(-1.5px) scale(1.06);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  }
+
+  .omnibar-submit-btn.active.note-mode:hover {
+    background: #4c1d95;
+    box-shadow: 0 4px 16px rgba(91, 33, 182, 0.45);
+  }
+
+  .omnibar-submit-btn.active:hover .quill-icon {
+    transform: rotate(-9deg) translateY(-0.5px);
+  }
+
+  .omnibar-submit-btn.active:active {
+    transform: translateY(0) scale(0.95);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
   }
 
   @keyframes chip-appear {

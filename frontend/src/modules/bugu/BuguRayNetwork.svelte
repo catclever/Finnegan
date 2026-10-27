@@ -279,7 +279,7 @@
               class="ray-anchor-badge"
               title={ray.target.echoReason || ray.target.matchedAnchor}
             >
-              「{ray.target.matchedAnchor}」
+              {ray.target.matchedAnchor}
             </div>
           </div>
         {/if}
@@ -725,108 +725,130 @@
   }
 
   .ray-anchor-badge {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 500;
-    color: rgba(251, 191, 36, 0.95);
-    background: rgba(18, 18, 20, 0.75);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    padding: 2px 7px;
-    border-radius: 4px;
-    border: 0.8px solid rgba(245, 158, 11, 0.45);
-    box-shadow: 0 0 10px rgba(245, 158, 11, 0.25);
+    letter-spacing: 0.08em;
+    color: rgba(253, 230, 138, 0.88);
+    background: transparent;
+    padding: 0 4px;
+    border: none;
+    box-shadow: none;
+    text-shadow: 0 0 6px rgba(245, 158, 11, 0.45);
     white-space: nowrap;
     transform-origin: center center;
     pointer-events: auto;
+    cursor: default;
+    user-select: none;
+    transition: opacity 0.25s ease, text-shadow 0.25s ease, transform 0.25s ease;
     animation: bugu-badge-decay 14.4s ease-in-out forwards;
   }
 
+  .ray-anchor-badge:hover {
+    opacity: 0.95 !important;
+    transform: scale(1.08) !important;
+    text-shadow: 0 0 10px rgba(245, 158, 11, 0.85), 0 0 18px rgba(251, 191, 36, 0.5) !important;
+  }
+
   @keyframes bugu-badge-decay {
-    /* Cycle 1 (0 ~ 4.8s): Quick fade-in, gleaming pulse as laser passes midpoint, gentle ambient sustain */
+    /* Cycle 1 (0 ~ 4.8s): Soft ambient entrance, glowing surge when pulse passes midpoint (13%~17%), soft ambient sustain */
     0% {
       opacity: 0;
-      transform: scale(0.65);
+      transform: scale(0.85);
+      text-shadow: 0 0 3px rgba(245, 158, 11, 0.2);
     }
     3% {
-      opacity: 0.88;
+      opacity: 0.38;
+      transform: scale(1);
+      text-shadow: 0 0 5px rgba(245, 158, 11, 0.35);
+    }
+    11% {
+      opacity: 0.42;
       transform: scale(1);
     }
-    12% {
-      opacity: 0.9;
-      transform: scale(1);
-      box-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
+    14% {
+      /* Pulse packet rushes across the badge */
+      opacity: 0.92;
+      transform: scale(1.06);
+      text-shadow: 0 0 10px rgba(245, 158, 11, 0.8), 0 0 18px rgba(251, 191, 36, 0.5);
     }
-    15% {
-      /* Pulse crosses badge: radiant amber gleam */
-      opacity: 1;
-      transform: scale(1.08);
-      border-color: rgba(245, 158, 11, 0.85);
-      box-shadow: 0 0 16px rgba(245, 158, 11, 0.7);
+    17% {
+      opacity: 0.92;
+      transform: scale(1.06);
+      text-shadow: 0 0 10px rgba(245, 158, 11, 0.8), 0 0 18px rgba(251, 191, 36, 0.5);
     }
-    20% {
-      opacity: 0.88;
+    21% {
+      /* Returns to ethereal ambient presence */
+      opacity: 0.38;
       transform: scale(1);
-      border-color: rgba(245, 158, 11, 0.45);
-      box-shadow: 0 0 10px rgba(245, 158, 11, 0.25);
+      text-shadow: 0 0 5px rgba(245, 158, 11, 0.35);
     }
     33.3% {
-      opacity: 0.82;
+      opacity: 0.35;
       transform: scale(1);
+      text-shadow: 0 0 5px rgba(245, 158, 11, 0.35);
     }
 
-    /* Cycle 2 (4.8s ~ 9.6s): Second pulse gleam */
+    /* Cycle 2 (4.8s ~ 9.6s): Second pulse wave */
     33.4% {
-      opacity: 0.8;
+      opacity: 0.35;
       transform: scale(1);
     }
-    45% {
-      opacity: 0.82;
+    44% {
+      opacity: 0.38;
       transform: scale(1);
     }
-    48% {
-      /* Pulse 2 arrives: subtle gleam */
-      opacity: 0.95;
-      transform: scale(1.05);
-      border-color: rgba(245, 158, 11, 0.7);
-      box-shadow: 0 0 14px rgba(245, 158, 11, 0.5);
-    }
-    53% {
+    47% {
+      /* Pulse 2 crosses midpoint */
       opacity: 0.78;
+      transform: scale(1.04);
+      text-shadow: 0 0 8px rgba(245, 158, 11, 0.7), 0 0 14px rgba(251, 191, 36, 0.4);
+    }
+    50% {
+      opacity: 0.78;
+      transform: scale(1.04);
+      text-shadow: 0 0 8px rgba(245, 158, 11, 0.7), 0 0 14px rgba(251, 191, 36, 0.4);
+    }
+    54% {
+      opacity: 0.32;
       transform: scale(1);
-      border-color: rgba(245, 158, 11, 0.35);
-      box-shadow: 0 0 8px rgba(245, 158, 11, 0.2);
+      text-shadow: 0 0 4px rgba(245, 158, 11, 0.3);
     }
     66.6% {
-      opacity: 0.7;
+      opacity: 0.28;
       transform: scale(1);
     }
 
-    /* Cycle 3 (9.6s ~ 14.4s): Final gentle decay */
+    /* Cycle 3 (9.6s ~ 14.4s): Final gentle whisper */
     66.7% {
-      opacity: 0.65;
+      opacity: 0.26;
       transform: scale(1);
     }
-    78% {
-      opacity: 0.68;
+    77% {
+      opacity: 0.28;
     }
-    81% {
-      /* Pulse 3 arrives: faint gleam */
-      opacity: 0.8;
-      transform: scale(1.03);
-      box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+    80% {
+      /* Pulse 3 subtle illumination */
+      opacity: 0.58;
+      transform: scale(1.02);
+      text-shadow: 0 0 7px rgba(245, 158, 11, 0.55);
     }
-    86% {
-      opacity: 0.55;
+    83% {
+      opacity: 0.58;
+      transform: scale(1.02);
+      text-shadow: 0 0 7px rgba(245, 158, 11, 0.55);
+    }
+    87% {
+      opacity: 0.2;
       transform: scale(1);
-      box-shadow: 0 0 6px rgba(245, 158, 11, 0.15);
+      text-shadow: 0 0 3px rgba(245, 158, 11, 0.2);
     }
     94% {
-      opacity: 0.25;
-      transform: scale(0.95);
+      opacity: 0.12;
+      transform: scale(0.96);
     }
     100% {
       opacity: 0;
-      transform: scale(0.85);
+      transform: scale(0.9);
     }
   }
   :global(.permanent-track) {
@@ -845,9 +867,8 @@
   }
   :global(.permanent-badge) {
     animation: none !important;
-    opacity: 1 !important;
-    transform: scale(1.08) !important;
-    border-color: rgba(245, 158, 11, 0.85) !important;
-    box-shadow: 0 0 16px rgba(245, 158, 11, 0.7) !important;
+    opacity: 0.85 !important;
+    transform: scale(1) !important;
+    text-shadow: 0 0 8px rgba(245, 158, 11, 0.6) !important;
   }
 </style>

@@ -41,11 +41,15 @@ export function Greet(arg1:string):Promise<string>;
 
 export function LoadLocalCards():Promise<Array<main.Card>>;
 
+export function OpenCardInEditor(arg1:string):Promise<void>;
+
 export function ParseChatLog(arg1:string):Promise<chatlog.ParsedChatLog>;
 
 export function ProcessChatLog(arg1:string):Promise<main.Card>;
 
 export function PromoteTempCard(arg1:string):Promise<main.Card>;
+
+export function ReloadCard(arg1:string):Promise<main.Card>;
 
 export function RunRadar(arg1:string):Promise<api.RadarResponse>;
 

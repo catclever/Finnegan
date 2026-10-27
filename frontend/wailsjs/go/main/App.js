@@ -70,6 +70,10 @@ export function LoadLocalCards() {
   return window['go']['main']['App']['LoadLocalCards']();
 }
 
+export function OpenCardInEditor(arg1) {
+  return window['go']['main']['App']['OpenCardInEditor'](arg1);
+}
+
 export function ParseChatLog(arg1) {
   return window['go']['main']['App']['ParseChatLog'](arg1);
 }
@@ -80,6 +84,10 @@ export function ProcessChatLog(arg1) {
 
 export function PromoteTempCard(arg1) {
   return window['go']['main']['App']['PromoteTempCard'](arg1);
+}
+
+export function ReloadCard(arg1) {
+  return window['go']['main']['App']['ReloadCard'](arg1);
 }
 
 export function RunRadar(arg1) {

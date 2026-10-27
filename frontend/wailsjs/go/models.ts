@@ -335,6 +335,9 @@ export namespace module {
 	    description: string;
 	    dataSource: string;
 	    requireKeywords?: boolean;
+	    excludedTypes?: string[];
+	    allowedTypes?: string[];
+	    autoStageToViewport?: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new ParamSpec(source);
@@ -347,6 +350,9 @@ export namespace module {
 	        this.description = source["description"];
 	        this.dataSource = source["dataSource"];
 	        this.requireKeywords = source["requireKeywords"];
+	        this.excludedTypes = source["excludedTypes"];
+	        this.allowedTypes = source["allowedTypes"];
+	        this.autoStageToViewport = source["autoStageToViewport"];
 	    }
 	}
 	export class CommandDef {

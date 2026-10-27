@@ -264,6 +264,32 @@ func (a *App) startup(ctx context.Context) {
 			runtime.EventsEmit(a.ctx, "keywords:extracted", event.Data)
 		}
 	}()
+
+	fileModCh := bus.GetBus().Subscribe(bus.EventFileModified, "wails-frontend-card-update")
+	go func() {
+		for event := range fileModCh {
+			if data, ok := event.Data.(bus.EventFileData); ok {
+				if card, err := ParseCardFile(data.FilePath); err == nil && card != nil {
+					if data.DocID != "" {
+						card.ID = data.DocID
+					}
+					runtime.EventsEmit(a.ctx, "card:updated", card)
+				}
+			}
+		}
+	}()
+
+	fileDelCh := bus.GetBus().Subscribe(bus.EventFileDeleted, "wails-frontend-card-delete")
+	go func() {
+		for event := range fileDelCh {
+			if data, ok := event.Data.(bus.EventFileData); ok {
+				runtime.EventsEmit(a.ctx, "card:deleted", map[string]string{
+					"id":       data.DocID,
+					"filePath": data.FilePath,
+				})
+			}
+		}
+	}()
 }
 
 func (a *App) GetKeywordEngine() *keywords.KeywordEngine {

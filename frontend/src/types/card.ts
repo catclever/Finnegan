@@ -41,6 +41,7 @@ export interface CosmicCard {
   images?: string[];
   keywords?: Record<string, string[]>;
   isEnriching?: boolean;     // True when card title/metadata is being derived by LLM
+  filePath?: string;
 
   // Lifecycle & Decay properties
   spawnTime: number;         // When entered active stage (ms timestamp)
@@ -71,6 +72,17 @@ export interface ParamSpec {
   description: string;
   dataSource?: string;
   requireKeywords?: boolean;
+  excludedTypes?: string[];
+  allowedTypes?: string[];
+  autoStageToViewport?: boolean;
+}
+
+export type CandidateTier = 'current_screen' | 'other_screens' | 'vault';
+
+export interface CandidateCardItem {
+  card: CosmicCard;
+  tier: CandidateTier;
+  screenIndex?: number;
 }
 
 export interface CommandDef {
