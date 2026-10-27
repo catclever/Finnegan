@@ -215,8 +215,9 @@ export function ensureCardStagedInViewport(
 
   // Case 1: Already on stage and within current viewport comfort zone
   if (existingCard && Math.abs(existingCard.y - viewportY) <= 260) {
+    const now = Date.now();
     nextCards = nextCards.map(c => c.id === card.id
-      ? { ...c, isVIP: isVIP || c.isVIP, decayDuration: Math.max(c.decayDuration || 0, decayDuration) }
+      ? { ...c, isVIP: isVIP || c.isVIP, decayDuration: Math.max(c.decayDuration || 0, decayDuration), elevatedAt: now }
       : c
     );
     return {
@@ -242,7 +243,8 @@ export function ensureCardStagedInViewport(
   const finalStagedCard = {
     ...stagedCard,
     isVIP: isVIP || stagedCard.isVIP,
-    decayDuration: Math.max(stagedCard.decayDuration || 0, decayDuration)
+    decayDuration: Math.max(stagedCard.decayDuration || 0, decayDuration),
+    elevatedAt: Date.now()
   };
 
   nextCards = [...updatedActiveCards.filter(c => c.id !== finalStagedCard.id), finalStagedCard];

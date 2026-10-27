@@ -59,6 +59,7 @@ export function createOptimisticChatLogCard(params: CreateOptimisticChatLogParam
     decayDuration: 12 * 3600 * 1000,
     z: stagedCard.z ?? 3,
     isEnriching: !hasUserTitle,
+    elevatedAt: Date.now(),
   };
 
   const nextLocalVaultPool = [newCard, ...localVaultPool.filter(c => c.id !== newCard.id)];
@@ -186,6 +187,7 @@ export function createNoteCard(params: CreateNoteCardParams) {
     isVIP: true,
     decayDuration: 12 * 3600 * 1000,
     z: stagedCard.z ?? 3,
+    elevatedAt: Date.now(),
   };
   const nextCards = [...updatedActiveCards.filter(c => c.id !== newCard.id), newCard];
   const nextLocalVaultPool = [newCard, ...localVaultPool.filter(c => c.id !== docId)];
@@ -322,7 +324,8 @@ export function mergeCapturedThought(params: MergeCapturedThoughtParams) {
     images: data.Images || data.images || stagedCard.images,
     isVIP: true,
     decayDuration: 12 * 3600 * 1000,
-    z: stagedCard.z ?? 3
+    z: stagedCard.z ?? 3,
+    elevatedAt: Date.now(),
   };
 
   return {

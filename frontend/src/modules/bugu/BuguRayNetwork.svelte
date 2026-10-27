@@ -737,7 +737,7 @@
     padding: 1.5px 8px;
     border-radius: 6px;
     box-shadow: none;
-    text-shadow: 0 0 5px rgba(245, 158, 11, 0.45);
+    text-shadow: 0 0 3px rgba(245, 158, 11, 0.25);
     white-space: nowrap;
     transform-origin: center center;
     pointer-events: auto;
@@ -759,7 +759,7 @@
   }
 
   @keyframes bugu-badge-decay {
-    /* Cycle 1 (0 ~ 4.8s): Transparent text entrance, frosted glass blooms when pulse passes (13%~18%), dissolves back to transparent */
+    /* Cycle 1 (0 ~ 4.8s): Ambient whisper (0.10), frosted glass & full radiance blooms when pulse passes (13%~18%), dissolves back to subtle ambient (0.09) */
     0% {
       opacity: 0;
       transform: scale(0.9);
@@ -770,7 +770,7 @@
       -webkit-backdrop-filter: blur(0px);
     }
     3% {
-      opacity: 0.85;
+      opacity: 0.10;
       transform: scale(1);
       background: transparent;
       border-color: transparent;
@@ -779,7 +779,7 @@
       -webkit-backdrop-filter: blur(0px);
     }
     11% {
-      opacity: 0.85;
+      opacity: 0.10;
       transform: scale(1);
       background: transparent;
       border-color: transparent;
@@ -788,8 +788,8 @@
       -webkit-backdrop-filter: blur(0px);
     }
     13% {
-      /* Pulse approaches: frosted capsule begins blooming */
-      opacity: 0.95;
+      /* Pulse approaches: frosted capsule begins blooming, text wakes up */
+      opacity: 0.75;
       transform: scale(1.03);
       background: rgba(15, 23, 42, 0.5);
       border-color: rgba(245, 158, 11, 0.4);
@@ -798,7 +798,7 @@
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 8px rgba(245, 158, 11, 0.25);
     }
     14% {
-      /* Pulse packet rushes across badge: full frosted glass capsule manifestation */
+      /* Pulse packet rushes across badge: full frosted glass capsule manifestation and 100% radiance */
       opacity: 1;
       transform: scale(1.06);
       background: rgba(15, 23, 42, 0.88);
@@ -819,8 +819,8 @@
       text-shadow: 0 0 8px rgba(245, 158, 11, 0.8), 0 0 14px rgba(251, 191, 36, 0.5);
     }
     19% {
-      /* Pulse leaves: frosted capsule begins dissolving */
-      opacity: 0.90;
+      /* Pulse leaves: frosted capsule begins dissolving, text softens */
+      opacity: 0.65;
       transform: scale(1.02);
       background: rgba(15, 23, 42, 0.4);
       border-color: rgba(245, 158, 11, 0.25);
@@ -829,18 +829,18 @@
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
     }
     21% {
-      /* Restores to transparent ambient presence */
-      opacity: 0.85;
+      /* Restores to subtle transparent ambient presence */
+      opacity: 0.09;
       transform: scale(1);
       background: transparent;
       border-color: transparent;
       box-shadow: none;
       backdrop-filter: blur(0px);
       -webkit-backdrop-filter: blur(0px);
-      text-shadow: 0 0 4px rgba(245, 158, 11, 0.4);
+      text-shadow: 0 0 3px rgba(245, 158, 11, 0.2);
     }
     33.3% {
-      opacity: 0.82;
+      opacity: 0.09;
       transform: scale(1);
       background: transparent;
       border-color: transparent;
@@ -851,7 +851,7 @@
 
     /* Cycle 2 (4.8s ~ 9.6s): Second pulse wave */
     33.4% {
-      opacity: 0.82;
+      opacity: 0.09;
       transform: scale(1);
       background: transparent;
       border-color: transparent;
@@ -860,7 +860,7 @@
       -webkit-backdrop-filter: blur(0px);
     }
     44% {
-      opacity: 0.82;
+      opacity: 0.09;
       transform: scale(1);
       background: transparent;
       border-color: transparent;
@@ -870,7 +870,7 @@
     }
     46% {
       /* Pulse 2 approaches */
-      opacity: 0.92;
+      opacity: 0.70;
       transform: scale(1.02);
       background: rgba(15, 23, 42, 0.45);
       border-color: rgba(245, 158, 11, 0.35);
@@ -900,7 +900,7 @@
     }
     52% {
       /* Pulse 2 dissolves */
-      opacity: 0.88;
+      opacity: 0.60;
       transform: scale(1.01);
       background: rgba(15, 23, 42, 0.35);
       border-color: rgba(245, 158, 11, 0.2);
@@ -908,7 +908,7 @@
       -webkit-backdrop-filter: blur(3px);
     }
     54% {
-      opacity: 0.80;
+      opacity: 0.08;
       transform: scale(1);
       background: transparent;
       border-color: transparent;
@@ -917,7 +917,7 @@
       -webkit-backdrop-filter: blur(0px);
     }
     66.6% {
-      opacity: 0.76;
+      opacity: 0.08;
       transform: scale(1);
       background: transparent;
       border-color: transparent;
@@ -928,7 +928,7 @@
 
     /* Cycle 3 (9.6s ~ 14.4s): Final gentle whisper */
     66.7% {
-      opacity: 0.76;
+      opacity: 0.08;
       transform: scale(1);
       background: transparent;
       border-color: transparent;
@@ -937,7 +937,7 @@
       -webkit-backdrop-filter: blur(0px);
     }
     78% {
-      opacity: 0.76;
+      opacity: 0.08;
       background: transparent;
       border-color: transparent;
       box-shadow: none;
@@ -946,7 +946,7 @@
     }
     80% {
       /* Pulse 3 subtle bloom */
-      opacity: 0.95;
+      opacity: 0.90;
       transform: scale(1.03);
       background: rgba(15, 23, 42, 0.82);
       border-color: rgba(245, 158, 11, 0.6);
@@ -956,7 +956,7 @@
       text-shadow: 0 0 7px rgba(245, 158, 11, 0.55);
     }
     83% {
-      opacity: 0.95;
+      opacity: 0.90;
       transform: scale(1.03);
       background: rgba(15, 23, 42, 0.82);
       border-color: rgba(245, 158, 11, 0.6);
@@ -966,7 +966,7 @@
       text-shadow: 0 0 7px rgba(245, 158, 11, 0.55);
     }
     85% {
-      opacity: 0.78;
+      opacity: 0.45;
       background: transparent;
       border-color: transparent;
       box-shadow: none;
@@ -974,7 +974,7 @@
       -webkit-backdrop-filter: blur(0px);
     }
     87% {
-      opacity: 0.65;
+      opacity: 0.06;
       transform: scale(1);
       background: transparent;
       border-color: transparent;
@@ -983,7 +983,7 @@
       -webkit-backdrop-filter: blur(0px);
     }
     94% {
-      opacity: 0.35;
+      opacity: 0.03;
       transform: scale(0.96);
       background: transparent;
       border-color: transparent;

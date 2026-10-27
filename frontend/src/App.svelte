@@ -19,7 +19,8 @@
   import { createBuguSessionController } from './modules/bugu/buguSession';
   import { createStageActivityController } from './lib/stageActivity';
   import { createOptimisticChatLogCard, reconcileChatLogCard, rollbackOptimisticCard, createNoteCard, mergeCapturedThought } from './lib/cardCapture';
-  import { findUnstagedMatchingCards } from './lib/tagNetwork';
+  import { findUnstagedMatchingCards, cardHasTag, calculateIntrinsicTargetZ } from './lib/tagNetwork';
+  import { applyGravitationalFallback } from './lib/gravityFallback';
   import type { AuraTrace } from './types/card';
 
   // --- Stage Pools & Selection State ---
@@ -319,7 +320,7 @@
 
     if (shouldAutoStage) {
       const res = ensureCardStagedInViewport(card, $scrollExpansion, cards, memoryPool, { isVIP: true });
-      cards = res.updatedCards;
+      cards = res.updatedCards.map(c => c.id === card.id ? { ...c, elevatedAt: Date.now() } : c);
       if (res.updatedMemoryPool) memoryPool = res.updatedMemoryPool;
     }
 
@@ -343,14 +344,27 @@
   function activateConstellationTag(tag: string) {
     activeConstellationTag = tag;
     stageActivity.resetActivityTimer();
+    const now = Date.now();
+
+    // Elevate cards already on stage that possess this tag
+    let currentCards = cards.map(c => {
+      if (cardHasTag(c, tag)) {
+        return {
+          ...c,
+          elevatedAt: now,
+        };
+      }
+      return c;
+    });
 
     // Query unstaged matching cards from memoryPool and localVaultPool
-    const unstaged = findUnstagedMatchingCards(tag, cards, memoryPool, localVaultPool);
-    if (unstaged.length === 0) return;
+    const unstaged = findUnstagedMatchingCards(tag, currentCards, memoryPool, localVaultPool);
+    if (unstaged.length === 0) {
+      cards = currentCards;
+      return;
+    }
 
-    let currentCards = [...cards];
     let nextMemoryPool = [...memoryPool];
-    const now = Date.now();
     const viewportCenterY = Math.round($scrollExpansion * 300);
 
     for (const candidate of unstaged) {
@@ -389,6 +403,7 @@
             auraTraces: [...(c.auraTraces || []).filter(t => !t.searchId.startsWith('tag_resurgence_')), auraTrace],
             decayDuration: Math.max(c.decayDuration || 0, 120000 + 3600000),
             isFadingOut: false,
+            elevatedAt: now,
           };
         }
         return c;
@@ -665,26 +680,37 @@
       const fadingIds: string[] = [];
       cards = cards.map(c => {
         if (c.id === focusedCardId) return c;
-        if (isProtectedCard(c, cards, activeBuguBeacon?.sourceCardId)) return c;
         if (c.isFadingOut) return c;
 
         const isTemporary = Boolean(c.isTemporary || c.origin === 'bugu' || c.type === 'radar');
-        if (isTemporary && c.decayDuration && (now - c.spawnTime >= c.decayDuration)) {
-          if (c.z < 65) {
-            return {
-              ...c,
-              z: c.z + 20 + Math.random() * 5,
-              spawnTime: now
-            };
-          } else {
-            fadingIds.push(c.id);
-            return {
-              ...c,
-              isFadingOut: true
-            };
+        if (isTemporary) {
+          if (isProtectedCard(c, cards, activeBuguBeacon?.sourceCardId)) return c;
+          if (c.decayDuration && (now - c.spawnTime >= c.decayDuration)) {
+            if (c.z < 65) {
+              return {
+                ...c,
+                z: c.z + 20 + Math.random() * 5,
+                spawnTime: now
+              };
+            } else {
+              fadingIds.push(c.id);
+              return {
+                ...c,
+                isFadingOut: true
+              };
+            }
           }
+          return c;
         }
-        return c;
+
+        // Active Bugu mother card is protected during active radar session
+        if (activeBuguBeacon?.sourceCardId && c.id === activeBuguBeacon.sourceCardId) {
+          return c;
+        }
+
+        // Universal Gravitational Fallback Engine for permanent/normal cards:
+        // Evaluates cards whose 10-minute elevation protection has elapsed
+        return applyGravitationalFallback(c, now);
       });
 
       if (fadingIds.length > 0) {

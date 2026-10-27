@@ -70,6 +70,7 @@ export interface CosmicCard {
   isFadingOut?: boolean;     // True when departing stage
   origin: 'manual' | 'bugu' | 'local';
   macroExpiresAt?: number;   // In-memory 24-hr TTL
+  elevatedAt?: number;       // Universal gravitational elevation timestamp (ms)
 
   // Aura Search properties
   isSearchResult?: boolean;

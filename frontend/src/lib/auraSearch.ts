@@ -113,6 +113,7 @@ export function transformSearchResults(
         isFresh: true,
         isFadingOut: false,
         macroExpiresAt: now + macroTtlMs,
+        elevatedAt: now,
       };
     }
 
@@ -144,7 +145,8 @@ export function transformSearchResults(
       macroExpiresAt: now + macroTtlMs,
       isSearchResult: true,
       auraTraces: newTraces,
-      isFadingOut: false
+      isFadingOut: false,
+      elevatedAt: now
     };
   });
 }
@@ -207,7 +209,8 @@ export function calculateSearchRepulsion(
       rotation,
       z,
       isFresh: true,
-      isFadingOut: false
+      isFadingOut: false,
+      elevatedAt: sc.elevatedAt ?? Date.now()
     });
   });
 
