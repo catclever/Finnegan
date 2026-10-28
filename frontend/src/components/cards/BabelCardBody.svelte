@@ -48,6 +48,16 @@
   }
 
   $: resolvedDisplayTime = displayTime || babelTime || thoughtTime || getCardDisplayTime(card);
+
+  $: isBluesky = card.origin === 'atproto' || (typeof card.sourceUrl === 'string' && card.sourceUrl.includes('bsky.app'));
+
+  function handleFetchComments(e: MouseEvent) {
+    e.stopPropagation();
+    e.preventDefault();
+    if ((window as any).runtime?.EventsEmit) {
+      (window as any).runtime.EventsEmit('atproto:fetch_comments', { uri: card.sourceUrl || card.id });
+    }
+  }
 </script>
 
 <div class="babel-card-body" class:focused={isFocused} class:hovered={isHovered}>
@@ -61,7 +71,11 @@
           on:click={handleOpenSource}
           title={card.sourceUrl}
         >
-          <span class="domain-icon">🌐</span> {hostname}
+          {#if isBluesky}
+            <span class="domain-icon">🦋</span> @{card.authorName || 'bsky.app'}
+          {:else}
+            <span class="domain-icon">🌐</span> {hostname}
+          {/if}
         </a>
       {/if}
     </div>
@@ -95,6 +109,24 @@
         </div>
       {/if}
     </div>
+
+    {#if isFocused && isBluesky}
+      <div class="bsky-interactions">
+        <button on:click={handleFetchComments} title="Reply">
+          💬 {card.replyCount || card.commentsCount || ''}
+        </button>
+        {#if card.repostCount !== undefined}
+          <button title="Repost">
+            🔁 {card.repostCount}
+          </button>
+        {/if}
+        {#if card.likeCount !== undefined}
+          <button title="Like">
+            ♥ {card.likeCount}
+          </button>
+        {/if}
+      </div>
+    {/if}
 
     {#if resolvedDisplayTime}
       <span class="card-time">{resolvedDisplayTime}</span>
@@ -222,6 +254,35 @@
     letter-spacing: 0.02em;
     user-select: none;
     white-space: nowrap;
+  }
+
+  .bsky-interactions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: auto;
+    margin-right: 8px;
+  }
+
+  .bsky-interactions button {
+    background: rgba(255, 255, 255, 0.4);
+    border: none;
+    border-radius: 12px;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    color: rgba(0, 0, 0, 0.7);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s ease;
+    font-family: inherit;
+    backdrop-filter: blur(4px);
+  }
+
+  .bsky-interactions button:hover {
+    background: rgba(255, 255, 255, 0.8);
+    color: rgba(0, 0, 0, 0.9);
   }
 
   .single-container {
