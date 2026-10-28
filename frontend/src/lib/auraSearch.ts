@@ -60,11 +60,18 @@ export function generateAuraColor(cards: CosmicCard[], memoryPool: CosmicCard[])
   return `hsl(${Math.round(chosenHue)}, 95%, 62%)`;
 }
 
+export const DEFAULT_SEARCH_AURA_DURATION = 15 * 60 * 1000; // 15 minutes active search glow duration
+
 /**
- * Creates or updates an aura trace on a card.
+ * Creates or updates an aura trace on a card with explicit duration.
  */
-export function createAuraTrace(searchId: string, color: string, hitTime: number = Date.now()): AuraTrace {
-  return { searchId, color, hitTime };
+export function createAuraTrace(
+  searchId: string,
+  color: string,
+  hitTime: number = Date.now(),
+  duration: number = DEFAULT_SEARCH_AURA_DURATION
+): AuraTrace {
+  return { searchId, color, hitTime, duration };
 }
 
 /**

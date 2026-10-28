@@ -88,10 +88,11 @@
   $: elapsed = hasAura ? Math.max(0, Date.now() - latestHitTime) : Infinity;
 
   // Temporal decay stages:
-  // 1: < 3 min (180,000 ms)  - Bright flowing neon glow
-  // 2: 3 ~ 30 min (1.8m ms)  - Soft steady border glow
-  // 3: > 30 min (> 1.8m ms)  - Fine crisp 1.5px colored border
-  $: auraStage = !hasAura ? 0 : (elapsed < 3 * 60 * 1000 ? 1 : (elapsed < 30 * 60 * 1000 ? 2 : 3));
+  // 1: < 3 min (180,000 ms)   - Bright flowing neon glow
+  // 2: 3 ~ 10 min (600,000 ms)  - Soft steady border glow
+  // 3: 10 ~ 15 min (900,000 ms) - Fine crisp 1.5px colored border
+  // > 15 min: Extinguished (hasAura = false, auraStage = 0)
+  $: auraStage = !hasAura ? 0 : (elapsed < 3 * 60 * 1000 ? 1 : (elapsed < 10 * 60 * 1000 ? 2 : 3));
 
   // Dynamic conic-gradient for spinning border
   $: conicGradient = (() => {

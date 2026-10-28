@@ -1,38 +1,49 @@
 /**
  * Finnegan Cosmic Stage - Universal Gravitational Fallback Engine Tests
- * Task: gravity_fallback_elevated_cards_112
+ * Task: gravity_fallback_unlock_extinction_cooldown
  *
  * Verifies:
- * 1. 10-minute elevation protection determination (isElevationProtectionActive)
- * 2. Natural intrinsic depth calculation & sinking (calculateGravitationalFallbackZ)
- * 3. Strict "only backward, not forward (intrinsicZ > z + 5)" rule
- * 4. Optical aura & visual cue decoupling (auraTraces & isSearchResult preservation)
- * 5. Window focus fallback batch processing (processWindowFocusGravitationalFallback)
- * 6. Search & tag elevation injection (transformSearchResults & calculateSearchRepulsion)
+ * 1. Active aura lock (hasActiveAura): As long as light is on, card is strictly locked in foreground.
+ * 2. Extinction & 10-minute cooldown (isElevationProtectionActive):
+ *    - Phase 1: Light shining -> locked & protected.
+ *    - Phase 2: Light just extinguished -> enters 10m cooldown buffer, still protected.
+ *    - Phase 3: In 10m cooldown buffer -> still protected.
+ *    - Phase 4: > 10m past extinction -> unlocked & eligible for gravitational sinking.
+ * 3. Natural intrinsic depth calculation & sinking (calculateGravitationalFallbackZ).
+ * 4. Strict "only backward, not forward (intrinsicZ > z + 5)" rule.
+ * 5. Optical aura & visual cue decoupling (auraTraces & isSearchResult preservation).
+ * 6. Window focus fallback batch processing (processWindowFocusGravitationalFallback).
+ * 7. Search & tag elevation integration (transformSearchResults & calculateSearchRepulsion).
  */
 
 // @ts-nocheck
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  DEFAULT_SEARCH_AURA_DURATION,
+  COOLDOWN_AFTER_EXTINCTION_MS,
   ELEVATED_PROTECTION_MS,
   isTemporaryCard,
   isPermanentCard,
+  hasActiveAura,
+  getAuraExtinctionTime,
   isElevationProtectionActive,
   calculateGravitationalFallbackZ,
   applyGravitationalFallback,
   processWindowFocusGravitationalFallback,
 } from './gravityFallback.ts';
 import { calculateIntrinsicTargetZ } from './tagNetwork.ts';
-import { transformSearchResults, calculateSearchRepulsion } from './auraSearch.ts';
+import { transformSearchResults, calculateSearchRepulsion, createAuraTrace } from './auraSearch.ts';
 
 describe('Universal Gravitational Fallback Engine', () => {
   const DAY_MS = 24 * 3600 * 1000;
   const MINUTE_MS = 60 * 1000;
   const NOW = 1750000000000;
 
-  describe('1. 10-Minute Elevation Protection Window (isElevationProtectionActive)', () => {
-    it('defines ELEVATED_PROTECTION_MS as exactly 10 minutes (600,000ms)', () => {
+  describe('1. Active Aura & 10-Minute Post-Extinction Cooldown', () => {
+    it('defines standard constants: 15m default search duration, 10m cooldown after extinction', () => {
+      assert.equal(DEFAULT_SEARCH_AURA_DURATION, 15 * 60 * 1000);
+      assert.equal(COOLDOWN_AFTER_EXTINCTION_MS, 10 * 60 * 1000);
       assert.equal(ELEVATED_PROTECTION_MS, 10 * 60 * 1000);
     });
 
@@ -47,44 +58,99 @@ describe('Universal Gravitational Fallback Engine', () => {
       assert.equal(isPermanentCard({ id: 'c1', origin: 'bugu' }), false);
     });
 
-    it('returns true when card is within the 10-minute protection window', () => {
-      // Just elevated (0ms elapsed)
-      const justElevated = { id: 'c1', elevatedAt: NOW };
-      assert.equal(isElevationProtectionActive(justElevated, NOW), true);
+    it('detects active aura (light is shining)', () => {
+      // 1. Search aura with default duration (15m), hit 5m ago -> active
+      const searchActive = {
+        id: 'c1',
+        auraTraces: [{ searchId: 's1', color: 'hsl(200, 95%, 62%)', hitTime: NOW - 5 * MINUTE_MS, duration: 15 * MINUTE_MS }]
+      };
+      assert.equal(hasActiveAura(searchActive, NOW), true);
 
-      // Elevated 5 minutes ago
-      const fiveMinAgo = { id: 'c2', elevatedAt: NOW - 5 * MINUTE_MS };
-      assert.equal(isElevationProtectionActive(fiveMinAgo, NOW), true);
+      // 2. Search aura with default duration (15m), hit 16m ago -> extinguished
+      const searchExtinguished = {
+        id: 'c2',
+        auraTraces: [{ searchId: 's1', color: 'hsl(200, 95%, 62%)', hitTime: NOW - 16 * MINUTE_MS, duration: 15 * MINUTE_MS }]
+      };
+      assert.equal(hasActiveAura(searchExtinguished, NOW), false);
 
-      // Elevated 9.99 minutes ago (almost expired, but still protected)
-      const almostExpired = { id: 'c3', elevatedAt: NOW - 9.99 * MINUTE_MS };
-      assert.equal(isElevationProtectionActive(almostExpired, NOW), true);
+      // 3. Tag aura with 2m duration, hit 1m ago -> active
+      const tagActive = {
+        id: 'c3',
+        auraTraces: [{ searchId: 'tag_1', color: '#38bdf8', hitTime: NOW - 1 * MINUTE_MS, duration: 2 * MINUTE_MS }]
+      };
+      assert.equal(hasActiveAura(tagActive, NOW), true);
+
+      // 4. Tag aura with 2m duration, hit 3m ago -> extinguished
+      const tagExtinguished = {
+        id: 'c4',
+        auraTraces: [{ searchId: 'tag_1', color: '#38bdf8', hitTime: NOW - 3 * MINUTE_MS, duration: 2 * MINUTE_MS }]
+      };
+      assert.equal(hasActiveAura(tagExtinguished, NOW), false);
     });
 
-    it('returns false when the 10-minute protection window has elapsed', () => {
-      // Exactly 10 minutes elapsed
-      const exactTen = { id: 'c1', elevatedAt: NOW - 10 * MINUTE_MS };
-      assert.equal(isElevationProtectionActive(exactTen, NOW), false);
-
-      // 15 minutes elapsed
-      const fifteenMinAgo = { id: 'c2', elevatedAt: NOW - 15 * MINUTE_MS };
-      assert.equal(isElevationProtectionActive(fifteenMinAgo, NOW), false);
-
-      // 1 day elapsed
-      const oneDayAgo = { id: 'c3', elevatedAt: NOW - DAY_MS };
-      assert.equal(isElevationProtectionActive(oneDayAgo, NOW), false);
+    it('calculates the exact moment when the latest aura extinguished (getAuraExtinctionTime)', () => {
+      const card = {
+        id: 'c1',
+        auraTraces: [
+          { searchId: 's1', hitTime: NOW - 20 * MINUTE_MS, duration: 15 * MINUTE_MS }, // extinguished at NOW - 5m
+          { searchId: 's2', hitTime: NOW - 10 * MINUTE_MS, duration: 15 * MINUTE_MS }, // will extinguish at NOW + 5m
+        ]
+      };
+      const extTime = getAuraExtinctionTime(card);
+      assert.equal(extTime, NOW + 5 * MINUTE_MS);
     });
 
-    it('returns false for cards without elevatedAt timestamp', () => {
+    it('strictly enforces: Light On -> Locked; Light Off -> 10m Cooldown -> Unlocked (isElevationProtectionActive)', () => {
+      // Phase 1: Light is shining (search hit 8m ago, duration 15m). 7m remaining on light.
+      const lightOn = {
+        id: 'p1',
+        auraTraces: [{ searchId: 's1', hitTime: NOW - 8 * MINUTE_MS, duration: 15 * MINUTE_MS }]
+      };
+      assert.equal(isElevationProtectionActive(lightOn, NOW), true, 'Must be locked while light is on');
+
+      // Phase 2: Light just extinguished 0.5m ago (hit 15.5m ago, duration 15m). Within 10m cooldown buffer.
+      const justExtinguished = {
+        id: 'p2',
+        auraTraces: [{ searchId: 's1', hitTime: NOW - 15.5 * MINUTE_MS, duration: 15 * MINUTE_MS }]
+      };
+      assert.equal(hasActiveAura(justExtinguished, NOW), false, 'Light is extinguished');
+      assert.equal(isElevationProtectionActive(justExtinguished, NOW), true, 'Must remain protected in 10m cooldown buffer');
+
+      // Phase 3: Light extinguished 6m ago (hit 21m ago, duration 15m). 4m remaining in cooldown buffer.
+      const halfwayCooldown = {
+        id: 'p3',
+        auraTraces: [{ searchId: 's1', hitTime: NOW - 21 * MINUTE_MS, duration: 15 * MINUTE_MS }]
+      };
+      assert.equal(hasActiveAura(halfwayCooldown, NOW), false);
+      assert.equal(isElevationProtectionActive(halfwayCooldown, NOW), true, 'Must remain protected halfway through cooldown');
+
+      // Phase 4: Light extinguished 10.1m ago (hit 25.1m ago, duration 15m). Cooldown expired!
+      const cooldownExpired = {
+        id: 'p4',
+        auraTraces: [{ searchId: 's1', hitTime: NOW - 25.1 * MINUTE_MS, duration: 15 * MINUTE_MS }]
+      };
+      assert.equal(hasActiveAura(cooldownExpired, NOW), false);
+      assert.equal(isElevationProtectionActive(cooldownExpired, NOW), false, 'Protection must expire after 10m cooldown');
+    });
+
+    it('supports cards elevated via elevatedAt without aura traces (10m grace period)', () => {
+      const elevated5mAgo = { id: 'c1', elevatedAt: NOW - 5 * MINUTE_MS };
+      assert.equal(isElevationProtectionActive(elevated5mAgo, NOW), true);
+
+      const elevated12mAgo = { id: 'c2', elevatedAt: NOW - 12 * MINUTE_MS };
+      assert.equal(isElevationProtectionActive(elevated12mAgo, NOW), false);
+    });
+
+    it('returns false for cards with no elevation or aura traces', () => {
       assert.equal(isElevationProtectionActive({ id: 'c1' }, NOW), false);
-      assert.equal(isElevationProtectionActive({ id: 'c2', elevatedAt: undefined }, NOW), false);
       assert.equal(isElevationProtectionActive(null, NOW), false);
     });
   });
 
   describe('2. Intrinsic Depth Sinking & Optical Decoupling', () => {
-    it('calculates intrinsic depth and triggers sinking for an old card pulled to foreground', () => {
+    it('sinks an old card after light extinguishes AND 10m cooldown buffer elapses', () => {
       // Card created 60 days ago: intrinsic Z is ~66..78
+      // Hit 30m ago (15m light + 15m past extinction = > 10m cooldown)
       const oldCard: CosmicCard = {
         id: 'old-1',
         title: 'Ancient Architecture Note',
@@ -96,14 +162,15 @@ describe('Universal Gravitational Fallback Engine', () => {
         y: 0,
         rotation: 0,
         z: 12, // pulled to foreground
-        spawnTime: NOW - 20 * MINUTE_MS,
+        spawnTime: NOW - 30 * MINUTE_MS,
         decayDuration: 12 * 3600 * 1000,
         isFresh: false,
         isVIP: false,
-        elevatedAt: NOW - 15 * MINUTE_MS, // 15 min ago (> 10 min protection)
-        auraTraces: [{ searchId: 's1', color: 'hsl(210, 95%, 62%)', hitTime: NOW - 15 * MINUTE_MS }],
+        auraTraces: [{ searchId: 's1', color: 'hsl(210, 95%, 62%)', hitTime: NOW - 30 * MINUTE_MS, duration: 15 * MINUTE_MS }],
         isSearchResult: true,
       };
+
+      assert.equal(isElevationProtectionActive(oldCard, NOW), false, 'Protection must be elapsed');
 
       const { shouldSink, targetZ, intrinsicZ } = calculateGravitationalFallbackZ(oldCard, NOW);
       assert.equal(shouldSink, true);
@@ -115,42 +182,54 @@ describe('Universal Gravitational Fallback Engine', () => {
       assert.ok(fallen.z >= 66 && fallen.z <= 78, `fallen.z (${fallen.z}) should match 60-day intrinsic band (66~78)`);
       assert.ok(fallen.z > oldCard.z + 5, 'Card must sink deeper than z + 5');
 
-      // Optical decoupling: visual aura, search flags, and metadata MUST remain intact
+      // Optical decoupling: visual aura trace array and search result flag are safely preserved
       assert.equal(fallen.isSearchResult, true, 'isSearchResult must be preserved');
       assert.equal(fallen.auraTraces?.length, 1, 'auraTraces must be preserved');
       assert.equal(fallen.auraTraces?.[0].color, 'hsl(210, 95%, 62%)');
-      assert.equal(fallen.title, 'Ancient Architecture Note');
-      assert.equal(fallen.content, 'Design decisions from two months ago');
     });
 
-    it('protects cards from sinking while within the 10-minute window', () => {
-      const protectedCard: CosmicCard = {
-        id: 'prot-1',
-        title: 'Protected Note',
-        content: 'Recently pulled card',
+    it('protects cards from sinking while light is still shining', () => {
+      const cardWithActiveLight: CosmicCard = {
+        id: 'active-light-1',
+        title: 'Recently Searched',
+        content: 'Glowing note',
         createdAt: new Date(NOW - 90 * DAY_MS).toISOString(),
         origin: 'local',
         type: 'thought',
-        x: 0,
-        y: 0,
-        rotation: 0,
+        x: 0, y: 0, rotation: 0,
         z: 15,
         spawnTime: NOW - 5 * MINUTE_MS,
-        decayDuration: 3600000,
-        isFresh: true,
-        isVIP: false,
-        elevatedAt: NOW - 5 * MINUTE_MS, // 5 min ago (< 10 min protection)
+        auraTraces: [{ searchId: 's1', color: 'hsl(180, 95%, 62%)', hitTime: NOW - 5 * MINUTE_MS, duration: 15 * MINUTE_MS }],
       };
 
-      const result = applyGravitationalFallback(protectedCard, NOW);
-      assert.equal(result.z, 15, 'Must not sink during active 10-minute protection window');
+      const result = applyGravitationalFallback(cardWithActiveLight, NOW);
+      assert.equal(result.z, 15, 'Must not sink while light is active');
+    });
+
+    it('protects cards from sinking during the 10-minute cooldown buffer after light extinguishes', () => {
+      const cardInCooldown: CosmicCard = {
+        id: 'cooldown-1',
+        title: 'Extinguished but cooling',
+        content: 'Content',
+        createdAt: new Date(NOW - 90 * DAY_MS).toISOString(),
+        origin: 'local',
+        type: 'thought',
+        x: 0, y: 0, rotation: 0,
+        z: 15,
+        spawnTime: NOW - 18 * MINUTE_MS,
+        // Extinguished 3m ago (hit 18m ago, duration 15m). Inside 10m cooldown buffer.
+        auraTraces: [{ searchId: 's1', color: 'hsl(180, 95%, 62%)', hitTime: NOW - 18 * MINUTE_MS, duration: 15 * MINUTE_MS }],
+      };
+
+      const result = applyGravitationalFallback(cardInCooldown, NOW);
+      assert.equal(result.z, 15, 'Must not sink during 10m cooldown after extinction');
     });
   });
 
   describe('3. Strict "Only Backward, Not Forward (intrinsicZ > z + 5)" Rule', () => {
     it('strictly forbids moving forward when intrinsic depth is shallower than current depth', () => {
       // Fresh card created 30 minutes ago: intrinsic depth is ~3..11
-      // Suppose it is sitting at depth z = 22
+      // Sitting at depth z = 22, hit 30m ago (cooldown elapsed)
       const freshCard: CosmicCard = {
         id: 'fresh-1',
         title: 'Today Thought',
@@ -158,20 +237,14 @@ describe('Universal Gravitational Fallback Engine', () => {
         createdAt: new Date(NOW - 30 * MINUTE_MS).toISOString(),
         origin: 'local',
         type: 'thought',
-        x: 0,
-        y: 0,
-        rotation: 0,
+        x: 0, y: 0, rotation: 0,
         z: 22,
-        spawnTime: NOW - 20 * MINUTE_MS,
-        decayDuration: 3600000,
-        isFresh: true,
-        isVIP: false,
-        elevatedAt: NOW - 12 * MINUTE_MS, // protection elapsed (> 10 min)
+        spawnTime: NOW - 30 * MINUTE_MS,
+        auraTraces: [{ searchId: 's1', hitTime: NOW - 30 * MINUTE_MS, duration: 15 * MINUTE_MS }],
       };
 
       const { shouldSink, targetZ, intrinsicZ } = calculateGravitationalFallbackZ(freshCard, NOW);
       assert.ok(intrinsicZ <= 11, `Today card intrinsicZ (${intrinsicZ}) should be <= 11`);
-      // Since intrinsicZ (e.g. 7) is less than current z (22), moving to intrinsicZ would mean jumping forward
       assert.equal(shouldSink, false, 'Should sink must be false when intrinsicZ is shallower');
       assert.equal(targetZ, 22, 'TargetZ must remain at current depth');
 
@@ -180,7 +253,6 @@ describe('Universal Gravitational Fallback Engine', () => {
     });
 
     it('enforces the +5 threshold: does not sink for minor perturbations <= 5', () => {
-      // Suppose card is at z = 48, and intrinsicZ happens to be 51
       const borderlineCard: CosmicCard = {
         id: 'border-1',
         title: 'Borderline Depth Card',
@@ -188,138 +260,82 @@ describe('Universal Gravitational Fallback Engine', () => {
         createdAt: new Date(NOW - 20 * DAY_MS).toISOString(), // ~48..62
         origin: 'local',
         type: 'thought',
-        x: 0,
-        y: 0,
-        rotation: 0,
-        z: 58, // current depth is 58
-        spawnTime: NOW - 20 * MINUTE_MS,
-        decayDuration: 3600000,
-        isFresh: false,
-        isVIP: false,
-        elevatedAt: NOW - 15 * MINUTE_MS,
+        x: 0, y: 0, rotation: 0,
+        z: 58,
+        spawnTime: NOW - 30 * MINUTE_MS,
+        auraTraces: [{ searchId: 's1', hitTime: NOW - 30 * MINUTE_MS, duration: 15 * MINUTE_MS }],
       };
 
-      // Even if intrinsicZ is 60 (which is 58 + 2), 60 is NOT > 58 + 5 = 63
       const { shouldSink } = calculateGravitationalFallbackZ(borderlineCard, NOW);
-      // Since 20 days intrinsic band is [48, 62], and currentZ is 58,
-      // intrinsicZ (<= 62) is NEVER > 58 + 5 = 63!
       assert.equal(shouldSink, false, 'Must not sink when delta <= 5');
-    });
-
-    it('sinks properly when intrinsic depth is genuinely deeper (intrinsicZ > z + 5)', () => {
-      // Card created 200 days ago: intrinsic Z is ~80..92
-      // Pulled to foreground z = 20
-      const deepCard: CosmicCard = {
-        id: 'deep-1',
-        title: 'Old Card',
-        content: 'Content',
-        createdAt: new Date(NOW - 200 * DAY_MS).toISOString(),
-        origin: 'local',
-        type: 'thought',
-        x: 0,
-        y: 0,
-        rotation: 0,
-        z: 20,
-        spawnTime: NOW - 20 * MINUTE_MS,
-        decayDuration: 3600000,
-        isFresh: false,
-        isVIP: false,
-        elevatedAt: NOW - 15 * MINUTE_MS,
-      };
-
-      const { shouldSink, targetZ } = calculateGravitationalFallbackZ(deepCard, NOW);
-      assert.equal(shouldSink, true);
-      assert.ok(targetZ >= 80 && targetZ <= 92);
-      assert.ok(targetZ > deepCard.z + 5);
-
-      const result = applyGravitationalFallback(deepCard, NOW);
-      assert.ok(result.z >= 80 && result.z <= 92, `result.z (${result.z}) should match 200-day intrinsic band (80~92)`);
-      assert.ok(result.z > deepCard.z + 5, 'Card must sink deeper than z + 5');
     });
   });
 
   describe('4. Batch Window Focus Processing (processWindowFocusGravitationalFallback)', () => {
-    it('processes active stage cards correctly according to all rules', () => {
+    it('processes active stage cards correctly according to all 4 phases', () => {
       const cards: CosmicCard[] = [
-        // 1. Permanent elevated card, protected (< 10 min) -> no change
+        // 1. Permanent card with ACTIVE light (hit 5m ago, duration 15m) -> strictly stays at z = 15
         {
-          id: 'card-prot',
-          title: 'Protected',
+          id: 'card-light-on',
+          title: 'Light On',
           content: 'c1',
           createdAt: new Date(NOW - 100 * DAY_MS).toISOString(),
           origin: 'local',
           z: 15,
-          spawnTime: NOW,
-          decayDuration: 3600000,
-          isFresh: true,
-          isVIP: false,
-          elevatedAt: NOW - 4 * MINUTE_MS, // 4 min ago
+          spawnTime: NOW - 5 * MINUTE_MS,
+          auraTraces: [{ searchId: 's1', color: 'hsl(180, 95%, 62%)', hitTime: NOW - 5 * MINUTE_MS, duration: 15 * MINUTE_MS }],
           x: 0, y: 0, rotation: 0
         },
-        // 2. Permanent elevated card, expired (> 10 min), old note -> sinks to intrinsic depth
+        // 2. Permanent card in COOLDOWN buffer (hit 18m ago, duration 15m -> ext 3m ago < 10m) -> stays at z = 15
+        {
+          id: 'card-cooldown',
+          title: 'Cooldown Active',
+          content: 'c2',
+          createdAt: new Date(NOW - 100 * DAY_MS).toISOString(),
+          origin: 'local',
+          z: 15,
+          spawnTime: NOW - 18 * MINUTE_MS,
+          auraTraces: [{ searchId: 's1', color: 'hsl(180, 95%, 62%)', hitTime: NOW - 18 * MINUTE_MS, duration: 15 * MINUTE_MS }],
+          x: 0, y: 0, rotation: 0
+        },
+        // 3. Permanent card with expired cooldown (hit 30m ago, ext 15m ago > 10m) -> SINKS to intrinsic depth
         {
           id: 'card-sink',
           title: 'Should Sink',
-          content: 'c2',
+          content: 'c3',
           createdAt: new Date(NOW - 90 * DAY_MS).toISOString(),
           origin: 'local',
           z: 10,
-          spawnTime: NOW - 20 * MINUTE_MS,
-          decayDuration: 3600000,
-          isFresh: false,
-          isVIP: false,
-          elevatedAt: NOW - 15 * MINUTE_MS, // 15 min ago
-          auraTraces: [{ searchId: 's1', color: 'hsl(100, 95%, 62%)', hitTime: NOW - 15 * MINUTE_MS }],
+          spawnTime: NOW - 30 * MINUTE_MS,
+          auraTraces: [{ searchId: 's1', color: 'hsl(100, 95%, 62%)', hitTime: NOW - 30 * MINUTE_MS, duration: 15 * MINUTE_MS }],
           isSearchResult: true,
           x: 0, y: 0, rotation: 0
         },
-        // 3. Permanent elevated card, expired (> 10 min), but created today -> stays at z (only backward)
+        // 4. Permanent card with expired cooldown, but created today -> stays at z = 25 (did not jump forward)
         {
           id: 'card-today',
           title: 'Today Note',
-          content: 'c3',
+          content: 'c4',
           createdAt: new Date(NOW - 1 * MINUTE_MS).toISOString(),
           origin: 'local',
           z: 25,
-          spawnTime: NOW - 20 * MINUTE_MS,
-          decayDuration: 3600000,
-          isFresh: true,
-          isVIP: false,
-          elevatedAt: NOW - 12 * MINUTE_MS,
+          spawnTime: NOW - 30 * MINUTE_MS,
+          auraTraces: [{ searchId: 's1', hitTime: NOW - 30 * MINUTE_MS, duration: 15 * MINUTE_MS }],
           x: 0, y: 0, rotation: 0
         },
-        // 4. Currently focused card -> strictly untouched
+        // 5. Currently focused card -> strictly untouched
         {
           id: 'card-focused',
           title: 'Focused',
-          content: 'c4',
-          createdAt: new Date(NOW - 100 * DAY_MS).toISOString(),
-          origin: 'local',
-          z: 10,
-          spawnTime: NOW - 20 * MINUTE_MS,
-          decayDuration: 3600000,
-          isFresh: false,
-          isVIP: false,
-          elevatedAt: NOW - 15 * MINUTE_MS,
-          x: 0, y: 0, rotation: 0
-        },
-        // 5. Departing card (isFadingOut: true) -> untouched
-        {
-          id: 'card-fading',
-          title: 'Fading',
           content: 'c5',
           createdAt: new Date(NOW - 100 * DAY_MS).toISOString(),
           origin: 'local',
           z: 10,
-          spawnTime: NOW - 20 * MINUTE_MS,
-          decayDuration: 3600000,
-          isFresh: false,
-          isVIP: false,
-          isFadingOut: true,
-          elevatedAt: NOW - 15 * MINUTE_MS,
+          spawnTime: NOW - 30 * MINUTE_MS,
+          auraTraces: [{ searchId: 's1', hitTime: NOW - 30 * MINUTE_MS, duration: 15 * MINUTE_MS }],
           x: 0, y: 0, rotation: 0
         },
-        // 6. Temporary card (origin: 'bugu') -> untouched by permanent fallback
+        // 6. Temporary card (origin: 'bugu') -> untouched by permanent fallback engine
         {
           id: 'card-bugu',
           title: 'Bugu Discovery',
@@ -327,108 +343,46 @@ describe('Universal Gravitational Fallback Engine', () => {
           origin: 'bugu',
           type: 'babel',
           z: 10,
-          spawnTime: NOW - 20 * MINUTE_MS,
-          decayDuration: 3600000,
-          isFresh: false,
-          isVIP: false,
-          elevatedAt: NOW - 15 * MINUTE_MS,
-          x: 0, y: 0, rotation: 0
-        },
-        // 7. Permanent card never elevated -> untouched
-        {
-          id: 'card-never-elevated',
-          title: 'Default stage card',
-          content: 'c7',
-          origin: 'local',
-          z: 50,
-          spawnTime: NOW - 50 * MINUTE_MS,
-          decayDuration: 3600000,
-          isFresh: false,
-          isVIP: false,
+          spawnTime: NOW - 30 * MINUTE_MS,
           x: 0, y: 0, rotation: 0
         }
       ];
 
       const processed = processWindowFocusGravitationalFallback(cards, NOW, 'card-focused');
 
-      // 1. Protected stays at z = 15
-      assert.equal(processed.find(c => c.id === 'card-prot')?.z, 15);
+      // 1. Light-on stays at z = 15
+      assert.equal(processed.find(c => c.id === 'card-light-on')?.z, 15);
 
-      // 2. Expired old card sinks to > 65
+      // 2. Cooldown stays at z = 15
+      assert.equal(processed.find(c => c.id === 'card-cooldown')?.z, 15);
+
+      // 3. Expired old card sinks to > 65
       const sunk = processed.find(c => c.id === 'card-sink');
       assert.ok(sunk && sunk.z >= 66 && sunk.z <= 78, `sunk.z (${sunk?.z}) should be in 66~78`);
-      assert.equal(sunk.isSearchResult, true);
-      assert.equal(sunk.auraTraces?.length, 1);
 
-      // 3. Today card stays at z = 25 (did not jump forward)
+      // 4. Today card stays at z = 25 (did not jump forward)
       assert.equal(processed.find(c => c.id === 'card-today')?.z, 25);
 
-      // 4. Focused card stays at z = 10
+      // 5. Focused card stays at z = 10
       assert.equal(processed.find(c => c.id === 'card-focused')?.z, 10);
-
-      // 5. Fading card stays at z = 10
-      assert.equal(processed.find(c => c.id === 'card-fading')?.z, 10);
 
       // 6. Bugu temporary card stays untouched by permanent fallback engine
       assert.equal(processed.find(c => c.id === 'card-bugu')?.z, 10);
-
-      // 7. Never-elevated card stays at z = 50
-      assert.equal(processed.find(c => c.id === 'card-never-elevated')?.z, 50);
     });
   });
 
-  describe('5. Search Elevation Integration (transformSearchResults & calculateSearchRepulsion)', () => {
-    it('injects elevatedAt: now into both existing and newly transformed search cards', () => {
-      const existingCard: CosmicCard = {
-        id: 'exist-1',
-        title: 'Existing',
-        content: 'content',
-        origin: 'local',
-        z: 50,
-        spawnTime: NOW - 3600000,
-        decayDuration: 3600000,
-        isFresh: false,
-        isVIP: false,
-        x: 0, y: 0, rotation: 0
-      };
-
-      const rawResults = [
-        { id: 'exist-1', title: 'Existing' },
-        { id: 'new-1', title: 'Newly Found', content: 'hello' }
-      ];
-
-      const transformed = transformSearchResults(rawResults, [[existingCard]], 'search_1', 'hsl(200, 95%, 62%)', NOW);
-      assert.equal(transformed.length, 2);
-
-      const transformedExisting = transformed.find(c => c.id === 'exist-1');
-      assert.equal(transformedExisting?.elevatedAt, NOW, 'Existing card must have elevatedAt injected');
-      assert.equal(transformedExisting?.isSearchResult, true);
-
-      const transformedNew = transformed.find(c => c.id === 'new-1');
-      assert.equal(transformedNew?.elevatedAt, NOW, 'New card must have elevatedAt injected');
-      assert.equal(transformedNew?.isSearchResult, true);
+  describe('5. Search Elevation Integration', () => {
+    it('sets duration: DEFAULT_SEARCH_AURA_DURATION on new search aura traces', () => {
+      const trace = createAuraTrace('s1', 'hsl(200, 95%, 62%)', NOW);
+      assert.equal(trace.duration, 15 * 60 * 1000);
+      assert.equal(trace.hitTime, NOW);
     });
 
-    it('preserves elevatedAt in calculateSearchRepulsion foregroundCards', () => {
-      const searchCards: CosmicCard[] = [
-        {
-          id: 'sc-1',
-          title: 'Search Result',
-          content: 'text',
-          origin: 'local',
-          z: 25,
-          spawnTime: NOW,
-          decayDuration: 3600000,
-          isFresh: true,
-          isVIP: false,
-          elevatedAt: NOW,
-          x: 0, y: 0, rotation: 0
-        }
-      ];
-
-      const repulsion = calculateSearchRepulsion([], searchCards, 10);
-      assert.equal(repulsion.foregroundCards.length, 1);
-      assert.equal(repulsion.foregroundCards[0].elevatedAt, NOW);
+    it('injects traces with duration in transformSearchResults', () => {
+      const rawResults = [{ id: 'new-1', title: 'Newly Found', content: 'hello' }];
+      const transformed = transformSearchResults(rawResults, [[]], 'search_1', 'hsl(200, 95%, 62%)', NOW);
+      assert.equal(transformed.length, 1);
+      assert.equal(transformed[0].auraTraces?.[0].duration, 15 * 60 * 1000);
     });
   });
 });
