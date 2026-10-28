@@ -11,7 +11,14 @@ type PostMetadata struct {
 
 // Post represents an in-memory card/note waiting to be processed
 type Post struct {
-	Metadata PostMetadata
-	Content  string // The actual markdown body
-	FilePath string // Absolute path of the source file
+	Metadata     PostMetadata
+	Content      string // The actual markdown body
+	FilePath     string // Absolute path of the source file
+	Type         string
+	Origin       string
+	SourceURL    string
+	AuthorName   string
+	AuthorAvatar string
+	OriginalText string
+	EchoOf       string
 }
