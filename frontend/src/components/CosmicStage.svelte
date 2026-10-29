@@ -29,8 +29,7 @@
   import { createEventDispatcher, onDestroy } from 'svelte';
   import UICard from '../UICard.svelte';
   import type { CosmicCard } from '../types/card';
-  import BuguRayNetwork from '../modules/bugu/BuguRayNetwork.svelte';
-  import SynapseRayNetwork from './cards/SynapseRayNetwork.svelte';
+  import CosmicRayNetwork from './cards/CosmicRayNetwork.svelte';
   import type { BuguBeacon, BuguSession } from '../modules/bugu/types';
   import BskyButterflyBeacon from '../modules/atproto/BskyButterflyBeacon.svelte';
   import type { BskyBeacon } from '../modules/atproto/types';
@@ -294,8 +293,16 @@
       ></div>
     {/if}
 
-    <BuguRayNetwork {cards} beacon={buguBeacon} session={buguSession} {scrollExpansion} {hoveredMotherId} />
-    <SynapseRayNetwork {cards} {hoveredCardId} {scrollExpansion} {focusedCardId} />
+    <CosmicRayNetwork 
+      {cards} 
+      beacon={buguBeacon} 
+      session={buguSession} 
+      {scrollExpansion} 
+      {hoveredMotherId} 
+      {hoveredCardId} 
+      {focusedCardId} 
+      {activeConstellationTag} 
+    />
 
     {#if bskyBeacon}
       <BskyButterflyBeacon
