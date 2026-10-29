@@ -47,7 +47,7 @@
   export let onRevertSearch: (() => void) | undefined = undefined;
   export let onCommitSearch: (() => void) | undefined = undefined;
   export let onRestoreSearch: (() => void) | undefined = undefined;
-  export let onExecuteCommand: ((cmd: CommandDef, card: CosmicCard) => Promise<void> | void) | undefined = undefined;
+  export let onExecuteCommand: ((cmd: CommandDef, card?: CosmicCard | null, textQuery?: string) => Promise<void> | void) | undefined = undefined;
   export let onSearchLocalCards: ((query: string) => Promise<any[]>) | undefined = undefined;
 
   const dispatch = createEventDispatcher();
@@ -349,9 +349,15 @@
   }
 
   export function handleGlobalEnter(): boolean {
-    if (commandParamMode && lockedCard) {
-      executeCurrentCommand();
-      return true;
+    if (commandParamMode) {
+      if (lockedCard) {
+        executeCurrentCommand();
+        return true;
+      }
+      if (selectedCommand?.id === 'atproto:echo' && omniText.trim() && (highlightedCardIndex === -1 || paramCardCandidates.length === 0)) {
+        executeCurrentCommand(omniText.trim());
+        return true;
+      }
     }
     return false;
   }
@@ -398,18 +404,20 @@
     if (omnibarInputEl) omnibarInputEl.style.height = 'auto';
   }
 
-  async function executeCurrentCommand() {
-    if (!selectedCommand || !lockedCard) return;
+  async function executeCurrentCommand(overrideText?: string) {
+    if (!selectedCommand) return;
+    if (!lockedCard && !overrideText && !omniText.trim()) return;
     const cmd = selectedCommand;
     const card = lockedCard;
+    const textQuery = overrideText || (omniText.trim() ? omniText.trim() : undefined);
     
     showToast(`${cmd.name || cmd.trigger} 已启动...`);
     
     try {
       if (onExecuteCommand) {
-        await onExecuteCommand(cmd, card);
+        await onExecuteCommand(cmd, card, textQuery);
       }
-      dispatch('executeCommand', { cmd, card });
+      dispatch('executeCommand', { cmd, card, textQuery });
     } catch (err: any) {
       console.error("ExecuteModuleCommand error:", err);
       showToast(`执行失败: ${err?.message || err}`);
@@ -453,12 +461,13 @@
         if (results && results.length > 0) {
           candidateItems = rankSearchCandidates(results, cards, scrollExpansion, paramSpec, 40);
           paramCardCandidates = candidateItems.map(it => it.card);
+          highlightedCardIndex = 0;
         } else {
           candidateItems = [];
           paramCardCandidates = [];
+          highlightedCardIndex = (selectedCommand?.id === 'atproto:echo' && q) ? -1 : 0;
         }
         hasMoreVault = false;
-        highlightedCardIndex = 0;
       } catch (err) {
         console.error("searchParamCards error:", err);
         candidateItems = [];
@@ -668,8 +677,15 @@
           return;
         }
       } else {
+        const isBskyDirectSearch = selectedCommand?.id === 'atproto:echo' && Boolean(omniText.trim());
         if (e.key === 'ArrowDown') {
           e.preventDefault();
+          if (isBskyDirectSearch && highlightedCardIndex === -1) {
+            if (paramCardCandidates.length > 0) {
+              highlightedCardIndex = 0;
+            }
+            return;
+          }
           if (paramCardCandidates.length > 0) {
             if (highlightedCardIndex >= paramCardCandidates.length - 1 && hasMoreVault) {
               handleLoadMoreCandidates();
@@ -680,15 +696,34 @@
         }
         if (e.key === 'ArrowUp') {
           e.preventDefault();
+          if (isBskyDirectSearch) {
+            if (highlightedCardIndex <= 0) {
+              highlightedCardIndex = -1;
+            } else {
+              highlightedCardIndex = highlightedCardIndex - 1;
+            }
+            return;
+          }
           if (paramCardCandidates.length > 0) {
             highlightedCardIndex = Math.max(0, highlightedCardIndex - 1);
           }
           return;
         }
         if (e.key === 'Enter') {
-          e.preventDefault();
+          if (isBskyDirectSearch && highlightedCardIndex === -1) {
+            e.preventDefault();
+            await executeCurrentCommand(omniText.trim());
+            return;
+          }
+          if (isBskyDirectSearch && paramCardCandidates.length === 0) {
+            e.preventDefault();
+            await executeCurrentCommand(omniText.trim());
+            return;
+          }
           if (paramCardCandidates.length > 0 && highlightedCardIndex >= 0 && highlightedCardIndex < paramCardCandidates.length) {
+            e.preventDefault();
             lockCard(paramCardCandidates[highlightedCardIndex]);
+            return;
           }
           return;
         }
@@ -897,9 +932,6 @@
           <div class="omnibar-chip command-chip">
             <span class="chip-icon">{getCommandIcon(selectedCommand)}</span>
             <span class="chip-label">/{selectedCommand.trigger.replace(/^\/+/, '')}</span>
-            {#if selectedCommand.namespace && selectedCommand.subCommand}
-              <span class="chip-sub">({selectedCommand.namespace} · {selectedCommand.subCommand})</span>
-            {/if}
             <button class="chip-close" on:click={exitCommandMode} title="退出命令模式">✕</button>
           </div>
         {/if}
@@ -993,13 +1025,15 @@
   {/if}
 
   <!-- Dropdown 2: Parameter Card Candidates -->
-  {#if commandParamMode && !lockedCard && (candidateItems.length > 0 || paramCardCandidates.length > 0)}
+  {#if commandParamMode && !lockedCard && (candidateItems.length > 0 || paramCardCandidates.length > 0 || (selectedCommand?.id === 'atproto:echo' && omniText.trim()))}
     <CardCandidateDropdown
       {candidateItems}
       {paramCardCandidates}
       {highlightedCardIndex}
       {omniText}
       {hasMoreVault}
+      directSearchAction={selectedCommand?.id === 'atproto:echo' && omniText.trim() ? { label: '直接检索 Bluesky', text: omniText.trim() } : null}
+      onDirectSearch={(text) => executeCurrentCommand(text)}
       onHighlight={(idx) => highlightedCardIndex = idx}
       onSelect={lockCard}
       onLoadMore={handleLoadMoreCandidates}
@@ -1206,13 +1240,6 @@
     background: rgba(59, 130, 246, 0.15);
     border: 1px solid rgba(59, 130, 246, 0.35);
     color: #1d4ed8;
-  }
-
-  .chip-sub {
-    font-size: 0.72rem;
-    opacity: 0.82;
-    margin-left: 2px;
-    font-weight: 500;
   }
 
   .card-chip {

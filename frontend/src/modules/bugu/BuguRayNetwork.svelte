@@ -263,7 +263,12 @@
 <div class="bugu-ray-network">
   <!-- Mother Card Radar Beacon (Remains active until all Babel cards have appeared) -->
   {#if beaconCard && activeBeacon}
-    <BuguRadarBeacon x={beaconCard.x} y={beaconCard.y} status={activeBeacon.status} />
+    <BuguRadarBeacon 
+      x={beaconCard.x} 
+      y={beaconCard.y} 
+      status={activeBeacon.status} 
+      theme={beaconCard.origin === 'atproto' ? 'ice-blue' : 'amber'}
+    />
   {/if}
 
   <!-- Magic UI Animated Beam: Refined Fiber, Bezier Curvature & Synchronized Blooming Aperture Nodes -->
@@ -289,30 +294,37 @@
 
     <svg class="bugu-flat-svg">
       <defs>
-        <!-- Soft glowing radial gradient for aperture nodes -->
+        <!-- Soft glowing radial gradient for aperture nodes (Amber Bugu) -->
         <radialGradient id="bugu-aperture-glow" cx="50%" cy="50%" r="50%">
           <stop offset="0%" stop-color="#f59e0b" stop-opacity="1" />
           <stop offset="35%" stop-color="#f59e0b" stop-opacity="0.65" />
           <stop offset="70%" stop-color="#f59e0b" stop-opacity="0.2" />
           <stop offset="100%" stop-color="#f59e0b" stop-opacity="0" />
         </radialGradient>
+        <!-- Soft glowing radial gradient for aperture nodes (Ice Blue Bluesky) -->
+        <radialGradient id="bsky-aperture-glow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#bae6fd" stop-opacity="1" />
+          <stop offset="35%" stop-color="#38bdf8" stop-opacity="0.65" />
+          <stop offset="70%" stop-color="#0ea5e9" stop-opacity="0.2" />
+          <stop offset="100%" stop-color="#0284c7" stop-opacity="0" />
+        </radialGradient>
       </defs>
 
       {#each renderedRays as ray (ray.instanceId)}
-        <g class="ray-instance">
+        <g class="ray-instance" class:is-bsky={ray.target.origin === 'atproto'}>
           <!-- Source Node Aperture Bloom (Erupts before launch, dissolves as beam flies) -->
           <g class="aperture-group" transform="translate({ray.x1}, {ray.y1})">
-            <circle cx="0" cy="0" r="22" fill="url(#bugu-aperture-glow)" class="glow-ring source-bloom" class:permanent-bloom={isMotherHovered(ray.source.id)} />
-            <circle cx="0" cy="0" r="3.2" fill="#f59e0b" class="core-dot source-bloom" class:permanent-bloom={isMotherHovered(ray.source.id)} />
+            <circle cx="0" cy="0" r="22" fill={ray.target.origin === 'atproto' ? "url(#bsky-aperture-glow)" : "url(#bugu-aperture-glow)"} class="glow-ring source-bloom" class:permanent-bloom={isMotherHovered(ray.source.id)} />
+            <circle cx="0" cy="0" r="3.2" fill={ray.target.origin === 'atproto' ? "#38bdf8" : "#f59e0b"} class="core-dot source-bloom" class:permanent-bloom={isMotherHovered(ray.source.id)} />
           </g>
 
-          <!-- Magic UI Style: Static ambient beam path in pure Amber Gold (#f59e0b) -->
+          <!-- Magic UI Style: Static ambient beam path -->
           <path
             d={ray.path}
             class="beam-track" class:permanent-track={isMotherHovered(ray.source.id)}
           />
 
-          <!-- Magic UI Style: Traveling energy pulse in pure Amber Gold (#f59e0b) flowing Mother -> Child -->
+          <!-- Magic UI Style: Traveling energy pulse flowing Mother -> Child -->
           <path
             d={ray.path}
             pathLength="100"
@@ -322,8 +334,8 @@
 
           <!-- Target Node Aperture Bloom (Warms up as beam approaches, peaks upon arrival, fades out) -->
           <g class="aperture-group" transform="translate({ray.x2}, {ray.y2})">
-            <circle cx="0" cy="0" r="22" fill="url(#bugu-aperture-glow)" class="glow-ring target-bloom" class:permanent-bloom={isMotherHovered(ray.source.id)} />
-            <circle cx="0" cy="0" r="3.2" fill="#f59e0b" class="core-dot target-bloom" class:permanent-bloom={isMotherHovered(ray.source.id)} />
+            <circle cx="0" cy="0" r="22" fill={ray.target.origin === 'atproto' ? "url(#bsky-aperture-glow)" : "url(#bugu-aperture-glow)"} class="glow-ring target-bloom" class:permanent-bloom={isMotherHovered(ray.source.id)} />
+            <circle cx="0" cy="0" r="3.2" fill={ray.target.origin === 'atproto' ? "#38bdf8" : "#f59e0b"} class="core-dot target-bloom" class:permanent-bloom={isMotherHovered(ray.source.id)} />
           </g>
         </g>
       {/each}
@@ -374,6 +386,25 @@
   .core-dot {
     transform-origin: 0 0;
     filter: drop-shadow(0 0 3px rgba(245, 158, 11, 1));
+  }
+
+  /* Ice Blue Bluesky Rays */
+  .is-bsky .glow-ring {
+    filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.95)) drop-shadow(0 0 16px rgba(14, 165, 233, 0.6));
+  }
+
+  .is-bsky .core-dot {
+    filter: drop-shadow(0 0 3px #38bdf8);
+  }
+
+  .is-bsky .beam-track {
+    stroke: #38bdf8;
+    filter: drop-shadow(0 0 2px rgba(56, 189, 248, 0.35));
+  }
+
+  .is-bsky .beam-pulse {
+    stroke: #7dd3fc;
+    filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.95)) drop-shadow(0 0 10px rgba(14, 165, 233, 0.5));
   }
 
   .source-bloom {

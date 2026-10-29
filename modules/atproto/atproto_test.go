@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -73,6 +74,15 @@ func TestAtProtoModule_InterfaceAndCommands(t *testing.T) {
 
 func TestAtProtoModule_ExecuteCommand_Echo(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query().Get("q")
+		expectedQuery := "astronomy | wonder | deep space | telescope | exploration | cosmic"
+		if query != expectedQuery {
+			t.Errorf("expected query '%s', got '%s'", expectedQuery, query)
+		}
+		if !strings.Contains(r.URL.RawQuery, "%7C") {
+			t.Errorf("expected RawQuery to contain escaped '|', got '%s'", r.URL.RawQuery)
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{
 			"posts": [
@@ -91,8 +101,13 @@ func TestAtProtoModule_ExecuteCommand_Echo(t *testing.T) {
 	defer mockServer.Close()
 
 	originalEndpoint := fetcher.PublicAPIEndpoint
+	originalFallback := fetcher.FallbackAPIEndpoint
 	fetcher.PublicAPIEndpoint = mockServer.URL
-	defer func() { fetcher.PublicAPIEndpoint = originalEndpoint }()
+	fetcher.FallbackAPIEndpoint = ""
+	defer func() {
+		fetcher.PublicAPIEndpoint = originalEndpoint
+		fetcher.FallbackAPIEndpoint = originalFallback
+	}()
 
 	f := fetcher.NewFetcher()
 	f.HTTPClient = mockServer.Client()
@@ -117,8 +132,12 @@ func TestAtProtoModule_ExecuteCommand_Echo(t *testing.T) {
 			"id":      "card-001",
 			"content": "Deep space observation #space #astronomy",
 			"keywords": map[string]interface{}{
-				"topics": []interface{}{"galaxy*", "stars*"},
+				"object":  []interface{}{"telescope*"},
+				"motif":   []interface{}{"deep space"},
+				"mood":    []interface{}{"wonder*"},
+				"concept": []interface{}{"astronomy"},
 			},
+			"tags": []interface{}{"#exploration", "cosmic*"},
 		},
 	}
 
@@ -130,6 +149,16 @@ func TestAtProtoModule_ExecuteCommand_Echo(t *testing.T) {
 	resMap, ok := res.(map[string]interface{})
 	if !ok || resMap["status"] != "triggered" {
 		t.Fatalf("expected triggered status, got: %+v", res)
+	}
+
+	// Verify keywords and tags extracted and cleaned
+	kws, ok := resMap["keywords"].([]string)
+	if !ok {
+		t.Fatalf("expected []string keywords in result, got: %v", resMap["keywords"])
+	}
+	expectedKeywords := []string{"astronomy", "wonder", "deep space", "telescope", "exploration", "cosmic"}
+	if !reflect.DeepEqual(kws, expectedKeywords) {
+		t.Errorf("expected keywords %v, got %v", expectedKeywords, kws)
 	}
 
 	select {
@@ -159,6 +188,122 @@ func TestAtProtoModule_ExecuteCommand_Echo(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatalf("timeout waiting for BuguRadarCompleted event")
+	}
+}
+
+func TestAtProtoModule_ExecuteCommand_Echo_FreeText(t *testing.T) {
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query().Get("q")
+		if query != "quantum computing" {
+			t.Errorf("expected query 'quantum computing', got '%s'", query)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{
+			"posts": [
+				{
+					"uri": "at://did:plc:test2/app.bsky.feed.post/post789",
+					"cid": "cid789",
+					"author": {"handle": "quantum.bsky.social", "avatar": "https://avatar2.png"},
+					"record": {"text": "Qubits are entangled", "createdAt": "2026-10-28T00:00:00Z"},
+					"replyCount": 1,
+					"repostCount": 0,
+					"likeCount": 4
+				}
+			]
+		}`))
+	}))
+	defer mockServer.Close()
+
+	originalEndpoint := fetcher.PublicAPIEndpoint
+	originalFallback := fetcher.FallbackAPIEndpoint
+	fetcher.PublicAPIEndpoint = mockServer.URL
+	fetcher.FallbackAPIEndpoint = ""
+	defer func() {
+		fetcher.PublicAPIEndpoint = originalEndpoint
+		fetcher.FallbackAPIEndpoint = originalFallback
+	}()
+
+	f := fetcher.NewFetcher()
+	f.HTTPClient = mockServer.Client()
+
+	m := &AtProtoModule{
+		cfg: &config.Config{
+			PDSUrl: "https://bsky.social",
+		},
+		fetcher: f,
+	}
+
+	b := bus.GetBus()
+	spawnCh := b.Subscribe(bus.EventBabelCardSpawned, "test-subscriber-freetext")
+	defer b.Unsubscribe(bus.EventBabelCardSpawned, "test-subscriber-freetext")
+
+	doneCh := b.Subscribe(bus.EventBuguRadarCompleted, "test-subscriber-freetext-done")
+	defer b.Unsubscribe(bus.EventBuguRadarCompleted, "test-subscriber-freetext-done")
+
+	params := map[string]interface{}{
+		"text": "quantum computing",
+	}
+
+	res, err := m.ExecuteCommand(context.Background(), "atproto:echo", params)
+	if err != nil {
+		t.Fatalf("ExecuteCommand atproto:echo failed: %v", err)
+	}
+
+	resMap, ok := res.(map[string]interface{})
+	if !ok || resMap["status"] != "triggered" {
+		t.Fatalf("expected triggered status, got: %+v", res)
+	}
+	if resMap["card_id"] != "" {
+		t.Errorf("expected empty card_id for free text search, got '%v'", resMap["card_id"])
+	}
+
+	kws, ok := resMap["keywords"].([]string)
+	if !ok || !reflect.DeepEqual(kws, []string{"quantum computing"}) {
+		t.Errorf("expected keywords ['quantum computing'], got %v", resMap["keywords"])
+	}
+
+	select {
+	case event := <-spawnCh:
+		post, ok := event.Data.(models.Post)
+		if !ok {
+			t.Fatalf("expected models.Post event data, got: %T", event.Data)
+		}
+		if post.Origin != "atproto" {
+			t.Errorf("expected origin 'atproto', got '%s'", post.Origin)
+		}
+		if post.EchoOf != "" {
+			t.Errorf("expected empty EchoOf, got '%s'", post.EchoOf)
+		}
+		if post.AuthorName != "quantum.bsky.social" {
+			t.Errorf("expected author 'quantum.bsky.social', got '%s'", post.AuthorName)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatalf("timeout waiting for BabelCardSpawned event")
+	}
+
+	select {
+	case event := <-doneCh:
+		doneMap, ok := event.Data.(map[string]string)
+		if !ok || doneMap["cardId"] != "" {
+			t.Errorf("expected empty cardId in EventBuguRadarCompleted, got: %+v", event.Data)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatalf("timeout waiting for BuguRadarCompleted event")
+	}
+}
+
+func TestAtProtoModule_ExecuteCommand_Echo_Empty(t *testing.T) {
+	m := &AtProtoModule{
+		cfg: &config.Config{
+			PDSUrl: "https://bsky.social",
+		},
+	}
+	_, err := m.ExecuteCommand(context.Background(), "atproto:echo", map[string]interface{}{})
+	if err == nil {
+		t.Fatalf("expected error for empty search, got nil")
+	}
+	if !strings.Contains(err.Error(), "no content or card provided for atproto:echo") {
+		t.Errorf("unexpected error message: %v", err)
 	}
 }
 

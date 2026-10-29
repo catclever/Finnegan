@@ -12,7 +12,13 @@ import (
 	"Finnegan/modules/atproto/models"
 )
 
-var PublicAPIEndpoint = "https://public.api.bsky.app/xrpc"
+// Primary and fallback endpoints for public XRPC reads.
+// api.bsky.app connects directly to Bluesky AppView OpenResty, bypassing BunnyCDN 403 blocks.
+// public.api.bsky.app serves as an alternate fallback.
+var (
+	PublicAPIEndpoint   = "https://api.bsky.app/xrpc"
+	FallbackAPIEndpoint = "https://public.api.bsky.app/xrpc"
+)
 
 // BSkySearchResponse represents the minimal JSON response from app.bsky.feed.searchPosts
 type BSkySearchResponse struct {
@@ -90,22 +96,62 @@ func extractRkey(uri string) string {
 	return ""
 }
 
-// SearchSimilar fetches posts matching a semantic keyword query
-// Returns them mapped to Finnegan's internal Post model for saving to Inbox
-func (f *Fetcher) SearchSimilar(keywords []string, limit int, echoOfDocID string) ([]models.Post, error) {
-	query := strings.Join(keywords, " ")
-	reqURL := fmt.Sprintf("%s/app.bsky.feed.searchPosts?q=%s&limit=%d", PublicAPIEndpoint, url.QueryEscape(query), limit)
-	
-	resp, err := f.HTTPClient.Get(reqURL)
+// executeGet sends an HTTP GET request with standard headers and validates status 200 OK.
+func (f *Fetcher) executeGet(rawURL string) ([]byte, error) {
+	req, err := http.NewRequest(http.MethodGet, rawURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch search results: %v", err)
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := f.HTTPClient.Do(req)
+	if err != nil {
+		return nil, err
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		snippet := strings.TrimSpace(string(body))
+		if len(snippet) > 200 {
+			snippet = snippet[:200] + "..."
+		}
+		return nil, fmt.Errorf("HTTP error %d: %s", resp.StatusCode, snippet)
+	}
+
+	return body, nil
+}
+
+// SearchSimilar fetches posts matching a semantic keyword query
+// Returns them mapped to Finnegan's internal Post model for saving to Inbox
+func (f *Fetcher) SearchSimilar(keywords []string, limit int, echoOfDocID string) ([]models.Post, error) {
+	var query string
+	if len(keywords) == 1 {
+		query = keywords[0]
+	} else if len(keywords) > 1 {
+		query = strings.Join(keywords, " | ")
+	}
+	path := fmt.Sprintf("/app.bsky.feed.searchPosts?q=%s&limit=%d", url.QueryEscape(query), limit)
+
+	body, err := f.executeGet(PublicAPIEndpoint + path)
+	if err != nil && FallbackAPIEndpoint != "" && FallbackAPIEndpoint != PublicAPIEndpoint {
+		if fbBody, fbErr := f.executeGet(FallbackAPIEndpoint + path); fbErr == nil {
+			body = fbBody
+			err = nil
+		}
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch search results: %w", err)
+	}
+
 	var searchResp BSkySearchResponse
 	if err := json.Unmarshal(body, &searchResp); err != nil {
-		return nil, fmt.Errorf("failed to parse search results: %v", err)
+		return nil, fmt.Errorf("failed to parse search results: %w", err)
 	}
 
 	var results []models.Post
@@ -161,18 +207,22 @@ func normalizeToAtURI(uri string) string {
 // FetchComments retrieves the thread of replies for a given Post URI
 func (f *Fetcher) FetchComments(postURI string, parentCardID string) ([]models.Post, error) {
 	targetURI := normalizeToAtURI(postURI)
-	reqURL := fmt.Sprintf("%s/app.bsky.feed.getPostThread?uri=%s", PublicAPIEndpoint, url.QueryEscape(targetURI))
-	
-	resp, err := f.HTTPClient.Get(reqURL)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch thread: %v", err)
-	}
-	defer resp.Body.Close()
+	path := fmt.Sprintf("/app.bsky.feed.getPostThread?uri=%s", url.QueryEscape(targetURI))
 
-	body, _ := io.ReadAll(resp.Body)
+	body, err := f.executeGet(PublicAPIEndpoint + path)
+	if err != nil && FallbackAPIEndpoint != "" && FallbackAPIEndpoint != PublicAPIEndpoint {
+		if fbBody, fbErr := f.executeGet(FallbackAPIEndpoint + path); fbErr == nil {
+			body = fbBody
+			err = nil
+		}
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch thread: %w", err)
+	}
+
 	var threadResp BSkyThreadResponse
 	if err := json.Unmarshal(body, &threadResp); err != nil {
-		return nil, fmt.Errorf("failed to parse thread: %v", err)
+		return nil, fmt.Errorf("failed to parse thread: %w", err)
 	}
 
 	var comments []models.Post

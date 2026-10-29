@@ -102,11 +102,12 @@ export function getTimePeriod(hour: number): string {
 }
 
 /**
- * Formats a single point in time using the Finnegan temporal hierarchy:
- * - < 5 minutes: '刚刚'
- * - < 24 hours: '今天 HH:mm'
- * - < 48 hours: '昨天 HH:mm'
- * - < 30 days: '{days} 天前 {period}' (清晨/上午/中午/下午/晚上/深夜/凌晨)
+ * Formats a single point in time using the Finnegan temporal hierarchy based on natural calendar days:
+ * - < 5 minutes (today): '刚刚'
+ * - Same calendar day: '今天 HH:mm'
+ * - 1 calendar day ago: '昨天 HH:mm'
+ * - 2 calendar days ago: '前天 HH:mm'
+ * - 3 to 29 calendar days ago: '{days} 天前 {period}' (清晨/上午/中午/下午/晚上/深夜/凌晨)
  * - 30 days to 1 year: 'MM/DD HH:mm' (padded 2 digits)
  * - > 1 year (different year):
  *   * Easter egg: If month and day match today, return '{years} 年前的今天'
@@ -123,30 +124,38 @@ export function formatPointTime(
   const diffMs = now.getTime() - d.getTime();
 
   const MS_PER_MINUTE = 60 * 1000;
-  const MS_PER_HOUR = 60 * MS_PER_MINUTE;
-  const MS_PER_DAY = 24 * MS_PER_HOUR;
+  const MS_PER_DAY = 24 * 60 * 60 * 1000;
   const MS_PER_YEAR = 365 * MS_PER_DAY;
 
-  // < 5 minutes (including negative drift)
-  if (diffMs < 5 * MS_PER_MINUTE) {
+  // Calculate natural calendar day difference using local midnight
+  const targetMidnight = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const dayDiff = Math.round((nowMidnight - targetMidnight) / MS_PER_DAY);
+
+  // < 5 minutes (same day or slight clock drift)
+  if (dayDiff <= 0 && diffMs < 5 * MS_PER_MINUTE) {
     return '刚刚';
   }
 
-  // < 24 hours: '今天 HH:mm'
-  if (diffMs < 24 * MS_PER_HOUR) {
+  // Same calendar day: '今天 HH:mm'
+  if (dayDiff === 0) {
     return `今天 ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
   }
 
-  // < 48 hours: '昨天 HH:mm'
-  if (diffMs < 48 * MS_PER_HOUR) {
+  // 1 calendar day ago: '昨天 HH:mm'
+  if (dayDiff === 1) {
     return `昨天 ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
   }
 
-  // < 30 days: '{days} 天前 {period}' (清晨/上午/中午/下午/晚上/深夜/凌晨)
-  if (diffMs < 30 * MS_PER_DAY) {
-    const days = Math.floor(diffMs / MS_PER_DAY);
+  // 2 calendar days ago: '前天 HH:mm'
+  if (dayDiff === 2) {
+    return `前天 ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  }
+
+  // 3 to 29 calendar days ago: '{days} 天前 {period}' (清晨/上午/中午/下午/晚上/深夜/凌晨)
+  if (dayDiff >= 3 && dayDiff < 30) {
     const period = getTimePeriod(d.getHours());
-    return `${days} 天前 ${period}`;
+    return `${dayDiff} 天前 ${period}`;
   }
 
   // Easter egg: If in a different/previous year and month and day match today

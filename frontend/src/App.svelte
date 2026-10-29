@@ -8,10 +8,12 @@
   import { spring } from 'svelte/motion';
   import OmniBar from './components/OmniBar.svelte';
   import CosmicStage from './components/CosmicStage.svelte';
+  import WindowTitleBar from './components/WindowTitleBar.svelte';
   import { CaptureThought, CaptureThoughtWithImages, CaptureChatLog, CaptureChatLogWithImages, CaptureNote, GetTempCards, LoadLocalCards, SearchLocalCards, GetRegisteredCommands, ExecuteModuleCommand, EvictTempCard, ReloadCard } from '../wailsjs/go/main/App.js';
   import { EventsOn } from '../wailsjs/runtime/runtime.js';
   import type { CosmicCard, SearchSession, CommandDef } from './types/card';
   import type { BuguSession, BuguBeacon } from './modules/bugu/types';
+  import type { BskyBeacon } from './modules/atproto/types';
   import { generateAuraColor, transformSearchResults, calculateSearchRepulsion, commitUnallocatedSearchResults } from './lib/auraSearch';
   import { BASE_CAPACITY, MACRO_TTL_MS, BASE_STAGE_DECAY_MS, stageCandidate, replenishStageCandidates, isProtectedCard, toCosmicCard, ensureCardStagedInViewport } from './lib/stageDecay';
   import { computeNextScrollTarget } from './lib/stageCoords';
@@ -37,6 +39,8 @@
   let searchDebounceTimer: any = null;
   let activeBuguSession: BuguSession | null = null;
   let activeBuguBeacon: BuguBeacon | null = null;
+  let activeBskyBeacon: BskyBeacon | null = null;
+  let bskyBeaconTimer: any = null;
 
   // --- Gravitational Tide (Multi-Screen Y-Axis Expansion) ---
   let scrollTarget = 0;
@@ -316,20 +320,78 @@
     }
   }
 
-  async function handleExecuteCommand(cmd: CommandDef, card: CosmicCard) {
-    const paramSpec = cmd.params?.[0];
-    const shouldAutoStage = Boolean(paramSpec?.autoStageToViewport || cmd.id.startsWith('bugu:') || cmd.id === 'atproto:echo');
+  // --- Bluesky Butterfly Search Beacon Lifecycle ---
+  function startBskyEcho(sourceCardId?: string | null) {
+    if (bskyBeaconTimer) {
+      clearTimeout(bskyBeaconTimer);
+      bskyBeaconTimer = null;
+    }
+    const initialCount = Math.floor(Math.random() * 4) + 2;
+    activeBskyBeacon = {
+      sourceCardId: sourceCardId || null,
+      status: 'scanning',
+      butterflyCount: initialCount,
+    };
+    bskyBeaconTimer = setTimeout(() => {
+      finishBskyBeacon();
+    }, 35000);
+  }
 
-    if (shouldAutoStage) {
+  function incrementBskyButterfly() {
+    if (activeBskyBeacon && activeBskyBeacon.status !== 'fading' && activeBskyBeacon.status !== 'completed') {
+      if (Math.random() < 0.8 && activeBskyBeacon.butterflyCount < 8) {
+        activeBskyBeacon = {
+          ...activeBskyBeacon,
+          butterflyCount: activeBskyBeacon.butterflyCount + 1,
+        };
+      }
+    }
+  }
+
+  function finishBskyBeacon() {
+    if (bskyBeaconTimer) {
+      clearTimeout(bskyBeaconTimer);
+      bskyBeaconTimer = null;
+    }
+    if (activeBskyBeacon && activeBskyBeacon.status !== 'fading' && activeBskyBeacon.status !== 'completed') {
+      activeBskyBeacon = { ...activeBskyBeacon, status: 'completed' };
+      setTimeout(() => {
+        if (activeBskyBeacon?.status === 'completed') {
+          activeBskyBeacon = { ...activeBskyBeacon, status: 'fading' };
+          setTimeout(() => {
+            if (activeBskyBeacon?.status === 'fading') {
+              activeBskyBeacon = null;
+            }
+          }, 2500);
+        }
+      }, 1800);
+    }
+  }
+
+  async function handleExecuteCommand(cmd: CommandDef, card?: CosmicCard | null, textQuery?: string) {
+    const paramSpec = cmd.params?.[0];
+    const shouldAutoStage = Boolean(card && (paramSpec?.autoStageToViewport || cmd.id.startsWith('bugu:') || cmd.id === 'atproto:echo'));
+
+    if (shouldAutoStage && card) {
       const res = ensureCardStagedInViewport(card, $scrollExpansion, cards, memoryPool, { isVIP: true });
       cards = res.updatedCards.map(c => c.id === card.id ? { ...c, elevatedAt: Date.now() } : c);
       if (res.updatedMemoryPool) memoryPool = res.updatedMemoryPool;
     }
 
-    if (cmd.id.startsWith('bugu:') || cmd.id === 'atproto:echo') {
-      buguController.startRadar(card.id, cards, memoryPool, localVaultPool);
+    if (cmd.id.startsWith('bugu:')) {
+      if (card) {
+        buguController.startRadar(card.id, cards, memoryPool, localVaultPool);
+      }
+    } else if (cmd.id === 'atproto:echo') {
+      startBskyEcho(card?.id || null);
     }
-    await ExecuteModuleCommand(cmd.id, { cardId: card.id, card, content: card.content || card.title, id: card.id, text: card.content || card.title });
+    await ExecuteModuleCommand(cmd.id, {
+      cardId: card?.id,
+      card: card || undefined,
+      content: textQuery || card?.content || card?.title,
+      id: card?.id,
+      text: textQuery || card?.content || card?.title,
+    });
   }
 
   // --- Tag Association & Resurgence Recall Engine (Multi-tag Union Support) ---
@@ -698,10 +760,14 @@
 
     EventsOn("bugu:card_spawned", (c: any) => {
       buguController.enqueueBabelCard(c);
+      if (c?.origin === 'atproto' || activeBskyBeacon) {
+        incrementBskyButterfly();
+      }
     });
 
     EventsOn("bugu:radar_completed", () => {
       buguController.finishRadar();
+      finishBskyBeacon();
     });
 
     EventsOn("card:updated", (c: any) => {
@@ -814,6 +880,7 @@
       clearInterval(metabolicInterval);
       if (scrollIdleTimer) clearTimeout(scrollIdleTimer);
       if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+      if (bskyBeaconTimer) clearTimeout(bskyBeaconTimer);
       buguController.destroy();
       stageActivity.destroy();
     };
@@ -825,10 +892,12 @@
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <div class="container" on:click={handleWindowClick}>
+  <WindowTitleBar />
   <CosmicStage
     {cards}
     totalAvailableCards={cards.length + memoryPool.length + localVaultPool.length}
     buguBeacon={activeBuguBeacon} buguSession={activeBuguSession}
+    bskyBeacon={activeBskyBeacon}
     {focusNavDirection}
     globalTilt={$globalTilt} scrollExpansion={$scrollExpansion} {focusedCardId} {hoveredCardId} {isOmnibarFocused}
     isSearchActive={searchSession.isActive} {isStageSleeping} {isWindowFocused}

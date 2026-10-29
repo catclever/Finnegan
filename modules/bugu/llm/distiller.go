@@ -8,33 +8,21 @@ import (
 	"time"
 
 	"Finnegan/modules/bugu/models"
-	"github.com/google/generative-ai-go/genai"
-	"google.golang.org/api/option"
 )
 
 // DistillMarkdown takes raw markdown from Jina and the user's intent, and distills it into a BabelCard.
 func (r *Router) DistillMarkdown(intent string, markdown string, url string, targetLanguage string, keywords map[string][]string) (*models.BabelCard, error) {
-	if r.LLM.APIKey == "" {
-		return nil, fmt.Errorf("LLM API Key is not configured")
+	dLLM := r.GetDistillerLLM()
+	if dLLM.APIKey == "" && dLLM.BaseURL == "" {
+		return nil, fmt.Errorf("Distiller LLM is not configured (missing api_key or base_url)")
 	}
 
-	ctx := context.Background()
-	client, err := genai.NewClient(ctx, option.WithAPIKey(r.LLM.APIKey))
-	if err != nil {
-		return nil, err
+	modelName := "gemini-3.8-flash"
+	if r.Config != nil && r.Config.GetDistillerModel() != "" {
+		modelName = r.Config.GetDistillerModel()
+	} else if dLLM.DefaultModel != "" {
+		modelName = dLLM.DefaultModel
 	}
-	defer client.Close()
-
-	modelName := r.Config.GetDistillerModel()
-	if modelName == "" {
-		if r.LLM.DefaultModel != "" {
-			modelName = r.LLM.DefaultModel
-		} else {
-			modelName = "gemini-3.8-flash"
-		}
-	}
-	model := client.GenerativeModel(modelName)
-	model.ResponseMIMEType = "application/json"
 
 	kwJSON, _ := json.MarshalIndent(keywords, "", "  ")
 
@@ -76,24 +64,11 @@ INSTRUCTIONS:
   "echo_reason": "one sentence explanation or empty string"
 }`, intent, url, string(kwJSON), markdown, targetLanguage, targetLanguage, targetLanguage, targetLanguage, url)
 
-	resp, err := model.GenerateContent(ctx, genai.Text(prompt))
+	ctx := context.Background()
+	rawJSON, err := GenerateCompletion(ctx, dLLM, modelName, prompt)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("distiller generation failed: %w", err)
 	}
-
-	if len(resp.Candidates) == 0 || len(resp.Candidates[0].Content.Parts) == 0 {
-		return nil, fmt.Errorf("empty response from LLM distiller")
-	}
-
-	var rawJSON string
-	if textPart, ok := resp.Candidates[0].Content.Parts[0].(genai.Text); ok {
-		rawJSON = string(textPart)
-	} else {
-		return nil, fmt.Errorf("unexpected LLM response format")
-	}
-
-	rawJSON = strings.TrimPrefix(rawJSON, "```json\n")
-	rawJSON = strings.TrimSuffix(rawJSON, "\n```")
 
 	var card models.BabelCard
 	if err := json.Unmarshal([]byte(rawJSON), &card); err != nil {

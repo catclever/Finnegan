@@ -15,6 +15,8 @@
   export let highlightedCardIndex: number = 0;
   export let omniText: string = "";
   export let hasMoreVault: boolean = false;
+  export let directSearchAction: { label: string; text: string } | null = null;
+  export let onDirectSearch: ((text: string) => void) | undefined = undefined;
   export let onSelect: (candidate: CosmicCard) => void = () => {};
   export let onHighlight: (index: number) => void = () => {};
   export let onLoadMore: () => void = () => {};
@@ -28,7 +30,7 @@
     : (paramCardCandidates || []).map(c => ({ card: c, tier: 'current_screen' as const }))) as CandidateCardItem[];
 
   // Scroll active item into view whenever index updates
-  $: if (menuEl && highlightedCardIndex >= 0 && items.length > 0) {
+  $: if (menuEl && (highlightedCardIndex === -1 || (highlightedCardIndex >= 0 && items.length > 0))) {
     tick().then(() => {
       if (!menuEl) return;
       const activeEl = menuEl.querySelector('.dropdown-item.active') as HTMLElement;
@@ -72,12 +74,29 @@
   }
 </script>
 
-{#if items.length > 0}
+{#if items.length > 0 || (directSearchAction && directSearchAction.text.trim())}
   <div 
     bind:this={menuEl}
     class="dropdown-menu card-dropdown" 
     on:scroll={handleScroll}
   >
+    {#if directSearchAction && directSearchAction.text.trim()}
+      <!-- svelte-ignore a11y-click-events-have-key-events -->
+      <!-- svelte-ignore a11y-no-static-element-interactions -->
+      <div 
+        class="dropdown-item direct-search-item" 
+        class:active={highlightedCardIndex === -1}
+        on:mousemove={() => onHighlight(-1)}
+        on:mousedown|preventDefault={() => onDirectSearch ? onDirectSearch(directSearchAction.text.trim()) : null}
+      >
+        <div class="card-item-title">
+          <span class="candidate-icon">🦋</span>
+          <span class="title-text">搜索 “<strong>{directSearchAction.text.trim()}</strong>” · 直接检索 Bluesky</span>
+        </div>
+        <span class="direct-search-badge">直接搜索</span>
+      </div>
+    {/if}
+
     {#each items as item, index}
       <!-- Section Divider Header (Non-selectable cue) -->
       {#if isFirstInTier(index)}
@@ -202,6 +221,43 @@
 
   .dropdown-item.active {
     background: rgba(59, 130, 246, 0.12);
+  }
+
+  /* Direct Search Action Item (Bluesky / Atproto) */
+  .dropdown-item.direct-search-item {
+    background: linear-gradient(90deg, rgba(2, 132, 199, 0.05) 0%, rgba(56, 189, 248, 0.03) 100%);
+    border-bottom: 1px solid rgba(2, 132, 199, 0.12);
+  }
+
+  .dropdown-item.direct-search-item.active {
+    background: linear-gradient(90deg, rgba(2, 132, 199, 0.15) 0%, rgba(56, 189, 248, 0.10) 100%);
+  }
+
+  .direct-search-item .candidate-icon {
+    font-size: 1.05rem;
+    filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.6));
+  }
+
+  .direct-search-item .title-text {
+    color: #0369a1;
+  }
+
+  .direct-search-item .title-text strong {
+    color: #0284c7;
+    font-weight: 700;
+  }
+
+  .direct-search-badge {
+    flex-shrink: 0;
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 9999px;
+    letter-spacing: 0.02em;
+    user-select: none;
+    background: rgba(2, 132, 199, 0.12);
+    color: #0284c7;
+    border: 1px solid rgba(2, 132, 199, 0.25);
   }
 
   .card-item-title {

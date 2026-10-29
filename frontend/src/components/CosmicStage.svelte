@@ -32,6 +32,8 @@
   import BuguRayNetwork from '../modules/bugu/BuguRayNetwork.svelte';
   import SynapseRayNetwork from './cards/SynapseRayNetwork.svelte';
   import type { BuguBeacon, BuguSession } from '../modules/bugu/types';
+  import BskyButterflyBeacon from '../modules/atproto/BskyButterflyBeacon.svelte';
+  import type { BskyBeacon } from '../modules/atproto/types';
   import { getMaxScrollExpansion } from '../lib/stageCoords';
   import VirtualCardProxy from './cards/VirtualCardProxy.svelte';
 
@@ -49,6 +51,7 @@
   export let isSearchActive: boolean = false;
   export let buguSession: BuguSession | null = null;
   export let buguBeacon: BuguBeacon | null = null;
+  export let bskyBeacon: BskyBeacon | null = null;
   export let lastScrollDirection: 'down' | 'up' = 'down';
   export let isWindowFocused: boolean = true;
   export let isStageSleeping: boolean = false;
@@ -126,6 +129,12 @@
     }
   }
 
+
+  // --- ATProto / Bluesky Butterfly Beacon Coordinates ---
+  $: bskySourceCard = bskyBeacon?.sourceCardId ? cards.find(c => c.id === bskyBeacon.sourceCardId) : null;
+  $: bskyBeaconX = bskySourceCard ? bskySourceCard.x : 0;
+  $: bskyBeaconY = bskySourceCard ? bskySourceCard.y : Math.round(scrollExpansion * 300);
+  $: isSearchStopped = bskyBeacon ? (bskyBeacon.status === 'completed' || bskyBeacon.status === 'fading') : false;
 
   // --- Mother-Child Hover Logic ---
   $: activeMotherCard = hoveredCardId ? cards.find(c => c.id === hoveredCardId && cards.some(child => child.echoOf === c.id)) : null;
@@ -288,6 +297,15 @@
     <BuguRayNetwork {cards} beacon={buguBeacon} session={buguSession} {scrollExpansion} {hoveredMotherId} />
     <SynapseRayNetwork {cards} {hoveredCardId} {scrollExpansion} {focusedCardId} />
 
+    {#if bskyBeacon}
+      <BskyButterflyBeacon
+        x={bskyBeaconX}
+        y={bskyBeaconY}
+        status={bskyBeacon.status}
+        count={bskyBeacon.butterflyCount}
+      />
+    {/if}
+
     {#each cards as card (card.id)}
       <UICard 
         {card}
@@ -296,6 +314,7 @@
         {scrollExpansion}
         {activeConstellationTags}
         {activeConstellationTag}
+        isSearchStopped={isSearchStopped}
         hasAnyFocused={focusedCardId !== null}
         focusNavDirection={focusedCardId === card.id ? focusNavDirection : null}
         hoveredMotherId={hoveredMotherId}

@@ -30,6 +30,7 @@
   export let hoveredMotherId: string | null = null;
   export let activeConstellationTags: Map<string, string> = new Map();
   export let activeConstellationTag: string | null = null;
+  export let isSearchStopped: boolean = false;
 
   let lastNavDir: 'prev' | 'next' | null = null;
   $: if (!isFocused) lastNavDir = null;
@@ -117,12 +118,14 @@
     return `conic-gradient(from 0deg, ${stops.join(', ')}, ${colors[0]} 360deg)`;
   })();
 
-  $: isBuguEcho = (card.origin === 'bugu' || card.origin === 'atproto') && Boolean(card.echoOf);
+  $: isBskyEcho = card.origin === 'atproto' && Boolean(card.echoOf);
+  $: isBuguEcho = card.origin === 'bugu' && Boolean(card.echoOf);
   $: isTemporary = Boolean(card.isTemporary || card.origin === 'bugu' || card.origin === 'atproto' || card.type === 'radar');
   $: isRecentVIP = Boolean(
     card.isVIP &&
     !hasAura &&
     !isBuguEcho &&
+    !isBskyEcho &&
     (Date.now() - (card.spawnTime || (card.createdAt ? new Date(card.createdAt).getTime() : 0)) < 30 * 60 * 1000)
   );
 
@@ -133,6 +136,9 @@
     if (isFocused) {
       if (hasAura) {
         return `0 0 0 1.5px ${toHsla(latestColor, 0.95)}, 0 0 28px ${toHsla(latestColor, 0.7)}, 0 40px 100px rgba(0, 0, 0, 0.22)`;
+      }
+      if (isBskyEcho) {
+        return '0 0 0 1px rgba(56, 189, 248, 0.9), 0 0 8px rgba(56, 189, 248, 0.55), 0 0 20px rgba(56, 189, 248, 0.35), 0 0 45px rgba(14, 165, 233, 0.18), 0 0 75px rgba(14, 165, 233, 0.06), 0 40px 100px rgba(0, 0, 0, 0.22), inset 0 0 16px rgba(224, 242, 254, 0.45)';
       }
       return isBuguEcho
         ? '0 0 0 1px rgba(245, 158, 11, 0.9), 0 0 8px rgba(245, 158, 11, 0.55), 0 0 20px rgba(245, 158, 11, 0.35), 0 0 45px rgba(245, 158, 11, 0.18), 0 0 75px rgba(245, 158, 11, 0.06), 0 40px 100px rgba(0, 0, 0, 0.22), inset 0 0 16px rgba(254, 243, 199, 0.4)'
@@ -409,6 +415,7 @@
   class:inert={hasAnyFocused && !isFocused}
   class:constellation-dimmed={isConstellationDimmed}
   class:bugu-echo={isBuguEcho}
+  class:bsky-echo={isBskyEcho}
   class:temporary={isTemporary}
   class:focused={isFocused}
   class:hovered={isHovered && !isFocused}
@@ -442,7 +449,7 @@
     {!isVisible ? 'visibility: hidden; pointer-events: none;' : ''}
   "
 >
-  <CardAuraGlow {card} {hasAura} {auraStage} {conicGradient} {isBuguEcho} {isFocused} isRecentVIP={isRecentVIP && !isFocused} {isTemporary} />
+  <CardAuraGlow {card} {hasAura} {auraStage} {conicGradient} {isBuguEcho} {isBskyEcho} isStopped={isSearchStopped} {isFocused} isRecentVIP={isRecentVIP && !isFocused} {isTemporary} />
 
   {#if collectPromptMessage}
     <div class="collect-prompt-toast">
@@ -574,6 +581,18 @@
       0 0 75px rgba(245, 158, 11, 0.06),
       0 40px 100px rgba(0, 0, 0, 0.22),
       inset 0 0 16px rgba(254, 243, 199, 0.4) !important;
+  }
+
+  .card.bsky-echo.focused {
+    border: 1px solid rgba(56, 189, 248, 0.85) !important;
+    box-shadow: 
+      0 0 0 1px rgba(56, 189, 248, 0.9),
+      0 0 8px rgba(56, 189, 248, 0.55),
+      0 0 20px rgba(56, 189, 248, 0.35),
+      0 0 45px rgba(14, 165, 233, 0.18),
+      0 0 75px rgba(14, 165, 233, 0.06),
+      0 40px 100px rgba(0, 0, 0, 0.22),
+      inset 0 0 16px rgba(224, 242, 254, 0.45) !important;
   }
 
   .card.has-aura.temporary::before {

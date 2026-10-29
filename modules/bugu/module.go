@@ -23,6 +23,11 @@ type BuguConfig struct {
 	JinaAPIKey     string `yaml:"jina_api_key"`
 	TargetLanguage string `yaml:"target_language"`
 	LLMID          string `yaml:"llm_id"`
+	RouterLLMID    string `yaml:"router_llm_id"`
+	DistillerLLMID string `yaml:"distiller_llm_id"`
+	DefaultModel   string `yaml:"default_model"`
+	RouterModel    string `yaml:"router_model"`
+	DistillerModel string `yaml:"distiller_model"`
 }
 
 type BuguModule struct {
@@ -94,52 +99,92 @@ func (b *BuguModule) Init(ctx *module.Context) error {
 		b.ConfigTarget()
 	}
 
-	// Get specific LLM from core context
-	llmID := b.MyConfig.LLMID
-	if llmID == "" {
-		llmID = "default"
+	// Set models on cfg if specifically configured
+	if b.MyConfig.RouterModel != "" {
+		cfg.RouterModel = b.MyConfig.RouterModel
 	}
-	
-	globalLLM := ctx.LLMs[llmID]
-	
-	finalLLM := module.LLMConfig{
-		Provider:     globalLLM.Provider,
-		APIKey:       globalLLM.APIKey,
-		BaseURL:      globalLLM.BaseURL,
-		DefaultModel: globalLLM.DefaultModel,
+	if b.MyConfig.DistillerModel != "" {
+		cfg.DistillerModel = b.MyConfig.DistillerModel
 	}
 
-	// 4-Tier Override for API Key
-	if finalLLM.APIKey == "" {
+	// 1. Resolve Router LLM (router_llm_id -> llm_id -> "default")
+	routerID := b.MyConfig.RouterLLMID
+	if routerID == "" {
+		routerID = b.MyConfig.LLMID
+	}
+	if routerID == "" {
+		routerID = "default"
+	}
+	rawRouterLLM := ctx.LLMs[routerID]
+	routerLLM := module.LLMConfig{
+		Provider:     rawRouterLLM.Provider,
+		APIKey:       rawRouterLLM.APIKey,
+		BaseURL:      rawRouterLLM.BaseURL,
+		DefaultModel: rawRouterLLM.DefaultModel,
+	}
+	if routerLLM.APIKey == "" {
 		if b.MyConfig.FallbackKey != "" {
-			finalLLM.APIKey = b.MyConfig.FallbackKey
+			routerLLM.APIKey = b.MyConfig.FallbackKey
 		} else if b.MyConfig.APIKey != "" {
-			finalLLM.APIKey = b.MyConfig.APIKey
+			routerLLM.APIKey = b.MyConfig.APIKey
 		} else if envKey := os.Getenv("GEMINI_API_KEY"); envKey != "" {
-			finalLLM.APIKey = envKey
+			routerLLM.APIKey = envKey
+		}
+	}
+	if b.MyConfig.RouterModel != "" {
+		routerLLM.DefaultModel = b.MyConfig.RouterModel
+	} else if routerLLM.DefaultModel == "" {
+		if b.MyConfig.DefaultModel != "" {
+			routerLLM.DefaultModel = b.MyConfig.DefaultModel
+		} else {
+			routerLLM.DefaultModel = "gemini-3.8-flash"
 		}
 	}
 
-	if finalLLM.DefaultModel == "" {
-		finalLLM.DefaultModel = "gemini-3.8-flash"
+	// 2. Resolve Distiller LLM (distiller_llm_id -> llm_id -> "default")
+	distillerID := b.MyConfig.DistillerLLMID
+	if distillerID == "" {
+		distillerID = b.MyConfig.LLMID
 	}
-
-	if finalLLM.APIKey != "" {
-		maskLen := 8
-		if len(finalLLM.APIKey) < maskLen {
-			maskLen = len(finalLLM.APIKey)
+	if distillerID == "" {
+		distillerID = "default"
+	}
+	rawDistillerLLM := ctx.LLMs[distillerID]
+	distillerLLM := module.LLMConfig{
+		Provider:     rawDistillerLLM.Provider,
+		APIKey:       rawDistillerLLM.APIKey,
+		BaseURL:      rawDistillerLLM.BaseURL,
+		DefaultModel: rawDistillerLLM.DefaultModel,
+	}
+	if distillerLLM.APIKey == "" {
+		if b.MyConfig.FallbackKey != "" {
+			distillerLLM.APIKey = b.MyConfig.FallbackKey
+		} else if b.MyConfig.APIKey != "" {
+			distillerLLM.APIKey = b.MyConfig.APIKey
+		} else if envKey := os.Getenv("GEMINI_API_KEY"); envKey != "" {
+			distillerLLM.APIKey = envKey
 		}
-		log.Printf("[Bugu Module] LLM initialized (provider: %s, model: %s, key prefix: %s...)",
-			finalLLM.Provider, finalLLM.DefaultModel, finalLLM.APIKey[:maskLen])
-	} else {
-		log.Printf("[Bugu Module] Warning: LLM API Key is empty after 4-tier check (llm_id: %s)", llmID)
+	}
+	if b.MyConfig.DistillerModel != "" {
+		distillerLLM.DefaultModel = b.MyConfig.DistillerModel
+	} else if distillerLLM.DefaultModel == "" {
+		if b.MyConfig.DefaultModel != "" {
+			distillerLLM.DefaultModel = b.MyConfig.DefaultModel
+		} else {
+			distillerLLM.DefaultModel = "gemini-3.8-flash"
+		}
 	}
 
-	// Router initialization using final LLM config
-	b.Router = llm.NewRouter(cfg, finalLLM)
+	log.Printf("[Bugu Module] Router LLM initialized (id: %s, provider: %s, model: %s, base_url: %s)",
+		routerID, routerLLM.Provider, routerLLM.DefaultModel, routerLLM.BaseURL)
+	log.Printf("[Bugu Module] Distiller LLM initialized (id: %s, provider: %s, model: %s, base_url: %s)",
+		distillerID, distillerLLM.Provider, distillerLLM.DefaultModel, distillerLLM.BaseURL)
+
+	// Router initialization using final routerLLM and distillerLLM configs
+	b.Router = llm.NewRouter(cfg, routerLLM, distillerLLM)
 
 	// Automatic background enrichment of new/untranslated tags
-	if finalLLM.APIKey != "" {
+	if routerLLM.APIKey != "" || routerLLM.BaseURL != "" {
 		missingTags := cfg.FindUntranslatedTags()
 		if len(missingTags) > 0 {
 			log.Printf("[Bugu Module] Detected %d new untranslated tags. Starting background auto-enrichment...", len(missingTags))

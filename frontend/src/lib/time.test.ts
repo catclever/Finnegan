@@ -120,40 +120,49 @@ describe('Finnegan Unified Card Time Formatting Engine', () => {
       assert.equal(formatPointTime(new Date(2026, 9, 20, 11, 55, 1), base), '刚刚');
     });
 
-    it('< 24 hours: returns "今天 HH:mm"', () => {
-      // Exactly 5 minutes ago
+    it('same calendar day: returns "今天 HH:mm"', () => {
+      // Exactly 5 minutes ago today
       assert.equal(formatPointTime(new Date(2026, 9, 20, 11, 55, 0), base), '今天 11:55');
-      // 2 hours ago
+      // 2 hours ago today
       assert.equal(formatPointTime(new Date(2026, 9, 20, 10, 0, 0), base), '今天 10:00');
-      // 23 hours 59 minutes ago
-      assert.equal(formatPointTime(new Date(2026, 9, 19, 12, 1, 0), base), '今天 12:01');
+      // Early morning today (11 hours ago)
+      assert.equal(formatPointTime(new Date(2026, 9, 20, 1, 0, 0), base), '今天 01:00');
     });
 
-    it('< 48 hours: returns "昨天 HH:mm"', () => {
-      // Exactly 24 hours ago
+    it('1 calendar day ago: returns "昨天 HH:mm"', () => {
+      // Yesterday noon (24 hours ago)
       assert.equal(formatPointTime(new Date(2026, 9, 19, 12, 0, 0), base), '昨天 12:00');
-      // 36 hours ago
+      // Yesterday midnight (36 hours ago)
       assert.equal(formatPointTime(new Date(2026, 9, 19, 0, 0, 0), base), '昨天 00:00');
-      // 47 hours 59 minutes ago
-      assert.equal(formatPointTime(new Date(2026, 9, 18, 12, 1, 0), base), '昨天 12:01');
+      // Yesterday night late (12 hours 1 minute ago)
+      assert.equal(formatPointTime(new Date(2026, 9, 19, 23, 59, 0), base), '昨天 23:59');
+      // Yesterday afternoon
+      assert.equal(formatPointTime(new Date(2026, 9, 19, 15, 30, 0), base), '昨天 15:30');
     });
 
-    it('< 30 days: returns "{days} 天前 {period}"', () => {
-      // Exactly 48 hours (2 days) ago at 12:00 (中午)
-      assert.equal(formatPointTime(new Date(2026, 9, 18, 12, 0, 0), base), '2 天前 中午');
-      // 2 days ago at 06:30 (清晨) (diff = 2 days 5.5 hours)
-      assert.equal(formatPointTime(new Date(2026, 9, 18, 6, 30, 0), base), '2 天前 清晨');
-      // 3 days ago at 09:15 (上午) (diff = 3 days 2.75 hours)
+    it('2 calendar days ago: returns "前天 HH:mm"', () => {
+      // The day before yesterday (Oct 18) at noon
+      assert.equal(formatPointTime(new Date(2026, 9, 18, 12, 0, 0), base), '前天 12:00');
+      // The day before yesterday afternoon (e.g. 15:00 - previously wrongly returned "昨天" under 48h rolling window)
+      assert.equal(formatPointTime(new Date(2026, 9, 18, 15, 0, 0), base), '前天 15:00');
+      // The day before yesterday night (e.g. 23:30)
+      assert.equal(formatPointTime(new Date(2026, 9, 18, 23, 30, 0), base), '前天 23:30');
+      // The day before yesterday early morning (e.g. 06:30)
+      assert.equal(formatPointTime(new Date(2026, 9, 18, 6, 30, 0), base), '前天 06:30');
+    });
+
+    it('3 to 29 calendar days ago: returns "{days} 天前 {period}"', () => {
+      // 3 days ago at 09:15 (上午)
       assert.equal(formatPointTime(new Date(2026, 9, 17, 9, 15, 0), base), '3 天前 上午');
-      // 5 days ago at 16:20 (下午) (diff = 4 days 19.66 hours => 4 天前 下午)
-      assert.equal(formatPointTime(new Date(2026, 9, 15, 16, 20, 0), base), '4 天前 下午');
-      // 5 days ago at 10:20 (上午) (diff = 5 days 1.66 hours => 5 天前 上午)
+      // 5 days ago at 16:20 (下午)
+      assert.equal(formatPointTime(new Date(2026, 9, 15, 16, 20, 0), base), '5 天前 下午');
+      // 5 days ago at 10:20 (上午)
       assert.equal(formatPointTime(new Date(2026, 9, 15, 10, 20, 0), base), '5 天前 上午');
-      // 7 days ago at 20:45 (晚上) (diff = 6 days 15.25 hours => 6 天前 晚上)
-      assert.equal(formatPointTime(new Date(2026, 9, 13, 20, 45, 0), base), '6 天前 晚上');
-      // 10 days ago at 23:30 (深夜) (diff = 9 days 12.5 hours => 9 天前 深夜)
-      assert.equal(formatPointTime(new Date(2026, 9, 10, 23, 30, 0), base), '9 天前 深夜');
-      // 15 days ago at 04:00 (凌晨) (diff = 15 days 8 hours => 15 天前 凌晨)
+      // 7 days ago at 20:45 (晚上)
+      assert.equal(formatPointTime(new Date(2026, 9, 13, 20, 45, 0), base), '7 天前 晚上');
+      // 10 days ago at 23:30 (深夜)
+      assert.equal(formatPointTime(new Date(2026, 9, 10, 23, 30, 0), base), '10 天前 深夜');
+      // 15 days ago at 04:00 (凌晨)
       assert.equal(formatPointTime(new Date(2026, 9, 5, 4, 0, 0), base), '15 天前 凌晨');
     });
 
@@ -375,7 +384,7 @@ describe('Finnegan Unified Card Time Formatting Engine', () => {
       unsubscribe();
     });
 
-    it('dynamically transitions card display time across focus intervals ("刚刚" -> "今天" -> "昨天" -> "2 天前")', () => {
+    it('dynamically transitions card display time across focus intervals ("刚刚" -> "今天" -> "昨天" -> "前天" -> "3 天前")', () => {
       let currentStageTime = 0;
       const unsubscribe = stageTime.subscribe((val) => {
         currentStageTime = val;
@@ -399,11 +408,15 @@ describe('Finnegan Unified Card Time Formatting Engine', () => {
       refreshStageTime(new Date(2026, 9, 21, 10, 30, 0).getTime());
       assert.equal(getCardDisplayTime(card, currentStageTime), '昨天 10:00');
 
-      // 4. Window focus 2 days later (Oct 22, 14:00, 52 hours later) -> "2 天前 上午"
+      // 4. Window focus 2 calendar days later (Oct 22, 14:00) -> "前天 10:00"
       refreshStageTime(new Date(2026, 9, 22, 14, 0, 0).getTime());
-      assert.equal(getCardDisplayTime(card, currentStageTime), '2 天前 上午');
+      assert.equal(getCardDisplayTime(card, currentStageTime), '前天 10:00');
 
-      // 5. Window focus exactly 1 year later (Oct 20, 2027) -> "1 年前的今天"
+      // 5. Window focus 3 calendar days later (Oct 23, 11:00) -> "3 天前 上午"
+      refreshStageTime(new Date(2026, 9, 23, 11, 0, 0).getTime());
+      assert.equal(getCardDisplayTime(card, currentStageTime), '3 天前 上午');
+
+      // 6. Window focus exactly 1 year later (Oct 20, 2027) -> "1 年前的今天"
       refreshStageTime(new Date(2027, 9, 20, 12, 0, 0).getTime());
       assert.equal(getCardDisplayTime(card, currentStageTime), '1 年前的今天');
 

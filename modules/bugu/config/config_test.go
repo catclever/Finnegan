@@ -70,4 +70,26 @@ func TestBuguConfig_ModelFallback(t *testing.T) {
 	if m := cfgSplit.GetDistillerModel(); m != "gemini-pro-custom" {
 		t.Errorf("expected 'gemini-pro-custom' for distiller, got %q", m)
 	}
+
+	// 7. Verify Config.GetRouterModel and Config.GetDistillerModel
+	coreCfg := &Config{
+		RouterModel:    "deepseek-v4.1-flash",
+		DistillerModel: "gemini-3.8-flash",
+	}
+	if coreCfg.GetRouterModel() != "deepseek-v4.1-flash" {
+		t.Errorf("expected 'deepseek-v4.1-flash', got %q", coreCfg.GetRouterModel())
+	}
+	if coreCfg.GetDistillerModel() != "gemini-3.8-flash" {
+		t.Errorf("expected 'gemini-3.8-flash', got %q", coreCfg.GetDistillerModel())
+	}
+
+	// 8. Verify BuguConfig LLMID fields
+	cfgWithLLMIDs := &BuguConfig{
+		LLMID:          "default",
+		RouterLLMID:    "deepseek_local",
+		DistillerLLMID: "gemini_flash",
+	}
+	if cfgWithLLMIDs.RouterLLMID != "deepseek_local" || cfgWithLLMIDs.DistillerLLMID != "gemini_flash" {
+		t.Errorf("unexpected LLMIDs: router=%q, distiller=%q", cfgWithLLMIDs.RouterLLMID, cfgWithLLMIDs.DistillerLLMID)
+	}
 }

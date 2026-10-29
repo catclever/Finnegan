@@ -11,20 +11,32 @@ import (
 	"Finnegan/core/module"
 	"Finnegan/modules/bugu/config"
 	"Finnegan/modules/bugu/models"
-	"github.com/google/generative-ai-go/genai"
-	"google.golang.org/api/option"
 )
 
 type Router struct {
-	Config *config.Config
-	LLM    module.LLMConfig
+	Config       *config.Config
+	LLM          module.LLMConfig
+	DistillerLLM module.LLMConfig
 }
 
-func NewRouter(cfg *config.Config, llmCfg module.LLMConfig) *Router {
-	return &Router{
-		Config: cfg,
-		LLM:    llmCfg,
+func NewRouter(cfg *config.Config, llmCfg module.LLMConfig, distillerCfg ...module.LLMConfig) *Router {
+	dLLM := llmCfg
+	if len(distillerCfg) > 0 && (distillerCfg[0].APIKey != "" || distillerCfg[0].BaseURL != "") {
+		dLLM = distillerCfg[0]
 	}
+	return &Router{
+		Config:       cfg,
+		LLM:          llmCfg,
+		DistillerLLM: dLLM,
+	}
+}
+
+// GetDistillerLLM returns the distiller-specific LLMConfig, falling back to Router's LLM if not configured.
+func (r *Router) GetDistillerLLM() module.LLMConfig {
+	if r.DistillerLLM.APIKey != "" || r.DistillerLLM.BaseURL != "" {
+		return r.DistillerLLM
+	}
+	return r.LLM
 }
 
 // FormatKeywordsProfile formats a structured keywords profile into a deterministic bulleted list.
@@ -130,68 +142,47 @@ func (r *Router) GenerateSearchPlan(intent string) (*models.LLMSearchPlan, error
 
 // GenerateFacetSearchPlan generates a search plan with structured keywords and facet routing.
 func (r *Router) GenerateFacetSearchPlan(intent string, keywords map[string][]string) (*models.LLMSearchPlan, error) {
-	if r.LLM.APIKey == "" {
-		return nil, fmt.Errorf("LLM API Key is not configured")
+	if r.LLM.APIKey == "" && r.LLM.BaseURL == "" {
+		return nil, fmt.Errorf("Router LLM is not configured (missing api_key or base_url)")
 	}
-
-	ctx := context.Background()
-	client, err := genai.NewClient(ctx, option.WithAPIKey(r.LLM.APIKey))
-	if err != nil {
-		return nil, err
-	}
-	defer client.Close()
 
 	modelName := "gemini-3.8-flash"
-	if r.LLM.DefaultModel != "" {
+	if r.Config != nil && r.Config.GetRouterModel() != "" {
+		modelName = r.Config.GetRouterModel()
+	} else if r.LLM.DefaultModel != "" {
 		modelName = r.LLM.DefaultModel
 	}
-	model := client.GenerativeModel(modelName)
-	model.ResponseMIMEType = "application/json"
 
-	catalog := r.Config.GetTargetCatalog()
+	catalog := ""
+	if r.Config != nil {
+		catalog = r.Config.GetTargetCatalog()
+	}
 	prompt := BuildFacetSearchPlanPrompt(intent, catalog, keywords)
 
-	resp, err := model.GenerateContent(ctx, genai.Text(prompt))
+	ctx := context.Background()
+	rawJSON, err := GenerateCompletion(ctx, r.LLM, modelName, prompt)
 	if err != nil {
-		return nil, err
-	}
-
-	if len(resp.Candidates) == 0 || len(resp.Candidates[0].Content.Parts) == 0 {
-		return nil, fmt.Errorf("empty response from LLM")
-	}
-
-	var rawJSON string
-	if textPart, ok := resp.Candidates[0].Content.Parts[0].(genai.Text); ok {
-		rawJSON = string(textPart)
-	} else {
-		return nil, fmt.Errorf("unexpected LLM response format")
+		return nil, fmt.Errorf("router LLM generation failed: %w", err)
 	}
 
 	return ParseSearchPlanJSON(rawJSON)
 }
 
-// TranslateTags uses Gemini to translate a list of tags into 8 global languages for the i18n target catalog.
+// TranslateTags uses configured LLM to translate a list of tags into 8 global languages for the i18n target catalog.
 func (r *Router) TranslateTags(tags []string) (map[string]map[string]string, error) {
 	if len(tags) == 0 {
 		return make(map[string]map[string]string), nil
 	}
-	if r.LLM.APIKey == "" {
-		return nil, fmt.Errorf("LLM API Key is not configured")
+	if r.LLM.APIKey == "" && r.LLM.BaseURL == "" {
+		return nil, fmt.Errorf("LLM is not configured")
 	}
-
-	ctx := context.Background()
-	client, err := genai.NewClient(ctx, option.WithAPIKey(r.LLM.APIKey))
-	if err != nil {
-		return nil, err
-	}
-	defer client.Close()
 
 	modelName := "gemini-3.8-flash"
-	if r.LLM.DefaultModel != "" {
+	if r.Config != nil && r.Config.GetRouterModel() != "" {
+		modelName = r.Config.GetRouterModel()
+	} else if r.LLM.DefaultModel != "" {
 		modelName = r.LLM.DefaultModel
 	}
-	model := client.GenerativeModel(modelName)
-	model.ResponseMIMEType = "application/json"
 
 	tagsList := strings.Join(tags, "\n- ")
 
@@ -218,24 +209,11 @@ Output strict JSON in this exact structure:
   }
 }`, tagsList)
 
-	resp, err := model.GenerateContent(ctx, genai.Text(prompt))
+	ctx := context.Background()
+	rawJSON, err := GenerateCompletion(ctx, r.LLM, modelName, prompt)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to translate tags: %w", err)
 	}
-
-	if len(resp.Candidates) == 0 || len(resp.Candidates[0].Content.Parts) == 0 {
-		return nil, fmt.Errorf("empty response from LLM tag translator")
-	}
-
-	var rawJSON string
-	if textPart, ok := resp.Candidates[0].Content.Parts[0].(genai.Text); ok {
-		rawJSON = string(textPart)
-	} else {
-		return nil, fmt.Errorf("unexpected LLM response format")
-	}
-
-	rawJSON = strings.TrimPrefix(rawJSON, "```json\n")
-	rawJSON = strings.TrimSuffix(rawJSON, "\n```")
 
 	var result map[string]map[string]string
 	if err := json.Unmarshal([]byte(rawJSON), &result); err != nil {

@@ -7,12 +7,16 @@
 <script lang="ts">
   export let x: number = 0;
   export let y: number = 0;
-  export let status: 'scanning' | 'linked' | 'fading' = 'scanning';
+  export let status: 'scanning' | 'linked' | 'completed' | 'fading' = 'scanning';
+  export let theme: 'amber' | 'ice-blue' = 'amber';
+
+  $: isStopped = status === 'completed' || status === 'fading';
 </script>
 
 <div 
-  class="bugu-beacon-wrapper" 
+  class="bugu-beacon-wrapper {theme}" 
   class:fading={status === 'fading'}
+  class:stopped={isStopped}
   style="transform: translate(calc(-50% + {x}px), calc(-50% + {y}px));"
 >
   <!-- Concentric expanding sonar pulse rings -->
@@ -52,6 +56,29 @@
     box-shadow: 0 0 16px rgba(245, 158, 11, 0.3), inset 0 0 16px rgba(245, 158, 11, 0.15);
     animation: beacon-expand 4.5s infinite cubic-bezier(0.2, 0.8, 0.2, 1);
     opacity: 0;
+  }
+
+  /* Ice Blue Theme */
+  .bugu-beacon-wrapper.ice-blue .beacon-ring {
+    border-color: rgba(56, 189, 248, 0.55);
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.40), inset 0 0 18px rgba(14, 165, 233, 0.20);
+    animation-name: beacon-expand-ice-blue;
+  }
+
+  @keyframes beacon-expand-ice-blue {
+    0% {
+      transform: scale(0.65);
+      opacity: 0.85;
+      border-color: rgba(56, 189, 248, 0.75);
+    }
+    50% {
+      opacity: 0.5;
+    }
+    100% {
+      transform: scale(2.6);
+      opacity: 0;
+      border-color: rgba(56, 189, 248, 0);
+    }
   }
 
   .ring-1 {
@@ -97,6 +124,22 @@
     );
     animation: radar-rotate 4s linear infinite;
     mix-blend-mode: screen;
+  }
+
+  .bugu-beacon-wrapper.ice-blue .radar-sweep {
+    background: conic-gradient(
+      from 0deg,
+      transparent 0deg,
+      rgba(56, 189, 248, 0.18) 50deg,
+      rgba(125, 211, 252, 0.40) 60deg,
+      transparent 61deg
+    );
+  }
+
+  /* Stopped State: Freeze beacon animations */
+  .bugu-beacon-wrapper.stopped .beacon-ring,
+  .bugu-beacon-wrapper.stopped .radar-sweep {
+    animation-play-state: paused !important;
   }
 
   @keyframes radar-rotate {

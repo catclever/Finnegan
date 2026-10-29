@@ -12,10 +12,26 @@ import (
 )
 
 type Config struct {
-	Targets      []models.Target
-	TargetMap    map[string]models.Target
-	ConfigPath   string
-	I18nFilePath string
+	Targets        []models.Target
+	TargetMap      map[string]models.Target
+	ConfigPath     string
+	I18nFilePath   string
+	RouterModel    string
+	DistillerModel string
+}
+
+func (c *Config) GetRouterModel() string {
+	if c != nil && strings.TrimSpace(c.RouterModel) != "" {
+		return strings.TrimSpace(c.RouterModel)
+	}
+	return ""
+}
+
+func (c *Config) GetDistillerModel() string {
+	if c != nil && strings.TrimSpace(c.DistillerModel) != "" {
+		return strings.TrimSpace(c.DistillerModel)
+	}
+	return ""
 }
 
 // BuguConfig defines the configuration options for the Bugu radar module.
@@ -27,6 +43,8 @@ type BuguConfig struct {
 	JinaAPIKey     string `yaml:"jina_api_key" json:"jina_api_key"`
 	TargetLanguage string `yaml:"target_language" json:"target_language"`
 	LLMID          string `yaml:"llm_id" json:"llm_id"`
+	RouterLLMID    string `yaml:"router_llm_id" json:"router_llm_id"`
+	DistillerLLMID string `yaml:"distiller_llm_id" json:"distiller_llm_id"`
 	DefaultModel   string `yaml:"default_model" json:"default_model"`
 	RouterModel    string `yaml:"router_model" json:"router_model"`
 	DistillerModel string `yaml:"distiller_model" json:"distiller_model"`
@@ -121,10 +139,6 @@ func (c *Config) AutoEnrich(translator TagTranslator) error {
 	return MergeCustomTranslations(newTranslations, c.I18nFilePath)
 }
 
-// GetDistillerModel returns empty for now to fallback to LLM DefaultModel
-func (c *Config) GetDistillerModel() string {
-	return ""
-}
 
 func (c *Config) GetTargetCatalog() string {
 	// Generates a compact catalog of tags and IDs for the LLM prompt.

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -13,8 +14,11 @@ func TestSearchSimilar(t *testing.T) {
 			t.Errorf("expected path /app.bsky.feed.searchPosts, got %s", r.URL.Path)
 		}
 		query := r.URL.Query().Get("q")
-		if query != "hello world" {
-			t.Errorf("expected query 'hello world', got %s", query)
+		if query != "hello | world" {
+			t.Errorf("expected query 'hello | world', got %s", query)
+		}
+		if !strings.Contains(r.URL.RawQuery, "hello+%7C+world") {
+			t.Errorf("expected raw query to contain 'hello+%%7C+world', got %s", r.URL.RawQuery)
 		}
 
 		resp := BSkySearchResponse{}
@@ -66,8 +70,13 @@ func TestSearchSimilar(t *testing.T) {
 
 	// Replace the global endpoint with the mock server URL
 	originalEndpoint := PublicAPIEndpoint
+	originalFallback := FallbackAPIEndpoint
 	PublicAPIEndpoint = mockServer.URL
-	defer func() { PublicAPIEndpoint = originalEndpoint }()
+	FallbackAPIEndpoint = ""
+	defer func() {
+		PublicAPIEndpoint = originalEndpoint
+		FallbackAPIEndpoint = originalFallback
+	}()
 
 	f := NewFetcher()
 	f.HTTPClient = mockServer.Client()
@@ -176,8 +185,13 @@ func TestFetchComments(t *testing.T) {
 	defer mockServer.Close()
 
 	originalEndpoint := PublicAPIEndpoint
+	originalFallback := FallbackAPIEndpoint
 	PublicAPIEndpoint = mockServer.URL
-	defer func() { PublicAPIEndpoint = originalEndpoint }()
+	FallbackAPIEndpoint = ""
+	defer func() {
+		PublicAPIEndpoint = originalEndpoint
+		FallbackAPIEndpoint = originalFallback
+	}()
 
 	f := NewFetcher()
 	f.HTTPClient = mockServer.Client()
@@ -213,5 +227,108 @@ func TestFetchComments(t *testing.T) {
 	}
 	if comment.ReplyCount != 2 || comment.RepostCount != 4 || comment.LikeCount != 9 {
 		t.Errorf("unexpected comment counts: reply=%d repost=%d like=%d", comment.ReplyCount, comment.RepostCount, comment.LikeCount)
+	}
+}
+
+func TestSearchSimilar_HTTPErrorHandling(t *testing.T) {
+	// Simulate CDN 403 Forbidden with HTML body
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte("<html><head><title>403 Forbidden</title></head><body><h1>403</h1></body></html>"))
+	}))
+	defer mockServer.Close()
+
+	originalEndpoint := PublicAPIEndpoint
+	originalFallback := FallbackAPIEndpoint
+	PublicAPIEndpoint = mockServer.URL
+	FallbackAPIEndpoint = ""
+	defer func() {
+		PublicAPIEndpoint = originalEndpoint
+		FallbackAPIEndpoint = originalFallback
+	}()
+
+	f := NewFetcher()
+	f.HTTPClient = mockServer.Client()
+
+	_, err := f.SearchSimilar([]string{"test"}, 5, "doc123")
+	if err == nil {
+		t.Fatalf("expected error on 403 response, got nil")
+	}
+
+	// Should report clean HTTP error rather than JSON unmarshal `<` syntax error
+	errMsg := err.Error()
+	if !strings.Contains(errMsg, "HTTP error 403") {
+		t.Errorf("expected 'HTTP error 403' in error message, got: %s", errMsg)
+	}
+}
+
+func TestSearchSimilar_FallbackToSecondaryEndpoint(t *testing.T) {
+	// Primary fails with 403, Secondary succeeds with valid JSON
+	primaryServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte("<html>Forbidden</html>"))
+	}))
+	defer primaryServer.Close()
+
+	secondaryServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp := BSkySearchResponse{}
+		resp.Posts = []struct {
+			URI    string `json:"uri"`
+			CID    string `json:"cid"`
+			Author struct {
+				Handle string `json:"handle"`
+				DID    string `json:"did"`
+				Avatar string `json:"avatar"`
+			} `json:"author"`
+			Record struct {
+				Text      string `json:"text"`
+				CreatedAt string `json:"createdAt"`
+			} `json:"record"`
+			ReplyCount  int `json:"replyCount"`
+			RepostCount int `json:"repostCount"`
+			LikeCount   int `json:"likeCount"`
+		}{
+			{
+				URI: "at://did:plc:fb/app.bsky.feed.post/999",
+				CID: "cid-fb",
+				Author: struct {
+					Handle string `json:"handle"`
+					DID    string `json:"did"`
+					Avatar string `json:"avatar"`
+				}{
+					Handle: "fallback.bsky.social",
+				},
+				Record: struct {
+					Text      string `json:"text"`
+					CreatedAt string `json:"createdAt"`
+				}{
+					Text: "Fallback success post",
+				},
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer secondaryServer.Close()
+
+	originalEndpoint := PublicAPIEndpoint
+	originalFallback := FallbackAPIEndpoint
+	PublicAPIEndpoint = primaryServer.URL
+	FallbackAPIEndpoint = secondaryServer.URL
+	defer func() {
+		PublicAPIEndpoint = originalEndpoint
+		FallbackAPIEndpoint = originalFallback
+	}()
+
+	f := NewFetcher()
+	f.HTTPClient = &http.Client{}
+
+	results, err := f.SearchSimilar([]string{"fallback"}, 5, "doc123")
+	if err != nil {
+		t.Fatalf("expected fallback to succeed, got: %v", err)
+	}
+	if len(results) != 1 || results[0].AuthorName != "fallback.bsky.social" {
+		t.Fatalf("unexpected results from fallback: %+v", results)
 	}
 }

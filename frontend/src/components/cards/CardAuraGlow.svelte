@@ -10,9 +10,11 @@
   export let auraStage: number = 0;
   export let conicGradient: string = '';
   export let isBuguEcho: boolean = false;
+  export let isBskyEcho: boolean = false;
   export let isFocused: boolean = false;
   export let isRecentVIP: boolean = false;
   export let isTemporary: boolean = false;
+  export let isStopped: boolean = false;
 
   $: animDelay = -((card?.id ? card.id.charCodeAt(card.id.length - 1) : 0) % 5);
   $: hash = card?.id ? card.id.split('').reduce((a: number, b: string) => a + b.charCodeAt(0), 0) : 0;
@@ -24,15 +26,27 @@
     <div 
       class="aura-spinner" 
       class:slow={auraStage === 2}
+      class:stopped={isStopped}
       style="background: {conicGradient}; animation-delay: {auraDelay}s;"
     ></div>
   </div>
   <div class="aura-inner-mask" class:focused={isFocused}></div>
+{:else if isBskyEcho && !isFocused}
+  <!-- Bluesky Echo Traveling Border Beam (Ice Blue) -->
+  <div class="bsky-beam-container">
+    <div 
+      class="bsky-beam-spinner" 
+      class:stopped={isStopped}
+      style="animation-delay: {animDelay}s;"
+    ></div>
+  </div>
+  <div class="bsky-beam-mask"></div>
 {:else if isBuguEcho && !isFocused}
   <!-- Bugu Echo Traveling Border Beam (Scattered State) -->
   <div class="bugu-beam-container">
     <div 
       class="bugu-beam-spinner" 
+      class:stopped={isStopped}
       style="animation-delay: {animDelay}s;"
     ></div>
   </div>
@@ -49,6 +63,61 @@
 {/if}
 
 <style>
+  /* Bluesky Echo Traveling Border Beam (Ice Blue) */
+  .bsky-beam-container {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .bsky-beam-spinner {
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    transform-origin: center center;
+    background: conic-gradient(
+      from 0deg,
+      transparent 0deg,
+      transparent 295deg,
+      rgba(56, 189, 248, 0) 300deg,
+      rgba(56, 189, 248, 0.25) 320deg,
+      rgba(125, 211, 252, 0.75) 345deg,
+      rgba(186, 230, 253, 1) 360deg
+    );
+    animation: bsky-beam-spin 4.6s linear infinite;
+    pointer-events: none;
+  }
+
+  @keyframes bsky-beam-spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .bsky-beam-mask {
+    position: absolute;
+    inset: 1px;
+    border-radius: 15px;
+    background: linear-gradient(135deg, rgba(240, 249, 255, 0.95) 0%, rgba(224, 242, 254, 0.90) 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Stopped State: Freeze all traveling beams & aura in stillness */
+  .bsky-beam-spinner.stopped,
+  .bugu-beam-spinner.stopped,
+  .aura-spinner.stopped {
+    animation-play-state: paused !important;
+  }
+
   /* Bugu Echo Traveling Border Beam (Scattered State) */
   .bugu-beam-container {
     position: absolute;

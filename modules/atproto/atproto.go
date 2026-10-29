@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 	"strings"
 
 	"Finnegan/core/bus"
@@ -75,7 +76,7 @@ func (m *AtProtoModule) GetCommands() []module.CommandDef {
 			ID:          "atproto:echo",
 			Name:        "Bluesky 灵感回声",
 			Trigger:     "bsky",
-			Description: "在 Bluesky (ATProto) 寻找当前卡片或关键词的共鸣与讨论",
+			Description: "Bluesky 灵感回声",
 			Namespace:   "bsky",
 			IsPrimary:   true,
 			Params: []module.ParamSpec{
@@ -94,7 +95,7 @@ func (m *AtProtoModule) GetCommands() []module.CommandDef {
 			ID:          "atproto:publish",
 			Name:        "发布到 Bluesky",
 			Trigger:     "bsky-push",
-			Description: "将卡片发布至 Bluesky (手动触发)",
+			Description: "发布到 Bluesky",
 			Namespace:   "bsky",
 			IsPrimary:   false,
 			SubCommand:  "push",
@@ -113,42 +114,86 @@ func (m *AtProtoModule) GetCommands() []module.CommandDef {
 	}
 }
 
-// extractKeywordsFromMap collects non-empty keywords from card metadata keywords map
-func extractKeywordsFromMap(kwObj interface{}) []string {
+// extractKeywordsFromCard collects non-empty keywords and tags from card metadata
+func extractKeywordsFromCard(cardMap map[string]interface{}) []string {
 	var results []string
 	seen := make(map[string]bool)
 
-	addWord := func(w string) {
+	addWord := func(w string, isTag bool) {
 		w = strings.TrimSpace(w)
-		w = strings.TrimSuffix(w, "*")
+		if isTag {
+			w = strings.TrimLeft(w, "#")
+		}
+		w = strings.TrimRight(w, "*")
+		w = strings.TrimSpace(w)
 		if w != "" && !seen[w] {
 			seen[w] = true
 			results = append(results, w)
 		}
 	}
 
-	switch m := kwObj.(type) {
-	case map[string]interface{}:
-		for _, v := range m {
-			if list, ok := v.([]interface{}); ok {
-				for _, item := range list {
-					if s, ok := item.(string); ok {
-						addWord(s)
-					}
-				}
-			} else if list, ok := v.([]string); ok {
-				for _, s := range list {
-					addWord(s)
+	processList := func(val interface{}, isTag bool) {
+		switch list := val.(type) {
+		case []interface{}:
+			for _, item := range list {
+				if s, ok := item.(string); ok {
+					addWord(s, isTag)
 				}
 			}
-		}
-	case map[string][]string:
-		for _, list := range m {
+		case []string:
 			for _, s := range list {
-				addWord(s)
+				addWord(s, isTag)
+			}
+		case string:
+			addWord(list, isTag)
+		}
+	}
+
+	// 1. From cardMap["keywords"]: traverse all dimensions, strip trailing * and whitespace
+	if kwObj, ok := cardMap["keywords"]; ok && kwObj != nil {
+		switch m := kwObj.(type) {
+		case map[string]interface{}:
+			keys := make([]string, 0, len(m))
+			for k := range m {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+			for _, k := range keys {
+				processList(m[k], false)
+			}
+		case map[string][]string:
+			keys := make([]string, 0, len(m))
+			for k := range m {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+			for _, k := range keys {
+				for _, s := range m[k] {
+					addWord(s, false)
+				}
+			}
+		case map[interface{}]interface{}:
+			keys := make([]string, 0, len(m))
+			for k := range m {
+				keys = append(keys, fmt.Sprintf("%v", k))
+			}
+			sort.Strings(keys)
+			for _, k := range keys {
+				for rk, rv := range m {
+					if fmt.Sprintf("%v", rk) == k {
+						processList(rv, false)
+						break
+					}
+				}
 			}
 		}
 	}
+
+	// 2. From cardMap["tags"]: traverse tag list, strip leading # and trailing *
+	if tagObj, ok := cardMap["tags"]; ok && tagObj != nil {
+		processList(tagObj, true)
+	}
+
 	return results
 }
 
@@ -190,53 +235,60 @@ func (m *AtProtoModule) ExecuteCommand(ctx context.Context, cmdID string, params
 		var cardID string
 		var keywords []string
 
-		if c, ok := params["content"].(string); ok && c != "" {
-			content = c
-		} else if text, ok := params["text"].(string); ok && text != "" {
-			content = text
-		}
-
-		if id, ok := params["id"].(string); ok && id != "" {
-			cardID = id
-		} else if cid, ok := params["cardId"].(string); ok && cid != "" {
-			cardID = cid
-		}
-
-		if cardVal, ok := params["card"]; ok {
-			switch cv := cardVal.(type) {
-			case string:
-				if content == "" {
-					content = cv
-				}
-			case map[string]interface{}:
-				if content == "" {
-					if c, ok := cv["content"].(string); ok && c != "" {
-						content = c
-					} else if t, ok := cv["title"].(string); ok && t != "" {
-						content = t
-					}
-				}
-				if cardID == "" {
-					if id, ok := cv["id"].(string); ok && id != "" {
-						cardID = id
-					}
-				}
-				if kwObj, ok := cv["keywords"]; ok && kwObj != nil {
-					keywords = extractKeywordsFromMap(kwObj)
-				}
+		var cardMap map[string]interface{}
+		if cardVal, ok := params["card"]; ok && cardVal != nil {
+			if cm, ok := cardVal.(map[string]interface{}); ok {
+				cardMap = cm
 			}
 		}
 
-		if content == "" && len(keywords) == 0 {
-			return nil, fmt.Errorf("no content or card provided for %s", cmdID)
+		if cardMap != nil {
+			if id, ok := cardMap["id"].(string); ok && id != "" {
+				cardID = id
+			} else if id, ok := params["id"].(string); ok && id != "" {
+				cardID = id
+			} else if cid, ok := params["cardId"].(string); ok && cid != "" {
+				cardID = cid
+			}
+
+			if c, ok := cardMap["content"].(string); ok && c != "" {
+				content = c
+			} else if t, ok := cardMap["title"].(string); ok && t != "" {
+				content = t
+			} else if c, ok := params["content"].(string); ok && c != "" {
+				content = c
+			} else if text, ok := params["text"].(string); ok && text != "" {
+				content = text
+			}
+
+			keywords = extractKeywordsFromCard(cardMap)
+			if len(keywords) == 0 && content != "" {
+				keywords = tokenizeText(content)
+			}
+			if len(keywords) == 0 && content != "" {
+				keywords = []string{content}
+			}
+		} else {
+			// Free search mode (NO card provided)
+			var rawText string
+			if text, ok := params["text"].(string); ok && strings.TrimSpace(text) != "" {
+				rawText = text
+			} else if c, ok := params["content"].(string); ok && strings.TrimSpace(c) != "" {
+				rawText = c
+			} else if cardStr, ok := params["card"].(string); ok && strings.TrimSpace(cardStr) != "" {
+				rawText = cardStr
+			}
+
+			if strings.TrimSpace(rawText) != "" {
+				rawText = strings.TrimSpace(rawText)
+				keywords = []string{rawText}
+				cardID = ""
+				content = rawText
+			}
 		}
 
 		if len(keywords) == 0 {
-			keywords = tokenizeText(content)
-		}
-
-		if len(keywords) == 0 && content != "" {
-			keywords = []string{content}
+			return nil, fmt.Errorf("no content or card provided for %s", cmdID)
 		}
 
 		// Asynchronously call m.fetcher.SearchSimilar
