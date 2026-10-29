@@ -1,7 +1,15 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 // @ts-ignore
-import { parseDate, getTimePeriod, formatPointTime, formatIntervalTime, getCardDisplayTime } from './time.ts';
+import {
+  parseDate,
+  getTimePeriod,
+  formatPointTime,
+  formatIntervalTime,
+  getCardDisplayTime,
+  stageTime,
+  refreshStageTime
+} from './time.ts';
 
 describe('Finnegan Unified Card Time Formatting Engine', () => {
   describe('parseDate', () => {
@@ -346,6 +354,60 @@ describe('Finnegan Unified Card Time Formatting Engine', () => {
         createdAt: new Date(2025, 9, 20, 10, 0, 0)
       };
       assert.equal(getCardDisplayTime(cardEasterEgg, base), '1 年前的今天');
+    });
+  });
+
+  describe('Focus-Driven Stage Time Store & Relative Time Transitions', () => {
+    it('updates stageTime store when refreshStageTime is called', () => {
+      let currentTime = 0;
+      const unsubscribe = stageTime.subscribe((val) => {
+        currentTime = val;
+      });
+
+      const targetTime = new Date(2026, 9, 20, 15, 30, 0).getTime();
+      refreshStageTime(targetTime);
+      assert.equal(currentTime, targetTime);
+
+      const targetTime2 = new Date(2026, 9, 21, 9, 0, 0).getTime();
+      refreshStageTime(targetTime2);
+      assert.equal(currentTime, targetTime2);
+
+      unsubscribe();
+    });
+
+    it('dynamically transitions card display time across focus intervals ("刚刚" -> "今天" -> "昨天" -> "2 天前")', () => {
+      let currentStageTime = 0;
+      const unsubscribe = stageTime.subscribe((val) => {
+        currentStageTime = val;
+      });
+
+      const card = {
+        id: 'test-card-1',
+        type: 'thought',
+        createdAt: new Date(2026, 9, 20, 10, 0, 0) // Oct 20, 10:00
+      };
+
+      // 1. Initial creation / focus at 10:02 (2 minutes after creation) -> "刚刚"
+      refreshStageTime(new Date(2026, 9, 20, 10, 2, 0).getTime());
+      assert.equal(getCardDisplayTime(card, currentStageTime), '刚刚');
+
+      // 2. Window focus after 15 minutes (10:15) -> "今天 10:00"
+      refreshStageTime(new Date(2026, 9, 20, 10, 15, 0).getTime());
+      assert.equal(getCardDisplayTime(card, currentStageTime), '今天 10:00');
+
+      // 3. Window focus next morning across midnight (Oct 21, 10:30, 24.5 hours later) -> "昨天 10:00"
+      refreshStageTime(new Date(2026, 9, 21, 10, 30, 0).getTime());
+      assert.equal(getCardDisplayTime(card, currentStageTime), '昨天 10:00');
+
+      // 4. Window focus 2 days later (Oct 22, 14:00, 52 hours later) -> "2 天前 上午"
+      refreshStageTime(new Date(2026, 9, 22, 14, 0, 0).getTime());
+      assert.equal(getCardDisplayTime(card, currentStageTime), '2 天前 上午');
+
+      // 5. Window focus exactly 1 year later (Oct 20, 2027) -> "1 年前的今天"
+      refreshStageTime(new Date(2027, 9, 20, 12, 0, 0).getTime());
+      assert.equal(getCardDisplayTime(card, currentStageTime), '1 年前的今天');
+
+      unsubscribe();
     });
   });
 });

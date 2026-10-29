@@ -13,6 +13,9 @@ import (
 	"Finnegan/core/keywords"
 	"Finnegan/core/module"
 	"Finnegan/core/watcher"
+	_ "Finnegan/modules/atproto"
+	atprotofetcher "Finnegan/modules/atproto/fetcher"
+	atprotomodels "Finnegan/modules/atproto/models"
 	"Finnegan/modules/bugu"
 	"Finnegan/modules/bugu/models"
 
@@ -71,16 +74,18 @@ func (a *App) startup(ctx context.Context) {
 
 	// Init modules
 	reg := module.GetRegistry()
-	if bModule, ok := reg["bugu"].(*bugu.BuguModule); ok {
+	for name, m := range reg {
 		mCtx := &module.Context{
 			LLMs:    cfg.LLMs,
 			Storage: nil,
 			Watcher: nil,
 		}
-		if err := bModule.Init(mCtx); err != nil {
-			log.Printf("Bugu module init failed: %v", err)
+		if err := m.Init(mCtx); err != nil {
+			log.Printf("[%s] module init failed: %v", name, err)
 		} else {
-			a.buguModule = bModule
+			if bModule, ok := m.(*bugu.BuguModule); ok {
+				a.buguModule = bModule
+			}
 		}
 	}
 
@@ -119,6 +124,8 @@ func (a *App) startup(ctx context.Context) {
 			var title, content, origText, transText, srcURL, echoOf string
 			var publishedAt, authorName, authorAvatar string
 			var matchedAnchor, echoReason string
+			var origin string = "bugu"
+			var replyCount, repostCount, likeCount int
 
 			if bc, ok := event.Data.(models.BabelCard); ok {
 				cardID = fmt.Sprintf("babel_%s", ulid.Make().String())
@@ -137,6 +144,7 @@ func (a *App) startup(ctx context.Context) {
 				authorAvatar = bc.AuthorAvatar
 				matchedAnchor = bc.MatchedAnchor
 				echoReason = bc.EchoReason
+				origin = "bugu"
 			} else if bcp, ok := event.Data.(*models.BabelCard); ok && bcp != nil {
 				cardID = fmt.Sprintf("babel_%s", ulid.Make().String())
 				title = "Babel Echo"
@@ -154,6 +162,41 @@ func (a *App) startup(ctx context.Context) {
 				authorAvatar = bcp.AuthorAvatar
 				matchedAnchor = bcp.MatchedAnchor
 				echoReason = bcp.EchoReason
+				origin = "bugu"
+			} else if post, ok := event.Data.(atprotomodels.Post); ok {
+				cardID = fmt.Sprintf("babel_%s", ulid.Make().String())
+				title = "Bluesky Echo"
+				origText = post.OriginalText
+				if post.Content != "" {
+					content = post.Content
+				} else {
+					content = post.OriginalText
+				}
+				srcURL = post.SourceURL
+				echoOf = post.EchoOf
+				authorName = post.AuthorName
+				authorAvatar = post.AuthorAvatar
+				origin = "atproto"
+				replyCount = post.ReplyCount
+				repostCount = post.RepostCount
+				likeCount = post.LikeCount
+			} else if postP, ok := event.Data.(*atprotomodels.Post); ok && postP != nil {
+				cardID = fmt.Sprintf("babel_%s", ulid.Make().String())
+				title = "Bluesky Echo"
+				origText = postP.OriginalText
+				if postP.Content != "" {
+					content = postP.Content
+				} else {
+					content = postP.OriginalText
+				}
+				srcURL = postP.SourceURL
+				echoOf = postP.EchoOf
+				authorName = postP.AuthorName
+				authorAvatar = postP.AuthorAvatar
+				origin = "atproto"
+				replyCount = postP.ReplyCount
+				repostCount = postP.RepostCount
+				likeCount = postP.LikeCount
 			}
 
 			// Filter out empty cards completely: if there is no substantive text, do not inject or emit
@@ -167,6 +210,7 @@ func (a *App) startup(ctx context.Context) {
 						{
 							ID:             cardID,
 							Type:           CardTypeBabel,
+							Origin:         origin,
 							Title:          title,
 							Content:        content,
 							SourceURL:      srcURL,
@@ -178,34 +222,41 @@ func (a *App) startup(ctx context.Context) {
 							EchoOf:         echoOf,
 							MatchedAnchor:  matchedAnchor,
 							EchoReason:     echoReason,
+							ReplyCount:     replyCount,
+							RepostCount:    repostCount,
+							LikeCount:      likeCount,
 							CreatedAt:      time.Now(),
 						},
 					})
 				}
 				runtime.EventsEmit(a.ctx, "bugu:card_spawned", map[string]interface{}{
-					"id":             cardID,
-					"type":           "babel",
-					"title":          title,
-					"content":        content,
-					"sourceUrl":      srcURL,
-					"originalText":   origText,
-					"translatedText": transText,
-					"source_url":     srcURL,
-					"original_text":  origText,
+					"id":              cardID,
+					"type":            "babel",
+					"origin":          origin,
+					"title":           title,
+					"content":         content,
+					"sourceUrl":       srcURL,
+					"originalText":    origText,
+					"translatedText":  transText,
+					"source_url":      srcURL,
+					"original_text":   origText,
 					"translated_text": transText,
-					"publishedAt":    publishedAt,
-					"published_at":   publishedAt,
-					"authorName":     authorName,
-					"author_name":    authorName,
-					"authorAvatar":   authorAvatar,
-					"author_avatar":  authorAvatar,
-					"echoOf":         echoOf,
-					"echo_of":        echoOf,
-					"matchedAnchor":  matchedAnchor,
-					"matched_anchor": matchedAnchor,
-					"echoReason":     echoReason,
-					"echo_reason":    echoReason,
-					"createdAt":      time.Now(),
+					"publishedAt":     publishedAt,
+					"published_at":    publishedAt,
+					"authorName":      authorName,
+					"author_name":     authorName,
+					"authorAvatar":    authorAvatar,
+					"author_avatar":   authorAvatar,
+					"echoOf":          echoOf,
+					"echo_of":         echoOf,
+					"matchedAnchor":   matchedAnchor,
+					"matched_anchor":  matchedAnchor,
+					"echoReason":      echoReason,
+					"echo_reason":     echoReason,
+					"replyCount":      replyCount,
+					"repostCount":     repostCount,
+					"likeCount":       likeCount,
+					"createdAt":       time.Now(),
 				})
 			} else {
 				runtime.EventsEmit(a.ctx, "bugu:card_spawned", event.Data)
@@ -227,6 +278,42 @@ func (a *App) startup(ctx context.Context) {
 			runtime.EventsEmit(a.ctx, "bugu:radar_completed", event.Data)
 		}
 	}()
+
+	runtime.EventsOn(a.ctx, "atproto:fetch_comments", func(data ...interface{}) {
+		if len(data) == 0 || data[0] == nil {
+			return
+		}
+		var uri, parentCardID string
+		if m, ok := data[0].(map[string]interface{}); ok {
+			if u, ok := m["uri"].(string); ok {
+				uri = u
+			}
+			if p, ok := m["parentCardId"].(string); ok {
+				parentCardID = p
+			} else if p, ok := m["parentCardID"].(string); ok {
+				parentCardID = p
+			}
+		}
+
+		if uri == "" {
+			return
+		}
+
+		f := atprotofetcher.NewFetcher()
+		go func() {
+			comments, err := f.FetchComments(uri, parentCardID)
+			if err != nil {
+				log.Printf("[ATProto] FetchComments failed for %s: %v", uri, err)
+				return
+			}
+			for _, comment := range comments {
+				bus.GetBus().Publish(bus.Event{
+					Type: bus.EventBabelCardSpawned,
+					Data: comment,
+				})
+			}
+		}()
+	})
 
 	// Initialize / refresh KeywordEngine
 	llmCfg := a.getLLMConfig()

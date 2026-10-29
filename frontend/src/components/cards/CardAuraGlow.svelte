@@ -15,6 +15,8 @@
   export let isTemporary: boolean = false;
 
   $: animDelay = -((card?.id ? card.id.charCodeAt(card.id.length - 1) : 0) % 5);
+  $: hash = card?.id ? card.id.split('').reduce((a: number, b: string) => a + b.charCodeAt(0), 0) : 0;
+  $: auraDelay = -((hash % 40) / 10);
 </script>
 
 {#if hasAura && auraStage < 3}
@@ -22,7 +24,7 @@
     <div 
       class="aura-spinner" 
       class:slow={auraStage === 2}
-      style="background: {conicGradient};"
+      style="background: {conicGradient}; animation-delay: {auraDelay}s;"
     ></div>
   </div>
   <div class="aura-inner-mask" class:focused={isFocused}></div>
@@ -91,8 +93,6 @@
     inset: 1px;
     border-radius: 15px;
     background: linear-gradient(135deg, rgba(230, 239, 250, 0.94) 0%, rgba(216, 228, 244, 0.90) 100%);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
     pointer-events: none;
     z-index: 0;
   }
@@ -147,8 +147,6 @@
     inset: 2px;
     border-radius: 14px;
     background: rgba(255, 255, 255, 0.92);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
     pointer-events: none;
     z-index: 0;
   }

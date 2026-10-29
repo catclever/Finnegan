@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { CosmicCard } from '../../types/card';
   import { getCardComponent } from './cardRegistry';
-  import { getCardDisplayTime } from '../../lib/time';
+  import { getCardDisplayTime, stageTime } from '../../lib/time';
   import { createEventDispatcher } from 'svelte';
 
   export let cards: CosmicCard[] = [];
@@ -33,8 +33,8 @@
 
   $: hasMultiple = cards.length > 1;
 
-  function getTime(c: any) {
-    return getCardDisplayTime(c);
+  function getTime(c: any, timeAnchor: number = $stageTime) {
+    return getCardDisplayTime(c, timeAnchor);
   }
 
   function handleCardClick(e: MouseEvent, card: CosmicCard) {
@@ -84,9 +84,9 @@
           {card}
           isFocused={true}
           isHovered={false}
-          thoughtTime={getTime(card)}
-          babelTime={getTime(card)}
-          displayTime={getTime(card)}
+          thoughtTime={getTime(card, $stageTime)}
+          babelTime={getTime(card, $stageTime)}
+          displayTime={getTime(card, $stageTime)}
         />
       </div>
 

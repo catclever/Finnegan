@@ -28,6 +28,7 @@ const (
 type Card struct {
 	ID             string              `json:"id"`
 	Type           CardType            `json:"type"`
+	Origin         string              `json:"origin,omitempty"`
 	Title          string              `json:"title"`
 	Content        string              `json:"content"`
 	Images         []string            `json:"images,omitempty"`
@@ -40,6 +41,9 @@ type Card struct {
 	EchoOf         string              `json:"echoOf,omitempty"`
 	MatchedAnchor  string              `json:"matchedAnchor,omitempty"`
 	EchoReason     string              `json:"echoReason,omitempty"`
+	ReplyCount     int                 `json:"replyCount,omitempty"`
+	RepostCount    int                 `json:"repostCount,omitempty"`
+	LikeCount      int                 `json:"likeCount,omitempty"`
 	CreatedAt      time.Time           `json:"createdAt"`
 	Participants   []string            `json:"participants,omitempty"`
 	StartedAt      *time.Time          `json:"startedAt,omitempty"`
@@ -249,7 +253,11 @@ func (m *CardManager) PromoteToLocal(cardID string, home string) (*Card, error) 
 		sb.WriteString(fmt.Sprintf("id: %s\n", newID))
 		sb.WriteString(fmt.Sprintf("created: %s\n", now.Format(time.RFC3339)))
 		sb.WriteString(fmt.Sprintf("updated: %s\n", now.Format(time.RFC3339)))
-		sb.WriteString("source: bugu\n")
+		sourceName := "bugu"
+		if card.Origin != "" {
+			sourceName = card.Origin
+		}
+		sb.WriteString(fmt.Sprintf("source: %s\n", sourceName))
 		if card.SourceURL != "" {
 			sb.WriteString(fmt.Sprintf("source_url: %s\n", card.SourceURL))
 		}

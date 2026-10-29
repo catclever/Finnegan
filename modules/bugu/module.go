@@ -170,6 +170,8 @@ func (b *BuguModule) GetCommands() []module.CommandDef {
 			Name:        "布谷深网雷达",
 			Trigger:     "bugu",
 			Description: "吾道不孤",
+			Namespace:   "bugu",
+			IsPrimary:   true,
 			Params: []module.ParamSpec{
 				{
 					Name:                "card",

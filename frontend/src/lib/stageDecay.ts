@@ -22,7 +22,7 @@ export function isProtectedCard(
 export function toCosmicCard(
   c: any,
   type: string,
-  origin: 'manual' | 'bugu' | 'local',
+  origin: 'manual' | 'bugu' | 'local' | 'atproto',
   ttl?: number
 ): CosmicCard {
   const rawContent = c.content || c.Content || c.translatedText || c.TranslatedText || c.translated_text || c.originalText || '';
@@ -51,6 +51,9 @@ export function toCosmicCard(
     echoOf: c.echoOf || c.EchoOf || c.echo_of || '',
     matchedAnchor: c.matchedAnchor || c.MatchedAnchor || c.matched_anchor || '',
     echoReason: c.echoReason || c.EchoReason || c.echo_reason || '',
+    replyCount: c.replyCount ?? c.ReplyCount,
+    repostCount: c.repostCount ?? c.RepostCount,
+    likeCount: c.likeCount ?? c.LikeCount,
     images,
     keywords: c.keywords || c.Keywords,
     tags: c.tags || c.Tags || [],
@@ -66,7 +69,7 @@ export function toCosmicCard(
  * Calculates dynamic half-life decay duration (ms) for a card.
  */
 export function calculateDecayDuration(
-  origin: 'manual' | 'bugu' | 'local',
+  origin: 'manual' | 'bugu' | 'local' | 'atproto',
   z: number,
   isVIP: boolean,
   activeCards: CosmicCard[] = [],

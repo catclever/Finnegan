@@ -1,10 +1,30 @@
 /**
  * Finnegan Cosmic Stage - Unified Card Time Formatting Engine
- * Task: unified_card_time_engine_061
+ * Task: unified_card_time_engine_061 / focus_driven_relative_time_refresh_121
  *
  * Establishes consistent, elegant, and predictable temporal hierarchy rules
- * across all card types (Thought, Babel, ChatLog).
+ * across all card types (Thought, Babel, ChatLog), and provides a reactive
+ * stageTime store that dynamically refreshes relative time labels on window focus.
  */
+
+import { writable, type Writable } from 'svelte/store';
+
+/**
+ * Reactive stage time anchor (Unix millisecond timestamp).
+ * Automatically updated whenever the Finnegan window gains focus (or visibility),
+ * driving reactive re-evaluation of relative time labels ("刚刚", "今天", "昨天", "N 天前")
+ * across all active cards.
+ */
+export const stageTime: Writable<number> = writable<number>(Date.now());
+
+/**
+ * Manually or programmatically triggers a stage-wide time refresh.
+ * @param now Optional timestamp; defaults to Date.now().
+ */
+export function refreshStageTime(now: number = Date.now()): void {
+  stageTime.set(now);
+}
+
 
 /**
  * Pads a number with leading zeros to 2 digits.

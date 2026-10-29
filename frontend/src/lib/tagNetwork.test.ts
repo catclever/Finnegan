@@ -13,13 +13,19 @@ import {
   calculateIntrinsicTargetZ,
   calculateResurgenceZ,
   findUnstagedMatchingCards,
+  cardMatchesAnyTag,
+  getCardMatchedTags,
+  getDistinctTagColor,
+  VIBRANT_TAG_PALETTE,
 } from './tagNetwork.ts';
 
 describe('Finnegan Tag Association & Resurgence Physics', () => {
   describe('normalizeTag', () => {
-    it('strips trailing asterisks and trims whitespace', () => {
+    it('strips leading hashtags, trailing asterisks and trims whitespace', () => {
       assert.equal(normalizeTag('WebKitGTK 4.1*'), 'WebKitGTK 4.1');
       assert.equal(normalizeTag('  松弛感**  '), '松弛感');
+      assert.equal(normalizeTag('#AI*'), 'AI');
+      assert.equal(normalizeTag('##DevOps'), 'DevOps');
       assert.equal(normalizeTag('alpha'), 'alpha');
       assert.equal(normalizeTag(''), '');
     });
@@ -161,6 +167,98 @@ describe('Finnegan Tag Association & Resurgence Physics', () => {
       const unstaged = findUnstagedMatchingCards('tagA', stage, memory, vault);
       assert.equal(unstaged.length, 2);
       assert.deepEqual(unstaged.map(c => c.id).sort(), ['c2', 'c4']);
+    });
+
+    it('supports multi-tag union recall (OR)', () => {
+      const stage = [
+        { id: 'c1', keywords: { object: ['tagA*'] } } as any,
+      ];
+      const memory = [
+        { id: 'c2', keywords: { object: ['tagA'] } } as any, // matches tagA
+        { id: 'c3', keywords: { mood: ['tagB*'] } } as any, // matches tagB
+        { id: 'c4', keywords: { object: ['tagC*'] } } as any, // matches neither
+      ];
+      const vault = [
+        { id: 'c5', tags: ['tagB'] } as any, // matches tagB
+        { id: 'c2', keywords: { object: ['tagA'] } } as any, // duplicate of c2 in memory
+      ];
+
+      const unstaged = findUnstagedMatchingCards(['tagA', 'tagB'], stage, memory, vault);
+      assert.equal(unstaged.length, 3);
+      assert.deepEqual(unstaged.map(c => c.id).sort(), ['c2', 'c3', 'c5']);
+    });
+  });
+
+  describe('cardMatchesAnyTag and getCardMatchedTags (Union / OR matching)', () => {
+    const cardMulti: any = {
+      id: 'c1',
+      tags: ['TypeScript'],
+      keywords: {
+        concept: ['Svelte*'],
+        mood: ['Focused'],
+      },
+    };
+
+    it('matches if card possesses ANY of the queried tags', () => {
+      assert.ok(cardMatchesAnyTag(cardMulti, ['TypeScript', 'Rust']));
+      assert.ok(cardMatchesAnyTag(cardMulti, ['Python', 'Svelte']));
+      assert.ok(cardMatchesAnyTag(cardMulti, ['Focused']));
+      assert.ok(!cardMatchesAnyTag(cardMulti, ['Go', 'Rust', 'Ruby']));
+    });
+
+    it('returns all matching tags for multi-tag border gradient generation', () => {
+      const matched = getCardMatchedTags(cardMulti, ['TypeScript', 'Svelte', 'Go']);
+      assert.deepEqual(matched, ['TypeScript', 'Svelte']);
+
+      const single = getCardMatchedTags(cardMulti, ['Svelte']);
+      assert.deepEqual(single, ['Svelte']);
+
+      const none = getCardMatchedTags(cardMulti, ['C++', 'Rust']);
+      assert.deepEqual(none, []);
+    });
+  });
+
+  describe('getDistinctTagColor (Color wheel max angular gap)', () => {
+    it('returns initial vibrant color hsl(199, 90%, 60%) when no colors active', () => {
+      assert.equal(getDistinctTagColor([]), VIBRANT_TAG_PALETTE[0]);
+      assert.equal(getDistinctTagColor(new Set()), VIBRANT_TAG_PALETTE[0]);
+    });
+
+    it('picks the next distinct vibrant color from the preset palette maximizing hue distance', () => {
+      const c1 = getDistinctTagColor([]);
+      assert.equal(c1, 'hsl(199, 90%, 60%)');
+
+      const c2 = getDistinctTagColor([c1]);
+      assert.equal(c2, 'hsl(280, 90%, 62%)');
+
+      const c3 = getDistinctTagColor([c1, c2]);
+      assert.equal(c3, 'hsl(150, 90%, 50%)');
+
+      const c4 = getDistinctTagColor([c1, c2, c3]);
+      assert.equal(c4, 'hsl(38, 95%, 55%)');
+
+      const c5 = getDistinctTagColor([c1, c2, c3, c4]);
+      assert.equal(c5, 'hsl(340, 90%, 60%)');
+    });
+
+    it('calculates the color wheel max angular gap when all preset colors are in use', () => {
+      // Preset hues: 38, 150, 199, 280, 340
+      // Gaps:
+      // 38 -> 150: 112 (Largest gap!)
+      // 150 -> 199: 49
+      // 199 -> 280: 81
+      // 280 -> 340: 60
+      // 340 -> 38: 58
+      // Midpoint of 38 -> 150 is 38 + 56 = 94.
+      const c6 = getDistinctTagColor(VIBRANT_TAG_PALETTE);
+      assert.equal(c6, 'hsl(94, 90%, 60%)');
+
+      // Next gap after adding 94:
+      // Hues: 38, 94, 150, 199, 280, 340
+      // Gaps: 38->94(56), 94->150(56), 150->199(49), 199->280(81: Largest!), 280->340(60), 340->38(58)
+      // Midpoint of 199 -> 280 is 199 + 40.5 = 239.5 -> 240
+      const c7 = getDistinctTagColor([...VIBRANT_TAG_PALETTE, c6]);
+      assert.equal(c7, 'hsl(240, 90%, 60%)');
     });
   });
 });

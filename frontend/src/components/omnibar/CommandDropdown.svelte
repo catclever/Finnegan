@@ -7,6 +7,7 @@
 -->
 <script lang="ts">
   import type { CommandDef } from '../../types/card';
+  import { getCommandIcon } from '../../lib/commandEngine';
 
   export let matchedCommands: CommandDef[] = [];
   export let highlightedCmdIndex: number = 0;
@@ -26,9 +27,24 @@
         on:mousedown|preventDefault={() => onSelect(cmd)}
       >
         <div class="cmd-item-header">
-          <span class="cmd-icon">🔭</span>
-          <span class="cmd-trigger">/{cmd.trigger.replace(/^\//, '')}</span>
+          <span class="cmd-icon">{getCommandIcon(cmd)}</span>
+          <span class="cmd-trigger">/{cmd.trigger.replace(/^\/+/, '')}</span>
+          {#if cmd.namespace}
+            {#if cmd.isPrimary}
+              <span class="cmd-ns-badge primary">{cmd.namespace} 专名</span>
+            {:else if cmd.subCommand}
+              <span class="cmd-ns-badge sub">{cmd.namespace} · {cmd.subCommand}</span>
+            {:else}
+              <span class="cmd-ns-badge">{cmd.namespace}</span>
+            {/if}
+          {/if}
+          {#if cmd.name}
+            <span class="cmd-name">{cmd.name}</span>
+          {/if}
         </div>
+        {#if cmd.description}
+          <div class="cmd-desc">{cmd.description}</div>
+        {/if}
       </div>
     {/each}
   </div>
@@ -60,7 +76,7 @@
   }
 
   .dropdown-item {
-    padding: 10px 16px;
+    padding: 8px 14px;
     display: flex;
     flex-direction: column;
     gap: 3px;
@@ -81,11 +97,63 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    flex-wrap: nowrap;
+  }
+
+  .cmd-icon {
+    font-size: 1rem;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
   }
 
   .cmd-trigger {
     font-weight: 700;
     color: #2563eb;
-    font-size: 0.95rem;
+    font-size: 0.92rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    flex-shrink: 0;
+  }
+
+  .cmd-ns-badge {
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: rgba(100, 116, 139, 0.12);
+    color: #475569;
+    letter-spacing: 0.02em;
+    flex-shrink: 0;
+  }
+
+  .cmd-ns-badge.primary {
+    background: rgba(37, 99, 235, 0.12);
+    color: #2563eb;
+  }
+
+  .cmd-ns-badge.sub {
+    background: rgba(14, 165, 233, 0.12);
+    color: #0284c7;
+  }
+
+  .cmd-name {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin-left: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .cmd-desc {
+    font-size: 0.74rem;
+    color: #64748b;
+    padding-left: 26px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 </style>

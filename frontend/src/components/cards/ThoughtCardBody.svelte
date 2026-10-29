@@ -15,9 +15,10 @@
 -->
 <script lang="ts">
   import { createEventDispatcher, onDestroy } from 'svelte';
-  import { getCardDisplayTime } from '../../lib/time';
+  import { getCardDisplayTime, stageTime } from '../../lib/time';
   import CardImageGallery from './CardImageGallery.svelte';
   import MarkdownContent from './MarkdownContent.svelte';
+  import { getCardTags, normalizeTag } from '../../lib/tagNetwork';
 
   export let card: any;
   export let isFocused: boolean = false;
@@ -26,12 +27,34 @@
   export let babelTime: string = '';
   export let displayTime: string = '';
   export let z: number | undefined = undefined;
+  export let activeConstellationTags: Map<string, string> = new Map();
+  export let activeConstellationTag: string | null = null;
+
+  function getActiveTagColor(tag: string, tagsMap?: Map<string, string>): string | null {
+    if (tagsMap && tagsMap.size > 0) {
+      const clean = normalizeTag(tag);
+      return tagsMap.get(clean) || tagsMap.get(tag) || null;
+    }
+    if (activeConstellationTag) {
+      const clean = normalizeTag(tag);
+      if (clean === normalizeTag(activeConstellationTag)) {
+        return 'hsl(199, 90%, 60%)';
+      }
+    }
+    return null;
+  }
+
+  function getTagPillStyle(tag: string, tagsMap?: Map<string, string>): string {
+    const col = getActiveTagColor(tag, tagsMap);
+    if (!col) return '';
+    return `background: ${col} !important; color: #fff !important; box-shadow: 0 0 10px ${col} !important;`;
+  }
 
   const dispatch = createEventDispatcher<{
     tagClick: { tag: string; cardId: string };
   }>();
 
-  $: resolvedDisplayTime = displayTime || thoughtTime || babelTime || getCardDisplayTime(card);
+  $: resolvedDisplayTime = displayTime || thoughtTime || babelTime || getCardDisplayTime(card, $stageTime);
 
   $: currentZ = z !== undefined ? z : card?.z;
 
@@ -48,30 +71,8 @@
     dispatch('tagClick', { tag, cardId: card?.id });
   }
 
-  // Extract only manual keywords that have '*' provenance marker (rendered without '*')
-  $: manualKeywords = (() => {
-    if (!card) return [];
-    const list: string[] = [];
-    const seen = new Set<string>();
-
-    const kwSource = card.keywords || (card as any).Keywords;
-    if (kwSource && typeof kwSource === 'object') {
-      for (const values of Object.values(kwSource)) {
-        if (Array.isArray(values)) {
-          for (const item of values) {
-            if (typeof item === 'string' && item.endsWith('*')) {
-              const clean = item.replace(/\*+$/, '').trim();
-              if (clean && !seen.has(clean)) {
-                seen.add(clean);
-                list.push(clean);
-              }
-            }
-          }
-        }
-      }
-    }
-    return list;
-  })();
+  // Extract manual tags (from card.tags or card.keywords with '*')
+  $: manualKeywords = getCardTags(card);
 
   export function formatAssetUrl(url: string): string {
     if (!url) return '';
@@ -160,6 +161,8 @@
           <!-- svelte-ignore a11y-no-static-element-interactions -->
           <span 
             class="thought-tag focused" 
+            class:active={Boolean(getActiveTagColor(tag, activeConstellationTags))}
+            style={getTagPillStyle(tag, activeConstellationTags)}
             role="button" 
             tabindex="0"
             on:click|stopPropagation={() => handleTagClick(tag)}
@@ -243,6 +246,8 @@
           <!-- svelte-ignore a11y-no-static-element-interactions -->
           <span 
             class="thought-tag" 
+            class:active={Boolean(getActiveTagColor(tag, activeConstellationTags))}
+            style={getTagPillStyle(tag, activeConstellationTags)}
             role="button" 
             tabindex="0"
             on:click|stopPropagation={() => handleTagClick(tag)}
@@ -358,6 +363,12 @@
     font-size: 12px;
     padding: 2px 8px;
     border-radius: 6px;
+  }
+
+  .thought-tag.active {
+    background: #0284c7 !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 10px rgba(2, 132, 199, 0.6) !important;
   }
 
   .card-time {

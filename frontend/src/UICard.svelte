@@ -7,11 +7,11 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import { spring } from 'svelte/motion';
-  import { getCardDisplayTime } from './lib/time';
+  import { getCardDisplayTime, stageTime } from './lib/time';
   import { getCardComponent } from './components/cards/cardRegistry';
   import CardAuraGlow from './components/cards/CardAuraGlow.svelte';
   import { OpenCardInEditor, PromoteTempCard } from '../wailsjs/go/main/App.js';
-  import { cardHasTag } from './lib/tagNetwork';
+  import { cardHasTag, cardHasKeyword } from './lib/tagNetwork';
 
   const dispatch = createEventDispatcher();
 
@@ -28,6 +28,7 @@
   export let onLeave: () => void;
   export let focusNavDirection: 'prev' | 'next' | null = null;
   export let hoveredMotherId: string | null = null;
+  export let activeConstellationTags: Map<string, string> = new Map();
   export let activeConstellationTag: string | null = null;
 
   let lastNavDir: 'prev' | 'next' | null = null;
@@ -55,11 +56,17 @@
   $: scrollOffsetY = scrollExpansion * 300;
 
   // --- Aura Search Flowing Light & Decay Logic ---
-  $: isConstellationDimmed = Boolean(
-    activeConstellationTag &&
-    !isFocused &&
-    !cardHasTag(card, activeConstellationTag)
-  );
+  $: isConstellationDimmed = (() => {
+    if (isFocused) return false;
+    if (activeConstellationTags && activeConstellationTags.size > 0) {
+      const activeTags = Array.from(activeConstellationTags.keys());
+      return !activeTags.some(tag => cardHasTag(card, tag) || cardHasKeyword(card, tag));
+    }
+    if (activeConstellationTag) {
+      return !cardHasTag(card, activeConstellationTag) && !cardHasKeyword(card, activeConstellationTag);
+    }
+    return false;
+  })();
 
   $: auraTraces = card.auraTraces || [];
   $: activeAuraTraces = auraTraces.filter((t: any) => !t.duration || Date.now() - (t.hitTime || 0) < t.duration);
@@ -110,14 +117,16 @@
     return `conic-gradient(from 0deg, ${stops.join(', ')}, ${colors[0]} 360deg)`;
   })();
 
-  $: isBuguEcho = card.origin === 'bugu' && Boolean(card.echoOf);
-  $: isTemporary = Boolean(card.isTemporary || card.origin === 'bugu' || card.type === 'radar');
+  $: isBuguEcho = (card.origin === 'bugu' || card.origin === 'atproto') && Boolean(card.echoOf);
+  $: isTemporary = Boolean(card.isTemporary || card.origin === 'bugu' || card.origin === 'atproto' || card.type === 'radar');
   $: isRecentVIP = Boolean(
     card.isVIP &&
     !hasAura &&
     !isBuguEcho &&
     (Date.now() - (card.spawnTime || (card.createdAt ? new Date(card.createdAt).getTime() : 0)) < 30 * 60 * 1000)
   );
+
+  $: cardHash = card?.id ? card.id.split('').reduce((a: number, b: string) => a + b.charCodeAt(0), 0) : 0;
 
   // Dynamic box-shadow accounting for focus, temporary state & aura decay stages
   $: dynamicBoxShadow = (() => {
@@ -287,7 +296,7 @@
     }
   }
 
-  $: displayTime = getCardDisplayTime(card);
+  $: displayTime = getCardDisplayTime(card, $stageTime);
   $: babelTime = displayTime;
   $: thoughtTime = displayTime;
 
@@ -428,6 +437,8 @@
     {hasAura ? `border: 1.5px solid ${toHsla(latestColor, auraStage === 1 ? 0.95 : (auraStage === 2 ? 0.8 : 0.65))} !important;` : ''}
     --card-text-color: rgba({Math.round($animSpring.textGray || 38)}, {Math.round($animSpring.textGray || 38)}, {Math.round($animSpring.textGray || 38)}, {($animSpring.textOpacity ?? 0.95).toFixed(2)});
     --card-text-secondary: rgba({Math.min(160, Math.round(($animSpring.textGray || 38) + 24))}, {Math.min(160, Math.round(($animSpring.textGray || 38) + 24))}, {Math.min(160, Math.round(($animSpring.textGray || 38) + 24))}, {($animSpring.textOpacity ?? 0.95).toFixed(2)});
+    --temp-rim-delay: -{(cardHash % 55) / 10}s;
+    --vip-breathe-delay: -{(cardHash % 80) / 10}s;
     {!isVisible ? 'visibility: hidden; pointer-events: none;' : ''}
   "
 >
@@ -465,6 +476,8 @@
     {thoughtTime}
     {babelTime}
     {displayTime}
+    {activeConstellationTags}
+    {activeConstellationTag}
     on:tagClick={(e) => dispatch('tagClick', e.detail)}
   />
 </div>
@@ -524,6 +537,7 @@
       rgba(224, 234, 246, 0.70) 100%
     );
     animation: temporary-rim-breathe 5.5s ease-in-out infinite;
+    animation-delay: var(--temp-rim-delay, 0s);
   }
 
   @keyframes temporary-rim-breathe {
@@ -538,6 +552,7 @@
   .card.inspiration-vip {
     border: 1px solid transparent !important;
     animation: ink-vip-breathe 8s ease-in-out infinite;
+    animation-delay: var(--vip-breathe-delay, 0s);
   }
 
   @keyframes ink-vip-breathe {

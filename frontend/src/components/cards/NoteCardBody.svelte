@@ -12,8 +12,10 @@
   ======================================================================================
 -->
 <script lang="ts">
+  import { createEventDispatcher } from 'svelte';
   import type { CosmicCard } from '../../types/card';
-  import { getCardDisplayTime, formatPointTime } from '../../lib/time';
+  import { getCardDisplayTime, formatPointTime, stageTime } from '../../lib/time';
+  import { getCardTags, normalizeTag } from '../../lib/tagNetwork';
   import MarkdownContent from './MarkdownContent.svelte';
 
   export let card: CosmicCard;
@@ -22,9 +24,51 @@
   export let thoughtTime: string = '';
   export let babelTime: string = '';
   export let displayTime: string = '';
+  export let z: number | undefined = undefined;
+  export let activeConstellationTags: Map<string, string> = new Map();
+  export let activeConstellationTag: string | null = null;
+
+  function getActiveTagColor(tag: string, tagsMap?: Map<string, string>): string | null {
+    if (tagsMap && tagsMap.size > 0) {
+      const clean = normalizeTag(tag);
+      return tagsMap.get(clean) || tagsMap.get(tag) || null;
+    }
+    if (activeConstellationTag) {
+      const clean = normalizeTag(tag);
+      if (clean === normalizeTag(activeConstellationTag)) {
+        return 'hsl(199, 90%, 60%)';
+      }
+    }
+    return null;
+  }
+
+  function getTagPillStyle(tag: string, tagsMap?: Map<string, string>): string {
+    const col = getActiveTagColor(tag, tagsMap);
+    if (!col) return '';
+    return `background: ${col} !important; color: #fff !important; box-shadow: 0 0 10px ${col} !important;`;
+  }
+
+  $: manualKeywords = getCardTags(card);
+
+  const dispatch = createEventDispatcher<{
+    tagClick: { tag: string; cardId: string };
+  }>();
+
+  $: currentZ = z !== undefined ? z : card?.z;
+  $: hasActiveAura = Boolean(
+    card?.auraTraces &&
+    card.auraTraces.length > 0 &&
+    card.auraTraces.some((t: any) => !t.duration || Date.now() - (t.hitTime || 0) < t.duration)
+  );
+  $: isForeground = currentZ !== undefined && currentZ <= 16;
+  $: isTagVisible = isForeground || isHovered || isFocused || hasActiveAura;
+
+  function handleTagClick(tag: string) {
+    dispatch('tagClick', { tag, cardId: card?.id });
+  }
 
   $: title = card?.title && card.title !== 'Thought' && card.title !== 'Card' && card.title !== 'Note' ? card.title : '';
-  $: resolvedDisplayTime = displayTime || thoughtTime || babelTime || formatPointTime(card?.createdAt || card?.spawnTime) || getCardDisplayTime(card);
+  $: resolvedDisplayTime = displayTime || thoughtTime || babelTime || formatPointTime(card?.createdAt || card?.spawnTime, $stageTime) || getCardDisplayTime(card, $stageTime);
 </script>
 
 <div class="note-card-body" class:focused={isFocused} class:hovered={isHovered}>
@@ -46,6 +90,23 @@
     <div class="note-focused-body">
       <MarkdownContent content={card?.content || ''} isFocused={true} />
     </div>
+
+    {#if manualKeywords.length > 0}
+      <div class="note-tags focused">
+        {#each manualKeywords as tag}
+          <!-- svelte-ignore a11y-click-events-have-key-events -->
+          <!-- svelte-ignore a11y-no-static-element-interactions -->
+          <span 
+            class="note-tag focused" 
+            class:active={Boolean(getActiveTagColor(tag, activeConstellationTags))}
+            style={getTagPillStyle(tag, activeConstellationTags)}
+            role="button" 
+            tabindex="0"
+            on:click|stopPropagation={() => handleTagClick(tag)}
+          >#{tag}</span>
+        {/each}
+      </div>
+    {/if}
   {:else}
     <!-- Scattering Mode (200x190) -->
     <div class="note-preview">
@@ -58,6 +119,26 @@
       <div class="note-snippet">
         <MarkdownContent content={card?.content || ''} isFocused={false} />
       </div>
+      {#if manualKeywords.length > 0}
+        <div 
+          class="note-tags" 
+          class:tag-visible={isTagVisible}
+          style="opacity: {isTagVisible ? 1 : 0}; pointer-events: {isTagVisible ? 'auto' : 'none'}; transition: opacity 0.25s ease;"
+        >
+          {#each manualKeywords as tag}
+            <!-- svelte-ignore a11y-click-events-have-key-events -->
+            <!-- svelte-ignore a11y-no-static-element-interactions -->
+            <span 
+              class="note-tag" 
+              class:active={Boolean(getActiveTagColor(tag, activeConstellationTags))}
+              style={getTagPillStyle(tag, activeConstellationTags)}
+              role="button" 
+              tabindex="0"
+              on:click|stopPropagation={() => handleTagClick(tag)}
+            >#{tag}</span>
+          {/each}
+        </div>
+      {/if}
       {#if resolvedDisplayTime}
         <div class="note-footer">
           <span class="card-time">{resolvedDisplayTime}</span>
@@ -68,6 +149,60 @@
 </div>
 
 <style>
+  .note-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+    margin-bottom: 2px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+
+  .note-tags.tag-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .note-tags.focused {
+    opacity: 1;
+    pointer-events: auto;
+    margin-top: 8px;
+    margin-bottom: 8px;
+    gap: 6px;
+  }
+
+  .note-tag {
+    font-size: 10px;
+    font-weight: 500;
+    color: #0284c7;
+    background: rgba(56, 189, 248, 0.12);
+    padding: 1px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.02em;
+    user-select: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.15s ease, color 0.2s ease;
+  }
+
+  .note-tag:hover {
+    background: rgba(56, 189, 248, 0.24);
+    color: #0369a1;
+  }
+
+  .note-tag.focused {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 6px;
+  }
+
+  .note-tag.active {
+    background: #0284c7 !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 10px rgba(2, 132, 199, 0.6) !important;
+  }
   .note-card-body {
     display: flex;
     flex-direction: column;

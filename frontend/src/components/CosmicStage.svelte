@@ -42,6 +42,7 @@
   export let scrollExpansion: number = 0;
   export let focusedCardId: string | null = null;
   export let hoveredCardId: string | null = null;
+  export let activeConstellationTags: Map<string, string> = new Map();
   export let activeConstellationTag: string | null = null;
   export let focusNavDirection: 'prev' | 'next' | null = null;
   export let isOmnibarFocused: boolean = false;
@@ -285,7 +286,7 @@
     {/if}
 
     <BuguRayNetwork {cards} beacon={buguBeacon} session={buguSession} {scrollExpansion} {hoveredMotherId} />
-    <SynapseRayNetwork {cards} {hoveredCardId} {activeConstellationTag} {scrollExpansion} {focusedCardId} />
+    <SynapseRayNetwork {cards} {hoveredCardId} {scrollExpansion} {focusedCardId} />
 
     {#each cards as card (card.id)}
       <UICard 
@@ -293,6 +294,7 @@
 
         {globalTilt}
         {scrollExpansion}
+        {activeConstellationTags}
         {activeConstellationTag}
         hasAnyFocused={focusedCardId !== null}
         focusNavDirection={focusedCardId === card.id ? focusNavDirection : null}

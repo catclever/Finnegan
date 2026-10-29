@@ -19,14 +19,16 @@
   import { createBuguSessionController } from './modules/bugu/buguSession';
   import { createStageActivityController } from './lib/stageActivity';
   import { createOptimisticChatLogCard, reconcileChatLogCard, rollbackOptimisticCard, createNoteCard, mergeCapturedThought } from './lib/cardCapture';
-  import { findUnstagedMatchingCards, cardHasTag, calculateIntrinsicTargetZ } from './lib/tagNetwork';
+  import { findUnstagedMatchingCards, cardHasTag, cardHasKeyword, calculateIntrinsicTargetZ, getDistinctTagColor, normalizeTag } from './lib/tagNetwork';
   import { applyGravitationalFallback } from './lib/gravityFallback';
+  import { refreshStageTime } from './lib/time';
   import type { AuraTrace } from './types/card';
 
   // --- Stage Pools & Selection State ---
   let memoryPool: CosmicCard[] = [], localVaultPool: CosmicCard[] = [], cards: CosmicCard[] = [];
   let latestManualCardId: string | null = null, focusedCardId: string | null = null, hoveredCardId: string | null = null;
-  let activeConstellationTag: string | null = null;
+  let activeConstellationTags: Map<string, string> = new Map();
+  $: activeConstellationTag = activeConstellationTags.size > 0 ? Array.from(activeConstellationTags.keys())[0] : null;
   let isOmnibarFocused = false, capturePending = false;
   let isWindowFocused = true, isStageSleeping = false;
   let focusNavDirection: 'prev' | 'next' | null = null;
@@ -316,7 +318,7 @@
 
   async function handleExecuteCommand(cmd: CommandDef, card: CosmicCard) {
     const paramSpec = cmd.params?.[0];
-    const shouldAutoStage = Boolean(paramSpec?.autoStageToViewport || cmd.id.startsWith('bugu:'));
+    const shouldAutoStage = Boolean(paramSpec?.autoStageToViewport || cmd.id.startsWith('bugu:') || cmd.id === 'atproto:echo');
 
     if (shouldAutoStage) {
       const res = ensureCardStagedInViewport(card, $scrollExpansion, cards, memoryPool, { isVIP: true });
@@ -324,40 +326,76 @@
       if (res.updatedMemoryPool) memoryPool = res.updatedMemoryPool;
     }
 
-    if (cmd.id.startsWith('bugu:')) {
+    if (cmd.id.startsWith('bugu:') || cmd.id === 'atproto:echo') {
       buguController.startRadar(card.id, cards, memoryPool, localVaultPool);
     }
     await ExecuteModuleCommand(cmd.id, { cardId: card.id, card, content: card.content || card.title, id: card.id, text: card.content || card.title });
   }
 
-  // --- Tag Association & Resurgence Recall Engine ---
+  // --- Tag Association & Resurgence Recall Engine (Multi-tag Union Support) ---
   function handleTagClick(detail: { tag: string; cardId: string }) {
-    const tag = detail?.tag;
+    const rawTag = detail?.tag;
+    if (!rawTag) return;
+    const tag = normalizeTag(rawTag);
     if (!tag) return;
-    if (activeConstellationTag === tag) {
-      activeConstellationTag = null;
+
+    if (activeConstellationTags.has(tag)) {
+      // Toggle OFF: delete from map and remove its tag_resurgence_ traces
+      activeConstellationTags.delete(tag);
+      activeConstellationTags = new Map(activeConstellationTags);
+
+      const targetPrefix = 'tag_resurgence_' + tag + '_';
+      cards = cards.map(c => ({
+        ...c,
+        auraTraces: (c.auraTraces || []).filter(t => t.searchId !== 'tag_resurgence_' + tag + '_' + c.id && !t.searchId.startsWith(targetPrefix)),
+      }));
       return;
     }
+
+    // Exit focused mode so the user can see the constellation on the cosmic stage
+    if (focusedCardId !== null) {
+      focusedCardId = null;
+    }
+
     activateConstellationTag(tag);
   }
 
   function activateConstellationTag(tag: string) {
-    activeConstellationTag = tag;
+    // Pick a distinct vibrant color using color wheel max angular gap / palette
+    const tagColor = getDistinctTagColor(activeConstellationTags.values());
+    activeConstellationTags.set(tag, tagColor);
+    activeConstellationTags = new Map(activeConstellationTags);
+
     stageActivity.resetActivityTimer();
     const now = Date.now();
 
-    // Elevate cards already on stage that possess this tag
+    // Elevate cards already on stage that possess this tag or keyword:
+    // 1. Z: 10 foreground depth (<= 16 visibility zone)
+    // 2. Neon Trace: { searchId: 'tag_resurgence_' + tag + '_' + c.id, color: tagColor, hitTime: now, duration: 120000 }
+    // 3. elevatedAt: now
     let currentCards = cards.map(c => {
-      if (cardHasTag(c, tag)) {
+      if (cardHasTag(c, tag) || cardHasKeyword(c, tag)) {
+        const searchId = 'tag_resurgence_' + tag + '_' + c.id;
+        const auraTrace: AuraTrace = {
+          searchId,
+          color: tagColor,
+          hitTime: now,
+          duration: 120000,
+        };
+        const existingTraces = (c.auraTraces || []).filter(t => t.searchId !== searchId);
         return {
           ...c,
+          z: 10,
+          auraTraces: [...existingTraces, auraTrace],
+          decayDuration: Math.max(c.decayDuration || 0, 120000 + 3600000),
+          isFadingOut: false,
           elevatedAt: now,
         };
       }
       return c;
     });
 
-    // Query unstaged matching cards from memoryPool and localVaultPool
+    // Query unstaged matching cards from memoryPool and localVaultPool for this tag
     const unstaged = findUnstagedMatchingCards(tag, currentCards, memoryPool, localVaultPool);
     if (unstaged.length === 0) {
       cards = currentCards;
@@ -384,23 +422,27 @@
 
       // Resurgence Lifecycle:
       // Fixed at foreground Z: 10 during the 2-minute reading window.
-      // Resonance Aura: 'hsl(199, 89%, 60%)' (#38bdf8 Ice Blue), duration 120,000ms.
-      // When the 2 minutes expire, the aura naturally fades out via UICard CSS transitions,
-      // and the card remains stationary without any jarring visual jumps.
-      const searchId = 'tag_resurgence_' + tag + '_' + now + '_' + candidate.id;
-      const auraTrace: AuraTrace = {
-        searchId,
-        color: 'hsl(199, 89%, 60%)',
-        hitTime: now,
-        duration: 120000,
-      };
+      // Candidate receives trace for this newly activated tag, AND for any other active tags it matches.
+      const tracesToAdd: AuraTrace[] = [];
+      for (const [activeTag, color] of activeConstellationTags.entries()) {
+        if (cardHasTag(candidate, activeTag) || cardHasKeyword(candidate, activeTag)) {
+          tracesToAdd.push({
+            searchId: 'tag_resurgence_' + activeTag + '_' + candidate.id,
+            color,
+            hitTime: now,
+            duration: 120000,
+          });
+        }
+      }
 
       currentCards = currentCards.map(c => {
         if (c.id === candidate.id) {
+          const idsToAdd = new Set(tracesToAdd.map(t => t.searchId));
+          const existing = (c.auraTraces || []).filter(t => !idsToAdd.has(t.searchId));
           return {
             ...c,
             z: 10,
-            auraTraces: [...(c.auraTraces || []).filter(t => !t.searchId.startsWith('tag_resurgence_')), auraTrace],
+            auraTraces: [...existing, ...tracesToAdd],
             decayDuration: Math.max(c.decayDuration || 0, 120000 + 3600000),
             isFadingOut: false,
             elevatedAt: now,
@@ -516,9 +558,15 @@
     omniBarRef?.blurInput();
     omniBarRef?.closeCommandSelect();
     if (searchSession.isActive && !searchSession.isConfirmed) { revertSearchView(); omniBarRef?.clearText(); }
-    if (target && !target.closest('.card') && !target.closest('.nav-button') && !target.closest('.thought-tag')) {
+    if (target && !target.closest('.card') && !target.closest('.nav-button') && !target.closest('.thought-tag') && !target.closest('.babel-tag') && !target.closest('.note-tag') && !target.closest('.chatlog-tag')) {
       if (focusedCardId !== null) focusedCardId = null;
-      if (activeConstellationTag !== null) activeConstellationTag = null;
+      if (activeConstellationTags.size > 0) {
+        activeConstellationTags = new Map();
+        cards = cards.map(c => ({
+          ...c,
+          auraTraces: (c.auraTraces || []).filter(t => !t.searchId.startsWith('tag_resurgence_')),
+        }));
+      }
     }
   }
 
@@ -535,8 +583,12 @@
     }
 
     if (e.key === 'Escape') {
-      if (activeConstellationTag !== null) {
-        activeConstellationTag = null;
+      if (activeConstellationTags.size > 0) {
+        activeConstellationTags = new Map();
+        cards = cards.map(c => ({
+          ...c,
+          auraTraces: (c.auraTraces || []).filter(t => !t.searchId.startsWith('tag_resurgence_')),
+        }));
         return;
       }
       if (focusedCardId !== null) { focusedCardId = null; return; }
@@ -668,6 +720,9 @@
     });
 
     const handleWindowFocus = () => {
+      // Focus-driven relative time refresh (刚刚 / 今天 / 昨天 / N天前)
+      refreshStageTime();
+
       if (focusedCardId) {
         const focusedCard = cards.find(c => c.id === focusedCardId);
         const target = focusedCard?.filePath || focusedCardId;
@@ -721,7 +776,17 @@
     };
     window.addEventListener('focus', handleWindowFocus);
 
+    const handleVisibilityChange = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        handleWindowFocus();
+      }
+    };
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+    }
+
     const metabolicInterval = setInterval(() => {
+      refreshStageTime();
       if (searchSession.isActive && !searchSession.isConfirmed) return;
       const now = Date.now();
       const expiredCards = memoryPool.filter(c => c.macroExpiresAt && c.macroExpiresAt <= now);
@@ -743,6 +808,9 @@
 
     return () => {
       window.removeEventListener('focus', handleWindowFocus);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      }
       clearInterval(metabolicInterval);
       if (scrollIdleTimer) clearTimeout(scrollIdleTimer);
       if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
@@ -765,6 +833,7 @@
     globalTilt={$globalTilt} scrollExpansion={$scrollExpansion} {focusedCardId} {hoveredCardId} {isOmnibarFocused}
     isSearchActive={searchSession.isActive} {isStageSleeping} {isWindowFocused}
     {lastScrollDirection}
+    {activeConstellationTags}
     {activeConstellationTag}
     onToggleFocus={toggleFocus} onHoverCard={(id) => { hoveredCardId = id; }}
     onLeaveCard={() => hoveredCardId = null} onBgClick={handleWindowClick}

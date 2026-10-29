@@ -6,8 +6,10 @@
   ======================================================================================
 -->
 <script lang="ts">
+  import { createEventDispatcher } from 'svelte';
   import { BrowserOpenURL } from '../../../wailsjs/runtime/runtime.js';
-  import { getCardDisplayTime } from '../../lib/time';
+  import { getCardDisplayTime, stageTime } from '../../lib/time';
+  import { getCardTags, normalizeTag } from '../../lib/tagNetwork';
 
   export let card: any;
   export let isFocused: boolean = false;
@@ -15,6 +17,48 @@
   export let babelTime: string = '';
   export let thoughtTime: string = '';
   export let displayTime: string = '';
+  export let z: number | undefined = undefined;
+  export let activeConstellationTags: Map<string, string> = new Map();
+  export let activeConstellationTag: string | null = null;
+
+  function getActiveTagColor(tag: string, tagsMap?: Map<string, string>): string | null {
+    if (tagsMap && tagsMap.size > 0) {
+      const clean = normalizeTag(tag);
+      return tagsMap.get(clean) || tagsMap.get(tag) || null;
+    }
+    if (activeConstellationTag) {
+      const clean = normalizeTag(tag);
+      if (clean === normalizeTag(activeConstellationTag)) {
+        return 'hsl(199, 90%, 60%)';
+      }
+    }
+    return null;
+  }
+
+  function getTagPillStyle(tag: string, tagsMap?: Map<string, string>): string {
+    const col = getActiveTagColor(tag, tagsMap);
+    if (!col) return '';
+    return `background: ${col} !important; color: #fff !important; box-shadow: 0 0 10px ${col} !important;`;
+  }
+
+  $: manualKeywords = getCardTags(card);
+
+  const dispatch = createEventDispatcher<{
+    tagClick: { tag: string; cardId: string };
+  }>();
+
+  $: currentZ = z !== undefined ? z : card?.z;
+  $: hasActiveAura = Boolean(
+    card?.auraTraces &&
+    card.auraTraces.length > 0 &&
+    card.auraTraces.some((t: any) => !t.duration || Date.now() - (t.hitTime || 0) < t.duration)
+  );
+  $: isForeground = currentZ !== undefined && currentZ <= 16;
+  $: isTagVisible = isForeground || isHovered || isFocused || hasActiveAura;
+
+  function handleTagClick(tag: string) {
+    dispatch('tagClick', { tag, cardId: card?.id });
+  }
 
   function getHostname(url: string | undefined): string {
     if (!url) return '';
@@ -47,15 +91,17 @@
     if (el) el.style.display = 'none';
   }
 
-  $: resolvedDisplayTime = displayTime || babelTime || thoughtTime || getCardDisplayTime(card);
+  $: resolvedDisplayTime = displayTime || babelTime || thoughtTime || getCardDisplayTime(card, $stageTime);
 
   $: isBluesky = card.origin === 'atproto' || (typeof card.sourceUrl === 'string' && card.sourceUrl.includes('bsky.app'));
+
+  $: staggerDelay = -(((card?.id ? card.id.split('').reduce((a: number, b: string) => a + b.charCodeAt(0), 0) : 0) % 80) / 10);
 
   function handleFetchComments(e: MouseEvent) {
     e.stopPropagation();
     e.preventDefault();
     if ((window as any).runtime?.EventsEmit) {
-      (window as any).runtime.EventsEmit('atproto:fetch_comments', { uri: card.sourceUrl || card.id });
+      (window as any).runtime.EventsEmit('atproto:fetch_comments', { uri: card.sourceUrl || card.id, parentCardId: card.id });
     }
   }
 </script>
@@ -83,16 +129,39 @@
 
   {#if hasTranslation}
     <div class="babel-content twinkle-container" class:focused={isFocused}>
-      <div class="twinkle-text lang-trans">
+      <div class="twinkle-text lang-trans" style="animation-delay: {staggerDelay}s;">
         <p class="translated">{card.translatedText}</p>
       </div>
-      <div class="twinkle-text lang-orig">
+      <div class="twinkle-text lang-orig" style="animation-delay: {staggerDelay}s;">
         <p class="original">{card.originalText}</p>
       </div>
     </div>
   {:else}
     <div class="babel-content single-container" class:focused={isFocused}>
       <p class="pure-original">{card.originalText || card.content}</p>
+    </div>
+  {/if}
+
+  {#if manualKeywords.length > 0}
+    <div 
+      class="babel-tags" 
+      class:focused={isFocused}
+      class:tag-visible={isTagVisible}
+      style={!isFocused ? `opacity: ${isTagVisible ? 1 : 0}; pointer-events: ${isTagVisible ? 'auto' : 'none'}; transition: opacity 0.25s ease;` : ''}
+    >
+      {#each manualKeywords as tag}
+        <!-- svelte-ignore a11y-click-events-have-key-events -->
+        <!-- svelte-ignore a11y-no-static-element-interactions -->
+        <span 
+          class="babel-tag" 
+          class:focused={isFocused}
+          class:active={Boolean(getActiveTagColor(tag, activeConstellationTags))}
+          style={getTagPillStyle(tag, activeConstellationTags)}
+          role="button" 
+          tabindex="0"
+          on:click|stopPropagation={() => handleTagClick(tag)}
+        >#{tag}</span>
+      {/each}
     </div>
   {/if}
 
@@ -177,6 +246,61 @@
     bottom: auto;
     left: auto;
     right: auto;
+  }
+
+  .babel-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+    margin-bottom: 2px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+
+  .babel-tags.tag-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .babel-tags.focused {
+    opacity: 1;
+    pointer-events: auto;
+    margin-top: 8px;
+    margin-bottom: 8px;
+    gap: 6px;
+  }
+
+  .babel-tag {
+    font-size: 10px;
+    font-weight: 500;
+    color: #0284c7;
+    background: rgba(56, 189, 248, 0.12);
+    padding: 1px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.02em;
+    user-select: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.15s ease, color 0.2s ease;
+  }
+
+  .babel-tag:hover {
+    background: rgba(56, 189, 248, 0.24);
+    color: #0369a1;
+  }
+
+  .babel-tag.focused {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 6px;
+  }
+
+  .babel-tag.active {
+    background: #0284c7 !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 10px rgba(2, 132, 199, 0.6) !important;
   }
 
   .header-left,

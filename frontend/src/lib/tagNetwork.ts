@@ -13,11 +13,11 @@
 import type { CosmicCard } from '../types/card';
 
 /**
- * Normalizes a tag string by stripping trailing asterisks and trimming whitespace.
+ * Normalizes a tag string by stripping leading hashtags, trailing asterisks, and trimming whitespace.
  */
 export function normalizeTag(tag: string): string {
   if (!tag || typeof tag !== 'string') return '';
-  return tag.trim().replace(/\*+$/, '').trim();
+  return tag.trim().replace(/^#+/, '').replace(/\*+$/, '').trim();
 }
 
 /**
@@ -224,28 +224,30 @@ export function calculateResurgenceZ(
 }
 
 /**
- * Queries memoryPool and localVaultPool for cards that have the keyword/tag
+ * Queries memoryPool and localVaultPool for cards that have the keyword/tag (or any of the tags)
  * and are NOT currently present on the active stage.
+ * Supports single tag string or multi-tag Iterable (Union / OR relationship).
  */
 export function findUnstagedMatchingCards(
-  tag: string,
+  tagOrTags: string | Iterable<string>,
   stageCards: CosmicCard[],
   memoryPool: CosmicCard[],
   localVaultPool: CosmicCard[]
 ): CosmicCard[] {
+  const tags = typeof tagOrTags === 'string' ? [tagOrTags] : Array.from(tagOrTags);
   const stageIdSet = new Set(stageCards.map(c => c.id));
   const seenIds = new Set<string>();
   const matches: CosmicCard[] = [];
 
   for (const c of memoryPool) {
-    if (!stageIdSet.has(c.id) && !seenIds.has(c.id) && cardHasKeyword(c, tag)) {
+    if (!stageIdSet.has(c.id) && !seenIds.has(c.id) && tags.some(t => cardHasKeyword(c, t) || cardHasTag(c, t))) {
       matches.push(c);
       seenIds.add(c.id);
     }
   }
 
   for (const c of localVaultPool) {
-    if (!stageIdSet.has(c.id) && !seenIds.has(c.id) && cardHasKeyword(c, tag)) {
+    if (!stageIdSet.has(c.id) && !seenIds.has(c.id) && tags.some(t => cardHasKeyword(c, t) || cardHasTag(c, t))) {
       matches.push(c);
       seenIds.add(c.id);
     }
@@ -253,3 +255,104 @@ export function findUnstagedMatchingCards(
 
   return matches;
 }
+
+/**
+ * Determines whether a card matches ANY of the provided query tags or keywords.
+ * Union (OR) relationship.
+ */
+export function cardMatchesAnyTag(card: CosmicCard | any, queryTags: Iterable<string>): boolean {
+  if (!card) return false;
+  for (const tag of queryTags) {
+    if (cardHasTag(card, tag) || cardHasKeyword(card, tag)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Returns all tags from queryTags that the card matches.
+ */
+export function getCardMatchedTags(card: CosmicCard | any, queryTags: Iterable<string>): string[] {
+  if (!card) return [];
+  const matched: string[] = [];
+  for (const tag of queryTags) {
+    if (cardHasTag(card, tag) || cardHasKeyword(card, tag)) {
+      matched.push(tag);
+    }
+  }
+  return matched;
+}
+
+/**
+ * Preset vibrant palette maximizing hue distance on the 360° color wheel.
+ * e.g. hsl(199, 90%, 60%), hsl(280, 90%, 62%), hsl(150, 90%, 50%), hsl(38, 95%, 55%), hsl(340, 90%, 60%)
+ */
+export const VIBRANT_TAG_PALETTE = [
+  'hsl(199, 90%, 60%)', // Ice Blue / Cyan (~199 deg)
+  'hsl(280, 90%, 62%)', // Vivid Purple (~280 deg)
+  'hsl(150, 90%, 50%)', // Emerald Green (~150 deg)
+  'hsl(38, 95%, 55%)',  // Amber / Golden Orange (~38 deg)
+  'hsl(340, 90%, 60%)', // Rose / Magenta (~340 deg)
+];
+
+/**
+ * Picks a distinct vibrant color for a new tag:
+ * 1. Checks if any color in VIBRANT_TAG_PALETTE is not yet in existingColors.
+ * 2. If all preset colors are in use, calculates the maximum angular gap between existing
+ *    hues on the 360° color wheel and picks the midpoint of that gap.
+ */
+export function getDistinctTagColor(existingColors: Iterable<string> | string[] = []): string {
+  const used = Array.from(existingColors).map(c => c.trim().toLowerCase());
+  const usedSet = new Set(used);
+
+  for (const preset of VIBRANT_TAG_PALETTE) {
+    if (!usedSet.has(preset.toLowerCase())) {
+      return preset;
+    }
+  }
+
+  // Parse hues from existing colors
+  const hues: number[] = [];
+  for (const color of used) {
+    const match = color.match(/hsl\(\s*([\d.]+)/i);
+    if (match) {
+      const hue = parseFloat(match[1]);
+      if (!isNaN(hue)) {
+        hues.push(((hue % 360) + 360) % 360);
+      }
+    }
+  }
+
+  if (hues.length === 0) {
+    return VIBRANT_TAG_PALETTE[0];
+  }
+
+  const sortedHues = Array.from(new Set(hues)).sort((a, b) => a - b);
+  if (sortedHues.length === 1) {
+    const nextHue = (sortedHues[0] + 180) % 360;
+    return `hsl(${Math.round(nextHue)}, 90%, 60%)`;
+  }
+
+  let maxGap = -1;
+  let maxStartHue = sortedHues[0];
+
+  for (let i = 0; i < sortedHues.length; i++) {
+    const h1 = sortedHues[i];
+    const h2 = sortedHues[(i + 1) % sortedHues.length];
+    const gap = (h2 - h1 + 360) % 360;
+    if (gap > maxGap) {
+      maxGap = gap;
+      maxStartHue = h1;
+    }
+  }
+
+  const newHue = (maxStartHue + maxGap / 2) % 360;
+  return `hsl(${Math.round(newHue)}, 90%, 60%)`;
+}
+
+/**
+ * Alias for getDistinctTagColor.
+ */
+export const assignTagColor = getDistinctTagColor;
+

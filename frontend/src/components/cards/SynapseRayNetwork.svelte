@@ -6,7 +6,7 @@
 -->
 <script lang="ts">
   import type { CosmicCard } from '../../types/card';
-  import { cardHasTag, getCardTags } from '../../lib/tagNetwork';
+  import { cardHasTag, cardHasKeyword, getCardTags } from '../../lib/tagNetwork';
 
   export let cards: CosmicCard[] = [];
   export let hoveredCardId: string | null = null;
@@ -14,6 +14,7 @@
   export let scrollExpansion: number = 0;
   export let focusedCardId: string | null = null;
   $: void scrollExpansion;
+  $: void activeConstellationTag;
 
   interface SynapseRay {
     id: string;
@@ -126,19 +127,8 @@
 
     const rayMap = new Map<string, { source: CosmicCard; target: CosmicCard; tag: string }>();
 
-    // Trigger B: activeConstellationTag is set: connects all pairs of cards on stage possessing that tag
-    if (activeConstellationTag) {
-      const tag = activeConstellationTag;
-      const matchingCards = cards.filter(c => !c.isFadingOut && cardHasTag(c, tag));
-      for (let i = 0; i < matchingCards.length; i++) {
-        for (let j = i + 1; j < matchingCards.length; j++) {
-          const c1 = matchingCards[i];
-          const c2 = matchingCards[j];
-          const key = [c1.id, c2.id].sort().join('--');
-          rayMap.set(key, { source: c1, target: c2, tag });
-        }
-      }
-    }
+    // Trigger B removed: When tags are active/clicked, cards only display glowing borders;
+    // connection rays between matching cards are suppressed (Task 122).
 
     // Trigger A: hoveredCardId is set: connects hovered card with all other cards on stage sharing any of its tags
     if (hoveredCardId) {
@@ -148,7 +138,7 @@
         if (hoveredTags.length > 0) {
           for (const other of cards) {
             if (other.id !== hoveredCard.id && !other.isFadingOut) {
-              const sharedTag = hoveredTags.find(tag => cardHasTag(other, tag));
+              const sharedTag = hoveredTags.find(tag => cardHasTag(other, tag) || cardHasKeyword(other, tag));
               if (sharedTag) {
                 const key = [hoveredCard.id, other.id].sort().join('--');
                 if (!rayMap.has(key)) {

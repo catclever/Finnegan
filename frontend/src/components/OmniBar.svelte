@@ -25,6 +25,7 @@
   import { getCardDisplayTitle } from '../lib/cardTitle';
   import { parseCardTypePrefix } from '../lib/cardType';
   import { partitionCardTiers, rankSearchCandidates } from '../lib/paramCandidateEngine';
+  import { filterAndRankCommands, resolveCommandInput, matchExactCommand, getCommandIcon } from '../lib/commandEngine';
   import { CaptureChatLog, CaptureChatLogWithImages } from '../../wailsjs/go/main/App.js';
 
   // Props
@@ -247,12 +248,7 @@
   $: cmdQuery = omniText.startsWith('/') ? omniText.slice(1).trim().toLowerCase() : '';
 
   $: matchedCommands = commandSelectMode 
-    ? availableCommands.filter(cmd => {
-        const trig = (cmd.trigger || '').replace(/^\//, '').toLowerCase();
-        const name = (cmd.name || '').toLowerCase();
-        const desc = (cmd.description || '').toLowerCase();
-        return !cmdQuery || trig.includes(cmdQuery) || name.includes(cmdQuery) || desc.includes(cmdQuery);
-      })
+    ? filterAndRankCommands(availableCommands, cmdQuery)
     : [];
 
   function selectCommand(cmd: CommandDef) {
@@ -619,14 +615,14 @@
       }
       if (e.key === ' ' || e.key === 'Spacebar') {
         const clean = cmdQuery;
-        const matched = matchedCommands.find(cmd => (cmd.trigger || '').replace(/^\//, '').toLowerCase() === clean);
+        const matched = matchExactCommand(clean, matchedCommands);
         if (matched) {
           e.preventDefault();
           selectCommand(matched);
           return;
         } else if (matchedCommands.length > 0 && highlightedCmdIndex >= 0 && highlightedCmdIndex < matchedCommands.length) {
           const highlighted = matchedCommands[highlightedCmdIndex];
-          if ((highlighted.trigger || '').replace(/^\//, '').toLowerCase() === clean) {
+          if ((highlighted.trigger || '').replace(/^\/+/, '').toLowerCase() === clean) {
             e.preventDefault();
             selectCommand(highlighted);
             return;
@@ -648,10 +644,9 @@
       }
     }
 
-    // Space trigger: Typing a valid command name (e.g. "/bugu" or "bugu") + Space enters param mode immediately
+    // Space trigger: Typing a valid command name (e.g. "/bugu", "bugu", or "/bsky push") + Space enters param mode immediately
     if ((e.key === ' ' || e.key === 'Spacebar') && !commandParamMode) {
-      const clean = omniText.trim().replace(/^\//, '').toLowerCase();
-      const exactCmd = availableCommands.find(cmd => (cmd.trigger || '').replace(/^\//, '').toLowerCase() === clean);
+      const exactCmd = matchExactCommand(omniText, availableCommands);
       if (exactCmd) {
         e.preventDefault();
         selectCommand(exactCmd);
@@ -768,19 +763,14 @@
     }
 
     if (!commandParamMode) {
-      const spaceIdx = omniText.indexOf(' ');
-      if (spaceIdx > 0) {
-        const cmdPart = omniText.slice(0, spaceIdx).trim().replace(/^\//, '').toLowerCase();
-        const found = availableCommands.find(c => (c.trigger || '').replace(/^\//, '').toLowerCase() === cmdPart);
-        if (found) {
-          const restText = omniText.slice(spaceIdx + 1);
-          selectCommand(found);
-          if (restText) {
-            omniText = restText;
-            searchParamCards(restText);
-          }
-          return;
+      const resolved = resolveCommandInput(omniText, availableCommands);
+      if (resolved) {
+        selectCommand(resolved.command);
+        if (resolved.restText) {
+          omniText = resolved.restText;
+          searchParamCards(resolved.restText);
         }
+        return;
       }
     }
 
@@ -905,8 +895,11 @@
         <!-- Command Chip Badge: [🔭 /cmd] -->
         {#if commandParamMode && selectedCommand}
           <div class="omnibar-chip command-chip">
-            <span class="chip-icon">🔭</span>
-            <span class="chip-label">/{selectedCommand.trigger.replace(/^\//, '')}</span>
+            <span class="chip-icon">{getCommandIcon(selectedCommand)}</span>
+            <span class="chip-label">/{selectedCommand.trigger.replace(/^\/+/, '')}</span>
+            {#if selectedCommand.namespace && selectedCommand.subCommand}
+              <span class="chip-sub">({selectedCommand.namespace} · {selectedCommand.subCommand})</span>
+            {/if}
             <button class="chip-close" on:click={exitCommandMode} title="退出命令模式">✕</button>
           </div>
         {/if}
@@ -1213,6 +1206,13 @@
     background: rgba(59, 130, 246, 0.15);
     border: 1px solid rgba(59, 130, 246, 0.35);
     color: #1d4ed8;
+  }
+
+  .chip-sub {
+    font-size: 0.72rem;
+    opacity: 0.82;
+    margin-left: 2px;
+    font-weight: 500;
   }
 
   .card-chip {

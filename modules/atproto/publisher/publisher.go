@@ -2,6 +2,7 @@ package publisher
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -172,22 +173,56 @@ func (p *Publisher) Publish(text string, facets []Facet, images []string) (strin
 	return res.Uri, res.Cid, nil
 }
 
+// stripFrontmatter extracts substantive markdown content if frontmatter is present
+func stripFrontmatter(text string) string {
+	trimmed := strings.TrimSpace(text)
+	if strings.HasPrefix(trimmed, "---") {
+		parts := strings.SplitN(trimmed, "---", 3)
+		if len(parts) >= 3 {
+			return strings.TrimSpace(parts[2])
+		}
+	}
+	return text
+}
+
+// PublishNote publishes note content to Bluesky and losslessly updates YAML frontmatter in filePath
+func (p *Publisher) PublishNote(ctx context.Context, filePath string, content string) (string, string, error) {
+	postText := stripFrontmatter(content)
+	if strings.TrimSpace(postText) == "" && filePath != "" {
+		if data, err := os.ReadFile(filePath); err == nil {
+			postText = stripFrontmatter(string(data))
+		}
+	}
+	if strings.TrimSpace(postText) == "" {
+		return "", "", fmt.Errorf("no post content to publish")
+	}
+
+	facets := ParseFacets(postText)
+	uri, cid, err := p.Publish(postText, facets, nil)
+	if err != nil {
+		return "", "", err
+	}
+
+	if filePath != "" {
+		if err := updateFrontmatter(filePath, uri, cid); err != nil {
+			log.Printf("[ATProto Publisher] updateFrontmatter failed for %s: %v", filePath, err)
+			return uri, cid, fmt.Errorf("published successfully to Bluesky (%s), but failed to update frontmatter: %w", uri, err)
+		}
+	}
+
+	return uri, cid, nil
+}
+
 // PublishNew pushes a completely new record to AT Protocol
 func (p *Publisher) PublishNew(post *models.Post) error {
 	log.Printf("[ATProto Publisher] CREATING new record on Bluesky...")
-	
-	facets := ParseFacets(post.Content)
-	uri, cid, err := p.Publish(post.Content, facets, nil)
+
+	_, _, err := p.PublishNote(context.Background(), post.FilePath, post.Content)
 	if err != nil {
 		return err
 	}
 
-	if err := updateFrontmatter(post.FilePath, uri, cid); err != nil {
-		return err
-	}
-	
-	log.Printf("[ATProto Publisher] ✅ New Post Success! %s", uri)
-	
+	log.Printf("[ATProto Publisher] ✅ New Post Success!")
 	return nil
 }
 

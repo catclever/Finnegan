@@ -30,6 +30,9 @@ func TestSearchSimilar(t *testing.T) {
 				Text      string `json:"text"`
 				CreatedAt string `json:"createdAt"`
 			} `json:"record"`
+			ReplyCount  int `json:"replyCount"`
+			RepostCount int `json:"repostCount"`
+			LikeCount   int `json:"likeCount"`
 		}{
 			{
 				URI: "at://did:plc:foo/app.bsky.feed.post/123",
@@ -50,6 +53,9 @@ func TestSearchSimilar(t *testing.T) {
 					Text:      "Test post hello world",
 					CreatedAt: "2023-01-01T00:00:00Z",
 				},
+				ReplyCount:  3,
+				RepostCount: 1,
+				LikeCount:   8,
 			},
 		}
 
@@ -98,6 +104,9 @@ func TestSearchSimilar(t *testing.T) {
 	if post.SourceURL != expectedSourceURL {
 		t.Errorf("Expected SourceURL '%s', got %s", expectedSourceURL, post.SourceURL)
 	}
+	if post.ReplyCount != 3 || post.RepostCount != 1 || post.LikeCount != 8 {
+		t.Errorf("unexpected counts: reply=%d repost=%d like=%d", post.ReplyCount, post.RepostCount, post.LikeCount)
+	}
 }
 
 func TestFetchComments(t *testing.T) {
@@ -118,6 +127,9 @@ func TestFetchComments(t *testing.T) {
 				Record struct {
 					Text string `json:"text"`
 				} `json:"record"`
+				ReplyCount  int `json:"replyCount"`
+				RepostCount int `json:"repostCount"`
+				LikeCount   int `json:"likeCount"`
 			} `json:"post"`
 		}{
 			{
@@ -131,6 +143,9 @@ func TestFetchComments(t *testing.T) {
 					Record struct {
 						Text string `json:"text"`
 					} `json:"record"`
+					ReplyCount  int `json:"replyCount"`
+					RepostCount int `json:"repostCount"`
+					LikeCount   int `json:"likeCount"`
 				}{
 					URI: "at://did:plc:bar/app.bsky.feed.post/456",
 					Author: struct {
@@ -145,6 +160,9 @@ func TestFetchComments(t *testing.T) {
 					}{
 						Text: "Reply text",
 					},
+					ReplyCount:  2,
+					RepostCount: 4,
+					LikeCount:   9,
 				},
 			},
 			{
@@ -192,5 +210,8 @@ func TestFetchComments(t *testing.T) {
 	expectedSourceURL := "https://bsky.app/profile/alice.bsky.social/post/456"
 	if comment.SourceURL != expectedSourceURL {
 		t.Errorf("Expected SourceURL '%s', got %s", expectedSourceURL, comment.SourceURL)
+	}
+	if comment.ReplyCount != 2 || comment.RepostCount != 4 || comment.LikeCount != 9 {
+		t.Errorf("unexpected comment counts: reply=%d repost=%d like=%d", comment.ReplyCount, comment.RepostCount, comment.LikeCount)
 	}
 }

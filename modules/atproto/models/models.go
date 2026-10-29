@@ -21,4 +21,7 @@ type Post struct {
 	AuthorAvatar string
 	OriginalText string
 	EchoOf       string
+	ReplyCount   int `json:"replyCount,omitempty"`
+	RepostCount  int `json:"repostCount,omitempty"`
+	LikeCount    int `json:"likeCount,omitempty"`
 }

@@ -30,6 +30,9 @@ type CommandDef struct {
 	Trigger     string      `json:"trigger"`
 	Description string      `json:"description"`
 	Params      []ParamSpec `json:"params"`
+	Namespace   string      `json:"namespace,omitempty"`  // 模块专名 (e.g. "bugu", "bsky")
+	IsPrimary   bool        `json:"isPrimary,omitempty"`  // 是否为专名主命令
+	SubCommand  string      `json:"subCommand,omitempty"` // 子命令标识 (e.g. "push")
 }
 
 // CommandProvider represents the interface modules implement to expose Omnibar commands

@@ -171,6 +171,7 @@ export namespace main {
 	export class Card {
 	    id: string;
 	    type: string;
+	    origin?: string;
 	    title: string;
 	    content: string;
 	    images?: string[];
@@ -183,6 +184,9 @@ export namespace main {
 	    echoOf?: string;
 	    matchedAnchor?: string;
 	    echoReason?: string;
+	    replyCount?: number;
+	    repostCount?: number;
+	    likeCount?: number;
 	    // Go type: time
 	    createdAt: any;
 	    participants?: string[];
@@ -202,6 +206,7 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
 	        this.type = source["type"];
+	        this.origin = source["origin"];
 	        this.title = source["title"];
 	        this.content = source["content"];
 	        this.images = source["images"];
@@ -214,6 +219,9 @@ export namespace main {
 	        this.echoOf = source["echoOf"];
 	        this.matchedAnchor = source["matchedAnchor"];
 	        this.echoReason = source["echoReason"];
+	        this.replyCount = source["replyCount"];
+	        this.repostCount = source["repostCount"];
+	        this.likeCount = source["likeCount"];
 	        this.createdAt = this.convertValues(source["createdAt"], null);
 	        this.participants = source["participants"];
 	        this.startedAt = this.convertValues(source["startedAt"], null);
@@ -363,6 +371,9 @@ export namespace module {
 	    trigger: string;
 	    description: string;
 	    params: ParamSpec[];
+	    namespace?: string;
+	    isPrimary?: boolean;
+	    subCommand?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new CommandDef(source);
@@ -375,6 +386,9 @@ export namespace module {
 	        this.trigger = source["trigger"];
 	        this.description = source["description"];
 	        this.params = this.convertValues(source["params"], ParamSpec);
+	        this.namespace = source["namespace"];
+	        this.isPrimary = source["isPrimary"];
+	        this.subCommand = source["subCommand"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

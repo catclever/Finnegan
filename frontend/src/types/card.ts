@@ -68,7 +68,11 @@ export interface CosmicCard {
   isFresh: boolean;          // True for new arrivals (100% optical clarity)
   isVIP: boolean;            // Latest manual user input flag
   isFadingOut?: boolean;     // True when departing stage
-  origin: 'manual' | 'bugu' | 'local';
+  isTemporary?: boolean;     // Volatile temporary card flag
+  origin: 'manual' | 'bugu' | 'local' | 'atproto';
+  replyCount?: number;
+  repostCount?: number;
+  likeCount?: number;
   macroExpiresAt?: number;   // In-memory 24-hr TTL
   elevatedAt?: number;       // Universal gravitational elevation timestamp (ms)
 
@@ -112,4 +116,7 @@ export interface CommandDef {
   trigger: string;
   description: string;
   params?: ParamSpec[];
+  namespace?: string;
+  isPrimary?: boolean;
+  subCommand?: string;
 }
