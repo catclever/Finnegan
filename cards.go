@@ -22,6 +22,7 @@ const (
 	CardTypeThought CardType = "thought"
 	CardTypeChatLog CardType = "chat_log"
 	CardTypeNote    CardType = "note"
+	CardTypeCurio   CardType = "curio"
 )
 
 // Card defines the core data model for a consciousness stream piece
@@ -51,6 +52,15 @@ type Card struct {
 	FilePath       string              `json:"filePath,omitempty"`
 	Keywords       map[string][]string `json:"keywords,omitempty"`
 	Tags           []string            `json:"tags,omitempty"`
+
+	// Curio Fields
+	Brand          string              `json:"brand,omitempty"`
+	Platform       string              `json:"platform,omitempty"`
+	Price          string              `json:"price,omitempty"`
+	Intent         string              `json:"intent,omitempty"`
+	Availability   string              `json:"availability,omitempty"`
+	SnapshotPath   string              `json:"snapshotPath,omitempty"`
+	ScreenshotPath string              `json:"screenshotPath,omitempty"`
 }
 
 // TempCardTTL defines the maximum macro in-memory lifetime for temporary network cards (24 hours).
