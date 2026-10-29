@@ -465,12 +465,44 @@
       class:scattered={!isFocused}
       on:click={handleCollect}
       title="收集转正为此地卡片"
+      aria-label="收集转正为此地卡片"
     >
-      <svg class="collect-icon" viewBox="0 0 20 20" fill="currentColor" width="12" height="12">
-        <path d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z" />
-        <path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z" />
+      <svg
+        class="collect-book-icon"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <!-- Open Book Base (Spreads & Central Spine) -->
+        <path
+          class="book-spine-cover"
+          d="M12 19.5C8 17.5 4.5 17.5 2 18V5.5C4.5 5 8 5 12 7M12 19.5C16 17.5 19.5 17.5 22 18V5.5C19.5 5 16 5 12 7M12 19.5V7"
+        />
+        <!-- Book Page Subtle Text Texture -->
+        <path
+          class="book-lines"
+          d="M6 10.5h3M6 13.5h3M15 10.5h3M15 13.5h3"
+          stroke-width="1.2"
+          opacity="0.38"
+        />
+        <!-- Adding Page Animation (往里加页动效) -->
+        <g class="adding-page">
+          <path
+            d="M12 7C14 5 17.5 5 19.5 5.5V16.5C17.5 16 14 16 12 18V7Z"
+            fill="currentColor"
+            fill-opacity="0.32"
+            stroke-width="1.6"
+          />
+          <path
+            d="M14 9.5h3.5M14 12.5h2.5"
+            stroke-width="1"
+            opacity="0.65"
+          />
+        </g>
       </svg>
-      <span>收集</span>
     </button>
   {/if}
 
@@ -644,25 +676,25 @@
     position: absolute;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    justify-content: center;
     border: none;
     cursor: pointer;
     user-select: none;
     z-index: 100;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .collect-btn.scattered {
     top: 10px;
     right: 10px;
-    padding: 3px 8px;
-    font-size: 0.72rem;
-    font-weight: 500;
-    border-radius: 9999px;
-    background: rgba(255, 255, 255, 0.88);
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.92);
     color: #0284c7;
     border: 1px solid rgba(56, 189, 248, 0.45);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
   }
@@ -671,17 +703,17 @@
     background: #0284c7;
     color: #ffffff;
     border-color: #0284c7;
-    box-shadow: 0 4px 12px rgba(2, 132, 199, 0.28);
-    transform: scale(1.05);
+    box-shadow: 0 4px 14px rgba(2, 132, 199, 0.38);
+    transform: scale(1.08);
   }
 
   .collect-btn.focused {
     top: 18px;
     right: 18px;
-    padding: 5px 12px;
-    font-size: 0.82rem;
-    font-weight: 600;
-    border-radius: 9999px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 50%;
     background: rgba(2, 132, 199, 0.12);
     color: #0284c7;
     border: 1px solid rgba(2, 132, 199, 0.35);
@@ -694,16 +726,66 @@
     background: #0284c7;
     color: #ffffff;
     border-color: #0284c7;
-    box-shadow: 0 4px 14px rgba(2, 132, 199, 0.3);
-    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(2, 132, 199, 0.42);
+    transform: scale(1.08);
   }
 
   .collect-btn:active {
-    transform: scale(0.96);
+    transform: scale(0.94);
   }
 
-  .collect-icon {
+  .collect-book-icon {
+    display: block;
+    overflow: visible;
     flex-shrink: 0;
+  }
+
+  .collect-btn.scattered .collect-book-icon {
+    width: 15px;
+    height: 15px;
+  }
+
+  .collect-btn.focused .collect-book-icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .book-spine-cover {
+    transform-origin: 12px 19.5px;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .collect-btn:hover .book-spine-cover {
+    transform: scale(1.04);
+  }
+
+  /* 往里加页动效 (Page-Adding Settle Animation) */
+  .adding-page {
+    transform-origin: 12px 19.5px;
+    transition: transform 0.35s cubic-bezier(0.34, 1.45, 0.7, 1), opacity 0.25s ease;
+    transform: translate(3.5px, -6px) rotate(16deg) scale(0.75);
+    opacity: 0;
+  }
+
+  .collect-btn:hover .adding-page {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+    opacity: 1;
+    animation: page-settle 0.45s cubic-bezier(0.34, 1.45, 0.7, 1);
+  }
+
+  @keyframes page-settle {
+    0% {
+      transform: translate(4.5px, -7.5px) rotate(22deg) scale(0.7);
+      opacity: 0;
+    }
+    65% {
+      transform: translate(-0.6px, 0.5px) rotate(-3deg) scale(1.03);
+      opacity: 1;
+    }
+    100% {
+      transform: translate(0, 0) rotate(0deg) scale(1);
+      opacity: 1;
+    }
   }
 
   /* Collect Prompt Floating Toast */
