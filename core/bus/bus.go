@@ -9,13 +9,14 @@ import (
 type EventType string
 
 const (
-	EventFileCreated        EventType = "FileCreated"
-	EventFileModified       EventType = "FileModified"
-	EventFileDeleted        EventType = "FileDeleted"
-	EventThoughtCaptured    EventType = "ThoughtCaptured"
-	EventBabelCardSpawned   EventType = "BabelCardSpawned"
-	EventBuguRadarCompleted EventType = "BuguRadarCompleted"
-	EventKeywordsExtracted  EventType = "KeywordsExtracted"
+	EventFileCreated           EventType = "FileCreated"
+	EventFileModified          EventType = "FileModified"
+	EventFileDeleted           EventType = "FileDeleted"
+	EventThoughtCaptured       EventType = "ThoughtCaptured"
+	EventBabelCardSpawned      EventType = "BabelCardSpawned"
+	EventBabelSessionCompleted EventType = "BabelSessionCompleted"
+	EventBuguRadarCompleted    EventType = "BuguRadarCompleted" // Backward-compatible alias
+	EventKeywordsExtracted     EventType = "KeywordsExtracted"
 )
 
 type EventKeywordsExtractedData struct {

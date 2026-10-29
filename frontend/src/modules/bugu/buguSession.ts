@@ -1,6 +1,6 @@
 import type { CosmicCard } from '../../types/card';
 import type { BuguSession, BuguBeacon } from './types';
-import { MACRO_TTL_MS } from '../../lib/stageDecay';
+import { createBabelSessionController } from '../babel/babelSession';
 
 export interface BuguSessionCallbacks {
   getCards: () => CosmicCard[];
@@ -14,11 +14,6 @@ export interface BuguSessionCallbacks {
 }
 
 export function createBuguSessionController(callbacks: BuguSessionCallbacks) {
-  let babelQueue: any[] = [];
-  let babelQueueTimer: any = null;
-  let radarBackendFinished = false;
-  let buguBabelCount = 0;
-
   let activeBuguBeacon: BuguBeacon | null = null;
   let buguBeaconTimer: any = null;
 
@@ -44,9 +39,21 @@ export function createBuguSessionController(callbacks: BuguSessionCallbacks) {
     }, 90000);
   }
 
+  // Universal Babel Session manages queuing and stage placement
+  const babelSession = createBabelSessionController({
+    getCards: callbacks.getCards,
+    getMemoryPool: callbacks.getMemoryPool,
+    getScrollExpansion: callbacks.getScrollExpansion,
+    onUpdateStage: callbacks.onUpdateStage,
+    toCosmicCard: callbacks.toCosmicCard,
+    stageCandidate: callbacks.stageCandidate,
+    onQueueEmpty: () => {
+      finishBuguBeacon();
+    },
+  });
+
   function startRadar(sourceCardId: string, cards: CosmicCard[], memoryPool: CosmicCard[], localVaultPool: CosmicCard[]) {
-    radarBackendFinished = false;
-    buguBabelCount = 0;
+    babelSession.reset();
 
     // The mother card has already been guaranteed into active viewport by global ensureCardStagedInViewport
     let nextCards = cards.map(c => c.id === sourceCardId
@@ -59,74 +66,30 @@ export function createBuguSessionController(callbacks: BuguSessionCallbacks) {
     resetBeaconSafetyTimer(sourceCardId);
   }
 
-  function stageOneBabelCard(c: any) {
-    const newCard = callbacks.toCosmicCard(c, 'babel', 'bugu', MACRO_TTL_MS);
-    const substantive = (newCard.content || newCard.originalText || newCard.translatedText || '').trim();
-    if (!substantive) return;
-
-    buguBabelCount++;
-    const scrollExpansion = callbacks.getScrollExpansion();
-    const viewportY = Math.round(scrollExpansion * 300);
-    const targetY = buguBabelCount <= 2 ? viewportY : viewportY + 480;
-
-    let cards = callbacks.getCards();
-    let memoryPool = callbacks.getMemoryPool();
-
-    memoryPool = [newCard, ...memoryPool.filter(m => m.id !== newCard.id)];
-    const { stagedCard, updatedActiveCards, updatedMemoryPool } = callbacks.stageCandidate(
-      newCard, true, scrollExpansion, cards, memoryPool, activeBuguBeacon?.sourceCardId, targetY
-    );
-
-    if (updatedMemoryPool) memoryPool = updatedMemoryPool;
-    cards = [...updatedActiveCards.filter((card: any) => card.id !== stagedCard.id), stagedCard];
-
-    callbacks.onUpdateStage(cards, memoryPool);
-  }
-
-  function processBabelQueue() {
-    if (babelQueueTimer) return;
-    if (babelQueue.length === 0) {
-      if (radarBackendFinished) finishBuguBeacon();
-      return;
-    }
-    stageOneBabelCard(babelQueue.shift());
-    if (babelQueue.length === 0 && radarBackendFinished) {
-      finishBuguBeacon();
-      return;
-    }
-    babelQueueTimer = setTimeout(() => {
-      babelQueueTimer = null;
-      processBabelQueue();
-    }, 850);
-  }
-
   function resetBeaconSafetyTimerExternal() {
     if (activeBuguBeacon) {
       resetBeaconSafetyTimer(activeBuguBeacon.sourceCardId);
     }
   }
 
-  function enqueueBabelCard(c: any) {
+  function enqueueBabelCard(c: any, origin: string = 'bugu') {
     if (activeBuguBeacon) resetBeaconSafetyTimerExternal();
-    babelQueue.push(c);
-    processBabelQueue();
+    babelSession.enqueue(c, origin);
   }
 
   function finishRadar() {
-    radarBackendFinished = true;
-    if (babelQueue.length === 0 && !babelQueueTimer) {
-      finishBuguBeacon();
-    }
+    babelSession.finishSession();
   }
 
   return {
     startRadar,
     finishRadar,
     enqueueBabelCard,
+    getBabelSession: () => babelSession,
     resetBeaconSafetyTimer: resetBeaconSafetyTimerExternal,
     destroy: () => {
-      if (babelQueueTimer) clearTimeout(babelQueueTimer);
       if (buguBeaconTimer) clearTimeout(buguBeaconTimer);
+      babelSession.destroy();
     }
   };
 }

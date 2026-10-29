@@ -19,6 +19,7 @@
   import { computeNextScrollTarget } from './lib/stageCoords';
   import { isChatLogFormat } from './lib/chatlog';
   import { createBuguSessionController } from './modules/bugu/buguSession';
+  import { createBabelSessionController } from './modules/babel/babelSession';
   import { createStageActivityController } from './lib/stageActivity';
   import { createOptimisticChatLogCard, reconcileChatLogCard, rollbackOptimisticCard, createNoteCard, mergeCapturedThought } from './lib/cardCapture';
   import { findUnstagedMatchingCards, cardHasTag, cardHasKeyword, calculateIntrinsicTargetZ, getDistinctTagColor, normalizeTag } from './lib/tagNetwork';
@@ -51,6 +52,27 @@
   $: targetCapacity = Math.round(BASE_CAPACITY * (1 + $scrollExpansion * 0.6));
 
   // --- Encapsulated Controllers ---
+  const babelController = createBabelSessionController({
+    getCards: () => cards,
+    getMemoryPool: () => memoryPool,
+    getScrollExpansion: () => $scrollExpansion,
+    onUpdateStage: (newCards, newMem) => {
+      cards = newCards;
+      if (newMem) memoryPool = newMem;
+    },
+    toCosmicCard,
+    stageCandidate,
+    onCardStaged: (c) => {
+      if (c?.origin === 'atproto' || activeBskyBeacon) {
+        incrementBskyButterfly();
+      }
+    },
+    onQueueEmpty: () => {
+      buguController.finishRadar();
+      finishBskyBeacon();
+    },
+  });
+
   const buguController = createBuguSessionController({
     getCards: () => cards,
     getMemoryPool: () => memoryPool,
@@ -758,17 +780,24 @@
       replenishStage();
     });
 
-    EventsOn("bugu:card_spawned", (c: any) => {
-      buguController.enqueueBabelCard(c);
+    function handleBabelCardSpawned(c: any) {
+      babelController.enqueue(c, c?.origin);
       if (c?.origin === 'atproto' || activeBskyBeacon) {
         incrementBskyButterfly();
       }
-    });
+    }
 
-    EventsOn("bugu:radar_completed", () => {
+    function handleBabelSessionCompleted() {
+      babelController.finishSession();
       buguController.finishRadar();
       finishBskyBeacon();
-    });
+    }
+
+    EventsOn("babel:card_spawned", handleBabelCardSpawned);
+    EventsOn("bugu:card_spawned", handleBabelCardSpawned);
+
+    EventsOn("babel:session_completed", handleBabelSessionCompleted);
+    EventsOn("bugu:radar_completed", handleBabelSessionCompleted);
 
     EventsOn("card:updated", (c: any) => {
       applyCardUpdate(c);
@@ -881,6 +910,7 @@
       if (scrollIdleTimer) clearTimeout(scrollIdleTimer);
       if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
       if (bskyBeaconTimer) clearTimeout(bskyBeaconTimer);
+      babelController.destroy();
       buguController.destroy();
       stageActivity.destroy();
     };

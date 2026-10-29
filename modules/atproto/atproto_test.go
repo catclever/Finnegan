@@ -12,10 +12,10 @@ import (
 	"time"
 
 	"Finnegan/core/bus"
+	coremodels "Finnegan/core/models"
 	"Finnegan/core/module"
 	"Finnegan/modules/atproto/config"
 	"Finnegan/modules/atproto/fetcher"
-	"Finnegan/modules/atproto/models"
 	"Finnegan/modules/atproto/publisher"
 )
 
@@ -163,18 +163,18 @@ func TestAtProtoModule_ExecuteCommand_Echo(t *testing.T) {
 
 	select {
 	case event := <-spawnCh:
-		post, ok := event.Data.(models.Post)
+		card, ok := event.Data.(coremodels.BabelCard)
 		if !ok {
-			t.Fatalf("expected models.Post event data, got: %T", event.Data)
+			t.Fatalf("expected coremodels.BabelCard event data, got: %T", event.Data)
 		}
-		if post.Origin != "atproto" {
-			t.Errorf("expected origin 'atproto', got '%s'", post.Origin)
+		if card.Origin != "atproto" {
+			t.Errorf("expected origin 'atproto', got '%s'", card.Origin)
 		}
-		if post.EchoOf != "card-001" {
-			t.Errorf("expected echoOf 'card-001', got '%s'", post.EchoOf)
+		if card.EchoOf != "card-001" {
+			t.Errorf("expected echoOf 'card-001', got '%s'", card.EchoOf)
 		}
-		if post.ReplyCount != 5 || post.RepostCount != 2 || post.LikeCount != 10 {
-			t.Errorf("unexpected counts: reply=%d repost=%d like=%d", post.ReplyCount, post.RepostCount, post.LikeCount)
+		if card.ReplyCount != 5 || card.RepostCount != 2 || card.LikeCount != 10 {
+			t.Errorf("unexpected counts: reply=%d repost=%d like=%d", card.ReplyCount, card.RepostCount, card.LikeCount)
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatalf("timeout waiting for BabelCardSpawned event")
@@ -264,18 +264,18 @@ func TestAtProtoModule_ExecuteCommand_Echo_FreeText(t *testing.T) {
 
 	select {
 	case event := <-spawnCh:
-		post, ok := event.Data.(models.Post)
+		card, ok := event.Data.(coremodels.BabelCard)
 		if !ok {
-			t.Fatalf("expected models.Post event data, got: %T", event.Data)
+			t.Fatalf("expected coremodels.BabelCard event data, got: %T", event.Data)
 		}
-		if post.Origin != "atproto" {
-			t.Errorf("expected origin 'atproto', got '%s'", post.Origin)
+		if card.Origin != "atproto" {
+			t.Errorf("expected origin 'atproto', got '%s'", card.Origin)
 		}
-		if post.EchoOf != "" {
-			t.Errorf("expected empty EchoOf, got '%s'", post.EchoOf)
+		if card.EchoOf != "" {
+			t.Errorf("expected empty EchoOf, got '%s'", card.EchoOf)
 		}
-		if post.AuthorName != "quantum.bsky.social" {
-			t.Errorf("expected author 'quantum.bsky.social', got '%s'", post.AuthorName)
+		if card.AuthorName != "quantum.bsky.social" {
+			t.Errorf("expected author 'quantum.bsky.social', got '%s'", card.AuthorName)
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatalf("timeout waiting for BabelCardSpawned event")

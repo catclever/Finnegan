@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"Finnegan/core/bus"
@@ -128,11 +129,20 @@ func (a *App) startup(ctx context.Context) {
 			var replyCount, repostCount, likeCount int
 
 			if bc, ok := event.Data.(models.BabelCard); ok {
-				cardID = fmt.Sprintf("babel_%s", ulid.Make().String())
-				title = "Babel Echo"
+				if bc.ID != "" {
+					cardID = bc.ID
+				} else {
+					cardID = fmt.Sprintf("babel_%s", ulid.Make().String())
+				}
+				title = bc.Title
+				if title == "" {
+					title = "Babel Echo"
+				}
 				origText = bc.OriginalText
 				transText = bc.TranslatedText
-				if transText != "" && transText != origText {
+				if bc.Content != "" {
+					content = bc.Content
+				} else if transText != "" && transText != origText {
 					content = transText
 				} else {
 					content = origText
@@ -144,13 +154,28 @@ func (a *App) startup(ctx context.Context) {
 				authorAvatar = bc.AuthorAvatar
 				matchedAnchor = bc.MatchedAnchor
 				echoReason = bc.EchoReason
-				origin = "bugu"
+				origin = bc.Origin
+				if origin == "" {
+					origin = "bugu"
+				}
+				replyCount = bc.ReplyCount
+				repostCount = bc.RepostCount
+				likeCount = bc.LikeCount
 			} else if bcp, ok := event.Data.(*models.BabelCard); ok && bcp != nil {
-				cardID = fmt.Sprintf("babel_%s", ulid.Make().String())
-				title = "Babel Echo"
+				if bcp.ID != "" {
+					cardID = bcp.ID
+				} else {
+					cardID = fmt.Sprintf("babel_%s", ulid.Make().String())
+				}
+				title = bcp.Title
+				if title == "" {
+					title = "Babel Echo"
+				}
 				origText = bcp.OriginalText
 				transText = bcp.TranslatedText
-				if transText != "" && transText != origText {
+				if bcp.Content != "" {
+					content = bcp.Content
+				} else if transText != "" && transText != origText {
 					content = transText
 				} else {
 					content = origText
@@ -162,7 +187,13 @@ func (a *App) startup(ctx context.Context) {
 				authorAvatar = bcp.AuthorAvatar
 				matchedAnchor = bcp.MatchedAnchor
 				echoReason = bcp.EchoReason
-				origin = "bugu"
+				origin = bcp.Origin
+				if origin == "" {
+					origin = "bugu"
+				}
+				replyCount = bcp.ReplyCount
+				repostCount = bcp.RepostCount
+				likeCount = bcp.LikeCount
 			} else if post, ok := event.Data.(atprotomodels.Post); ok {
 				cardID = fmt.Sprintf("babel_%s", ulid.Make().String())
 				title = "Bluesky Echo"
@@ -229,7 +260,7 @@ func (a *App) startup(ctx context.Context) {
 						},
 					})
 				}
-				runtime.EventsEmit(a.ctx, "bugu:card_spawned", map[string]interface{}{
+				payload := map[string]interface{}{
 					"id":              cardID,
 					"type":            "babel",
 					"origin":          origin,
@@ -257,8 +288,11 @@ func (a *App) startup(ctx context.Context) {
 					"repostCount":     repostCount,
 					"likeCount":       likeCount,
 					"createdAt":       time.Now(),
-				})
+				}
+				runtime.EventsEmit(a.ctx, "babel:card_spawned", payload)
+				runtime.EventsEmit(a.ctx, "bugu:card_spawned", payload)
 			} else {
+				runtime.EventsEmit(a.ctx, "babel:card_spawned", event.Data)
 				runtime.EventsEmit(a.ctx, "bugu:card_spawned", event.Data)
 			}
 		}
@@ -272,10 +306,43 @@ func (a *App) startup(ctx context.Context) {
 	}()
 
 	radarDoneCh := bus.GetBus().Subscribe(bus.EventBuguRadarCompleted, "wails-frontend")
+	babelDoneCh := bus.GetBus().Subscribe(bus.EventBabelSessionCompleted, "wails-frontend")
+	var lastDoneMu sync.Mutex
+	var lastDoneID string
+	var lastDoneTime time.Time
+
+	handleSessionCompleted := func(data interface{}) {
+		var id string
+		if m, ok := data.(map[string]string); ok {
+			if d, ok := m["cardId"]; ok && d != "" {
+				id = d
+			} else if d, ok := m["docId"]; ok && d != "" {
+				id = d
+			}
+		}
+		lastDoneMu.Lock()
+		now := time.Now()
+		if id != "" && id == lastDoneID && now.Sub(lastDoneTime) < 500*time.Millisecond {
+			lastDoneMu.Unlock()
+			return
+		}
+		lastDoneID = id
+		lastDoneTime = now
+		lastDoneMu.Unlock()
+
+		time.Sleep(120 * time.Millisecond)
+		runtime.EventsEmit(a.ctx, "babel:session_completed", data)
+		runtime.EventsEmit(a.ctx, "bugu:radar_completed", data)
+	}
+
 	go func() {
 		for event := range radarDoneCh {
-			time.Sleep(120 * time.Millisecond)
-			runtime.EventsEmit(a.ctx, "bugu:radar_completed", event.Data)
+			handleSessionCompleted(event.Data)
+		}
+	}()
+	go func() {
+		for event := range babelDoneCh {
+			handleSessionCompleted(event.Data)
 		}
 	}()
 

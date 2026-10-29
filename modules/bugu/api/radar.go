@@ -233,6 +233,12 @@ func ExecuteRadar(cfg *config.Config, router *llm.Router, searxURL, jinaKey stri
 	eventBus := bus.GetBus()
 	defer func() {
 		eventBus.Publish(bus.Event{
+			Type: bus.EventBabelSessionCompleted,
+			Data: map[string]string{
+				"docId": docID,
+			},
+		})
+		eventBus.Publish(bus.Event{
 			Type: bus.EventBuguRadarCompleted,
 			Data: map[string]string{
 				"docId": docID,

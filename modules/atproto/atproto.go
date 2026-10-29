@@ -8,11 +8,15 @@ import (
 	"sort"
 	"strings"
 
+	"Finnegan/core/babel"
 	"Finnegan/core/bus"
 	"Finnegan/core/module"
 	"Finnegan/modules/atproto/config"
 	"Finnegan/modules/atproto/fetcher"
 	"Finnegan/modules/atproto/publisher"
+	bugullm "Finnegan/modules/bugu/llm"
+
+	"github.com/oklog/ulid/v2"
 )
 
 type AtProtoModule struct {
@@ -301,14 +305,51 @@ func (m *AtProtoModule) ExecuteCommand(ctx context.Context, cmdID string, params
 			if err != nil {
 				log.Printf("[ATProto] SearchSimilar failed: %v", err)
 			} else {
+				var llmCfg module.LLMConfig
+				if m.ctx != nil && m.ctx.LLMs != nil {
+					if c, ok := m.ctx.LLMs["distiller"]; ok {
+						llmCfg = c
+					} else if c, ok := m.ctx.LLMs["default"]; ok {
+						llmCfg = c
+					}
+				}
+				translator := babel.NewUniversalTranslator(llmCfg, "gemini-3.8-flash", bugullm.GenerateCompletion)
+				gatekeeper := babel.NewBlueskyGatekeeper(translator)
+
 				b := bus.GetBus()
 				for _, post := range posts {
+					card, err := gatekeeper.ValidateAndCurate(ctx, babel.RawBabelInput{
+						ID:             fmt.Sprintf("babel_%s", ulid.Make().String()),
+						Origin:         "atproto",
+						URL:            post.SourceURL,
+						Title:          "Bluesky Echo",
+						OriginalText:   post.OriginalText,
+						AuthorName:     post.AuthorName,
+						AuthorAvatar:   post.AuthorAvatar,
+						EchoOf:         post.EchoOf,
+						SearchKeywords: kws,
+						ReplyCount:     post.ReplyCount,
+						RepostCount:    post.RepostCount,
+						LikeCount:      post.LikeCount,
+					})
+					if err != nil {
+						log.Printf("[ATProto Gatekeeper] Discarded post from @%s: %v", post.AuthorName, err)
+						continue
+					}
+					if card == nil {
+						continue
+					}
+
 					b.Publish(bus.Event{
 						Type: bus.EventBabelCardSpawned,
-						Data: post,
+						Data: *card,
 					})
 				}
 			}
+			bus.GetBus().Publish(bus.Event{
+				Type: bus.EventBabelSessionCompleted,
+				Data: map[string]string{"cardId": cID},
+			})
 			bus.GetBus().Publish(bus.Event{
 				Type: bus.EventBuguRadarCompleted,
 				Data: map[string]string{"cardId": cID},
