@@ -16,6 +16,7 @@ import ThoughtCardBody from './ThoughtCardBody.svelte';
 import NoteCardBody from './NoteCardBody.svelte';
 import ChatLogCardBody from './ChatLogCardBody.svelte';
 import BabelCardBody from './BabelCardBody.svelte';
+import CurioCardBody from './CurioCardBody.svelte';
 import { CardRegistry } from '../../lib/cardRegistry';
 import type { CardTypeDefinition } from '../../types/card';
 
@@ -27,6 +28,7 @@ globalCardRegistry.register('thought', ThoughtCardBody);
 globalCardRegistry.register('note', NoteCardBody);
 globalCardRegistry.register('chat_log', ChatLogCardBody);
 globalCardRegistry.register('babel', BabelCardBody);
+globalCardRegistry.register('curio', CurioCardBody);
 
 /**
  * Retrieves the Svelte component for a given card type.
