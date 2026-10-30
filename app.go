@@ -19,6 +19,7 @@ import (
 	atprotomodels "Finnegan/modules/atproto/models"
 	"Finnegan/modules/bugu"
 	"Finnegan/modules/bugu/models"
+	_ "Finnegan/modules/curio"
 
 	"github.com/oklog/ulid/v2"
 	"github.com/wailsapp/wails/v2/pkg/runtime"

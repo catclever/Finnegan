@@ -48,8 +48,15 @@ func ParseCardFile(filePath string) (*Card, error) {
 				CreatedAt    string              `yaml:"created_at"`
 				Created      string              `yaml:"created"`
 				Images       []string            `yaml:"images"`
-				Keywords     map[string][]string `yaml:"keywords"`
-				Tags         []string            `yaml:"tags"`
+				Keywords       map[string][]string `yaml:"keywords"`
+				Tags           []string            `yaml:"tags"`
+				Brand          string              `yaml:"brand"`
+				Platform       string              `yaml:"platform"`
+				Price          string              `yaml:"price"`
+				Intent         string              `yaml:"intent"`
+				Availability   string              `yaml:"availability"`
+				SnapshotPath   string              `yaml:"snapshotPath"`
+				ScreenshotPath string              `yaml:"screenshotPath"`
 			}
 			if err := yaml.Unmarshal([]byte(parts[1]), &fm); err == nil {
 				if fm.ID != "" {
@@ -91,6 +98,27 @@ func ParseCardFile(filePath string) (*Card, error) {
 				}
 				if len(fm.Tags) > 0 {
 					card.Tags = fm.Tags
+				}
+				if fm.Brand != "" {
+					card.Brand = fm.Brand
+				}
+				if fm.Platform != "" {
+					card.Platform = fm.Platform
+				}
+				if fm.Price != "" {
+					card.Price = fm.Price
+				}
+				if fm.Intent != "" {
+					card.Intent = fm.Intent
+				}
+				if fm.Availability != "" {
+					card.Availability = fm.Availability
+				}
+				if fm.SnapshotPath != "" {
+					card.SnapshotPath = fm.SnapshotPath
+				}
+				if fm.ScreenshotPath != "" {
+					card.ScreenshotPath = fm.ScreenshotPath
 				}
 			} else {
 				var rawMeta map[string]any
