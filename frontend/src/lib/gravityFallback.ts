@@ -35,7 +35,8 @@ export const ELEVATED_PROTECTION_MS = COOLDOWN_AFTER_EXTINCTION_MS;
  */
 export function isTemporaryCard(card: CosmicCard | any): boolean {
   if (!card) return false;
-  return Boolean(card.isTemporary || card.origin === 'bugu' || card.type === 'radar');
+  if (card.isTemporary === false) return false;
+  return Boolean(card.isTemporary || card.origin === 'bugu' || card.origin === 'atproto' || card.type === 'radar');
 }
 
 /**

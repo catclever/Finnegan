@@ -49,7 +49,7 @@ export function ParseChatLog(arg1:string):Promise<chatlog.ParsedChatLog>;
 
 export function ProcessChatLog(arg1:string):Promise<main.Card>;
 
-export function PromoteTempCard(arg1:string):Promise<main.Card>;
+export function PromoteTempCard(arg1:string,arg2:string,arg3:string):Promise<main.Card>;
 
 export function ReloadCard(arg1:string):Promise<main.Card>;
 

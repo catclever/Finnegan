@@ -15,7 +15,7 @@
   import type { BuguSession, BuguBeacon } from './modules/bugu/types';
   import type { BskyBeacon } from './modules/atproto/types';
   import { generateAuraColor, transformSearchResults, calculateSearchRepulsion, commitUnallocatedSearchResults } from './lib/auraSearch';
-  import { BASE_CAPACITY, MACRO_TTL_MS, BASE_STAGE_DECAY_MS, stageCandidate, replenishStageCandidates, isProtectedCard, toCosmicCard, ensureCardStagedInViewport } from './lib/stageDecay';
+  import { BASE_CAPACITY, MACRO_TTL_MS, BASE_STAGE_DECAY_MS, VIP_INK_BEAM_DURATION_MS, stageCandidate, replenishStageCandidates, isProtectedCard, toCosmicCard, ensureCardStagedInViewport } from './lib/stageDecay';
   import { computeNextScrollTarget } from './lib/stageCoords';
   import { isChatLogFormat } from './lib/chatlog';
   import { createBuguSessionController } from './modules/bugu/buguSession';
@@ -559,7 +559,7 @@
         return {
           ...c,
           ...promoted,
-          origin: 'local',
+          isTemporary: false,
           macroExpiresAt: undefined,
         };
       }
@@ -829,10 +829,21 @@
       const now = Date.now();
       const fadingIds: string[] = [];
       cards = cards.map(c => {
+        // If card was marked VIP (water-ink beam) and exceeded the 15-minute duration, extinguish VIP
+        if (c.isVIP) {
+          const birthTime = c.spawnTime || (c.createdAt ? new Date(c.createdAt).getTime() : 0);
+          if (birthTime && (now - birthTime >= VIP_INK_BEAM_DURATION_MS)) {
+            c = { ...c, isVIP: false };
+            if (latestManualCardId === c.id) {
+              latestManualCardId = null;
+            }
+          }
+        }
+
         if (c.id === focusedCardId) return c;
         if (c.isFadingOut) return c;
 
-        const isTemporary = Boolean(c.isTemporary || c.origin === 'bugu' || c.type === 'radar');
+        const isTemporary = c.isTemporary === false ? false : Boolean(c.isTemporary || c.origin === 'bugu' || c.origin === 'atproto' || c.type === 'radar');
         if (isTemporary) {
           if (isProtectedCard(c, cards, activeBuguBeacon?.sourceCardId)) return c;
           if (c.decayDuration && (now - c.spawnTime >= c.decayDuration)) {
@@ -895,6 +906,15 @@
       }
 
       cards.forEach(c => {
+        if (c.isVIP) {
+          const birthTime = c.spawnTime || (c.createdAt ? new Date(c.createdAt).getTime() : 0);
+          if (birthTime && (now - birthTime >= VIP_INK_BEAM_DURATION_MS)) {
+            c.isVIP = false;
+            if (latestManualCardId === c.id) {
+              latestManualCardId = null;
+            }
+          }
+        }
         if (c.id === focusedCardId) return;
         if (c.isFresh && now - c.spawnTime > 8 * 60 * 1000) c.isFresh = false;
       });

@@ -16,6 +16,10 @@ function createMockCard(id: string, x: number, y: number, z: number = 0): Cosmic
     x,
     y,
     z,
+    rotation: 0,
+    spawnTime: Date.now(),
+    isFresh: false,
+    isVIP: false,
     isFadingOut: false,
   };
 }

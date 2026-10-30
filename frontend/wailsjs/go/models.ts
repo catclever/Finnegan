@@ -184,6 +184,7 @@ export namespace main {
 	    echoOf?: string;
 	    matchedAnchor?: string;
 	    echoReason?: string;
+	    userComment?: string;
 	    replyCount?: number;
 	    repostCount?: number;
 	    likeCount?: number;
@@ -197,6 +198,13 @@ export namespace main {
 	    filePath?: string;
 	    keywords?: Record<string, Array<string>>;
 	    tags?: string[];
+	    brand?: string;
+	    platform?: string;
+	    price?: string;
+	    intent?: string;
+	    availability?: string;
+	    snapshotPath?: string;
+	    screenshotPath?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Card(source);
@@ -219,6 +227,7 @@ export namespace main {
 	        this.echoOf = source["echoOf"];
 	        this.matchedAnchor = source["matchedAnchor"];
 	        this.echoReason = source["echoReason"];
+	        this.userComment = source["userComment"];
 	        this.replyCount = source["replyCount"];
 	        this.repostCount = source["repostCount"];
 	        this.likeCount = source["likeCount"];
@@ -229,6 +238,13 @@ export namespace main {
 	        this.filePath = source["filePath"];
 	        this.keywords = source["keywords"];
 	        this.tags = source["tags"];
+	        this.brand = source["brand"];
+	        this.platform = source["platform"];
+	        this.price = source["price"];
+	        this.intent = source["intent"];
+	        this.availability = source["availability"];
+	        this.snapshotPath = source["snapshotPath"];
+	        this.screenshotPath = source["screenshotPath"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

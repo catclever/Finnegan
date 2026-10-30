@@ -77,8 +77,8 @@ func (a *App) GetTempCards() []Card {
 	return a.CardManager.GetTempCards()
 }
 
-func (a *App) PromoteTempCard(cardID string) (*Card, error) {
-	return a.CardManager.PromoteToLocal(cardID, a.Home)
+func (a *App) PromoteTempCard(cardID string, comment string, echoOf string) (*Card, error) {
+	return a.CardManager.PromoteToLocalWithOpts(cardID, a.Home, comment, echoOf)
 }
 
 func (a *App) GetNote(id string) (string, error) {

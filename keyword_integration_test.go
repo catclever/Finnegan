@@ -107,7 +107,7 @@ func TestApp_KeywordEngine_PromoteAndCaptureIntegration(t *testing.T) {
 		},
 	})
 
-	promoted, err := app.PromoteTempCard("babel-temp-1")
+	promoted, err := app.PromoteTempCard("babel-temp-1", "", "")
 	if err != nil {
 		t.Fatalf("PromoteTempCard failed: %v", err)
 	}

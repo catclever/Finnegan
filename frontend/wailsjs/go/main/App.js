@@ -86,8 +86,8 @@ export function ProcessChatLog(arg1) {
   return window['go']['main']['App']['ProcessChatLog'](arg1);
 }
 
-export function PromoteTempCard(arg1) {
-  return window['go']['main']['App']['PromoteTempCard'](arg1);
+export function PromoteTempCard(arg1, arg2, arg3) {
+  return window['go']['main']['App']['PromoteTempCard'](arg1, arg2, arg3);
 }
 
 export function ReloadCard(arg1) {

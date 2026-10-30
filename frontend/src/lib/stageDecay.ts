@@ -1,10 +1,11 @@
 import type { CosmicCard, SearchSession } from '../types/card';
-import { calculateSpatialPlacement } from './stageCoords.ts';
+import { calculateSpatialPlacement, isClusteredChildCard } from './stageCoords.ts';
 
 // --- Cosmic Stage Configuration Constants ---
 export const BASE_CAPACITY = 10;                      // Base single-screen card count (8~12)
 export const MACRO_TTL_MS = 24 * 3600 * 1000;         // 24 hours macro TTL for in-memory temporary cards
 export const BASE_STAGE_DECAY_MS = 3.5 * 3600 * 1000; // 3.5 hours base stage half-life
+export const VIP_INK_BEAM_DURATION_MS = 15 * 60 * 1000; // 15 minutes VIP water-ink halo duration
 export function isProtectedCard(
   card: CosmicCard,
   activeCards: CosmicCard[],
@@ -13,6 +14,7 @@ export function isProtectedCard(
   if (card.isVIP) return true;
   if (card.isSearchResult) return true;
   if (activeBuguSourceId && card.id === activeBuguSourceId) return true;
+  if (isClusteredChildCard(card, activeCards)) return true;
   return activeCards.some(c => !c.isFadingOut && Boolean(c.echoOf) && c.echoOf === card.id);
 }
 
@@ -127,7 +129,7 @@ export function stageCandidate(
 
   function applyCascade(cascadeTargetY: number) {
     const screenSolidCards = currentActiveCards.filter(c =>
-      !c.isFadingOut && c.y >= cascadeTargetY - 240 && c.y <= cascadeTargetY + 240
+      !c.isFadingOut && !isClusteredChildCard(c, currentActiveCards) && c.y >= cascadeTargetY - 240 && c.y <= cascadeTargetY + 240
     );
 
     if (screenSolidCards.length >= 6) {
@@ -173,7 +175,7 @@ export function stageCandidate(
 
   currentActiveCards.push(stagedCard);
 
-  const activeSolidCards = currentActiveCards.filter(c => !c.isFadingOut);
+  const activeSolidCards = currentActiveCards.filter(c => !c.isFadingOut && !isClusteredChildCard(c, currentActiveCards));
   const maxSafeActive = Math.max(36, Math.round(BASE_CAPACITY * (1 + scrollExpansion * 0.6)) + 4);
   if (activeSolidCards.length > maxSafeActive) {
      const toEvict = activeSolidCards
@@ -319,7 +321,7 @@ export interface ReplenishResult {
 export function replenishStageCandidates({
   targetCapacity, cards, memoryPool, localVaultPool, searchSession, scrollExpansion = 0
 }: ReplenishParams): ReplenishResult {
-  const activeCount = cards.filter(c => !c.isFadingOut).length;
+  const activeCount = cards.filter(c => !c.isFadingOut && !isClusteredChildCard(c, cards)).length;
   const needed = targetCapacity - activeCount;
   if (needed <= 0) {
     return { newCardsToStage: [], updatedMemoryPool: memoryPool, remainingRankedResults: searchSession?.rankedResults };

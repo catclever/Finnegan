@@ -13,6 +13,7 @@
   import BuguRadarBeacon from '../../modules/bugu/BuguRadarBeacon.svelte';
   import { computeAnimatedBeamPath, type BeamCoordinates } from '../../lib/beamMath';
   import { cardHasTag, cardHasKeyword, getCardTags } from '../../lib/tagNetwork';
+  import { isClusteredChildCard } from '../../lib/stageCoords';
 
   export let cards: CosmicCard[] = [];
   export let beacon: BuguBeacon | null = null;
@@ -58,6 +59,7 @@
 
     for (const child of cards) {
       if ((child.origin === 'bugu' || child.origin === 'atproto') && child.echoOf && !child.isFadingOut) {
+        if (isClusteredChildCard(child, cards)) continue;
         const mother = cards.find(c => c.id === child.echoOf && !c.isFadingOut);
         if (mother) {
           list.push({
@@ -231,13 +233,14 @@
         {#if ray.badgeText}
           <div 
             class="ray-anchor-badge-container"
-            style="transform: translate(calc({ray.coords.midX}px - 50%), calc({ray.coords.midY}px - 50%)) translateZ(8px); animation-delay: {ray.staggerIndex * 90}ms;"
+            style="transform: translate(calc({ray.coords.midX}px - 50%), calc({ray.coords.midY}px - 50%)) translateZ(8px);"
           >
             <div 
               class="ray-anchor-badge"
               class:is-bsky={ray.origin === 'atproto'}
               class:is-synapse={ray.type === 'synapse'}
               class:permanent-badge={ray.isPermanent}
+              style="animation-delay: {ray.staggerIndex * 90}ms;"
               title={ray.badgeTitle || ray.badgeText}
             >
               {ray.badgeText}
@@ -552,12 +555,15 @@
     position: absolute;
     top: 0;
     left: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     pointer-events: none;
     z-index: 10;
-    animation: cosmic-badge-fade 4.8s ease-in-out forwards;
   }
 
   .ray-anchor-badge {
+    position: relative;
     display: inline-flex;
     align-items: center;
     padding: 3px 9px;
@@ -572,9 +578,12 @@
     border: 1px solid rgba(245, 158, 11, 0.4);
     box-shadow: 0 0 12px rgba(245, 158, 11, 0.25), 0 2px 6px rgba(0, 0, 0, 0.4);
     white-space: nowrap;
+    transform-origin: center center;
     user-select: none;
     pointer-events: auto;
-    transition: all 0.25s ease;
+    cursor: default;
+    transition: transform 0.25s ease, opacity 0.25s ease, box-shadow 0.25s ease;
+    animation: cosmic-badge-bloom 14.4s ease-in-out forwards;
   }
 
   .ray-anchor-badge.is-bsky,
@@ -584,22 +593,126 @@
     box-shadow: 0 0 12px rgba(56, 189, 248, 0.25), 0 2px 6px rgba(0, 0, 0, 0.4);
   }
 
+  .ray-anchor-badge:hover {
+    opacity: 1 !important;
+    transform: scale(1.06) !important;
+  }
+
+  .ray-anchor-badge:not(.is-bsky):not(.is-synapse):hover {
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.5), 0 2px 8px rgba(0, 0, 0, 0.5);
+  }
+
+  .ray-anchor-badge.is-bsky:hover,
+  .ray-anchor-badge.is-synapse:hover {
+    box-shadow: 0 0 16px rgba(56, 189, 248, 0.5), 0 2px 8px rgba(0, 0, 0, 0.5);
+  }
+
   .permanent-badge {
     animation: none !important;
     opacity: 1 !important;
   }
 
-  @keyframes cosmic-badge-fade {
+  @keyframes cosmic-badge-bloom {
+    /* Cycle 1 (0 ~ 4.8s): Ambient whisper (0.10), blooms to 1.0 when photon pulse passes through middle at 14%-17%, returns to ambient (0.10) */
     0% {
       opacity: 0;
-      transform: scale(0.85);
+      transform: scale(0.9);
     }
-    15% {
-      opacity: 0.95;
+    3% {
+      opacity: 0.10;
       transform: scale(1);
     }
-    75% {
-      opacity: 0.9;
+    11% {
+      opacity: 0.10;
+      transform: scale(1);
+    }
+    13% {
+      opacity: 0.75;
+      transform: scale(1.03);
+    }
+    14% {
+      opacity: 1;
+      transform: scale(1.06);
+    }
+    17% {
+      opacity: 1;
+      transform: scale(1.06);
+    }
+    19% {
+      opacity: 0.65;
+      transform: scale(1.02);
+    }
+    21% {
+      opacity: 0.10;
+      transform: scale(1);
+    }
+    33.3% {
+      opacity: 0.10;
+      transform: scale(1);
+    }
+
+    /* Cycle 2 (4.8s ~ 9.6s): Second pulse wave */
+    33.4% {
+      opacity: 0.10;
+      transform: scale(1);
+    }
+    44% {
+      opacity: 0.10;
+      transform: scale(1);
+    }
+    46% {
+      opacity: 0.70;
+      transform: scale(1.02);
+    }
+    47% {
+      opacity: 1;
+      transform: scale(1.05);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.05);
+    }
+    52% {
+      opacity: 0.60;
+      transform: scale(1.01);
+    }
+    54% {
+      opacity: 0.08;
+      transform: scale(1);
+    }
+    66.6% {
+      opacity: 0.08;
+      transform: scale(1);
+    }
+
+    /* Cycle 3 (9.6s ~ 14.4s): Third pulse wave & final fade */
+    66.7% {
+      opacity: 0.08;
+      transform: scale(1);
+    }
+    78% {
+      opacity: 0.08;
+      transform: scale(1);
+    }
+    80% {
+      opacity: 1;
+      transform: scale(1.03);
+    }
+    83% {
+      opacity: 1;
+      transform: scale(1.03);
+    }
+    85% {
+      opacity: 0.45;
+      transform: scale(1.01);
+    }
+    87% {
+      opacity: 0.08;
+      transform: scale(1);
+    }
+    94% {
+      opacity: 0.03;
+      transform: scale(0.96);
     }
     100% {
       opacity: 0;

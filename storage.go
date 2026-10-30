@@ -39,15 +39,29 @@ func ParseCardFile(filePath string) (*Card, error) {
 			card.Content = strings.TrimSpace(parts[2])
 
 			var fm struct {
-				ID           string              `yaml:"id"`
-				Type         string              `yaml:"type"`
-				Title        string              `yaml:"title"`
-				Participants []string            `yaml:"participants"`
-				StartedAt    string              `yaml:"started_at"`
-				EndedAt      string              `yaml:"ended_at"`
-				CreatedAt    string              `yaml:"created_at"`
-				Created      string              `yaml:"created"`
-				Images       []string            `yaml:"images"`
+				ID             string              `yaml:"id"`
+				Type           string              `yaml:"type"`
+				Title          string              `yaml:"title"`
+				Source         string              `yaml:"source"`
+				SourceURL      string              `yaml:"source_url"`
+				OriginalText   string              `yaml:"original_text"`
+				TranslatedText string              `yaml:"translated_text"`
+				PublishedAt    string              `yaml:"published_at"`
+				AuthorName     string              `yaml:"author_name"`
+				AuthorAvatar   string              `yaml:"author_avatar"`
+				EchoOf         string              `yaml:"echo_of"`
+				MatchedAnchor  string              `yaml:"matched_anchor"`
+				EchoReason     string              `yaml:"echo_reason"`
+				UserComment    string              `yaml:"user_comment"`
+				ReplyCount     int                 `yaml:"reply_count"`
+				RepostCount    int                 `yaml:"repost_count"`
+				LikeCount      int                 `yaml:"like_count"`
+				Participants   []string            `yaml:"participants"`
+				StartedAt      string              `yaml:"started_at"`
+				EndedAt        string              `yaml:"ended_at"`
+				CreatedAt      string              `yaml:"created_at"`
+				Created        string              `yaml:"created"`
+				Images         []string            `yaml:"images"`
 				Keywords       map[string][]string `yaml:"keywords"`
 				Tags           []string            `yaml:"tags"`
 				Brand          string              `yaml:"brand"`
@@ -67,6 +81,48 @@ func ParseCardFile(filePath string) (*Card, error) {
 				}
 				if fm.Title != "" {
 					card.Title = fm.Title
+				}
+				if fm.Source != "" {
+					card.Origin = fm.Source
+				}
+				if fm.SourceURL != "" {
+					card.SourceURL = fm.SourceURL
+				}
+				if fm.OriginalText != "" {
+					card.OriginalText = fm.OriginalText
+				}
+				if fm.TranslatedText != "" {
+					card.TranslatedText = fm.TranslatedText
+				}
+				if fm.PublishedAt != "" {
+					card.PublishedAt = fm.PublishedAt
+				}
+				if fm.AuthorName != "" {
+					card.AuthorName = fm.AuthorName
+				}
+				if fm.AuthorAvatar != "" {
+					card.AuthorAvatar = fm.AuthorAvatar
+				}
+				if fm.EchoOf != "" {
+					card.EchoOf = fm.EchoOf
+				}
+				if fm.MatchedAnchor != "" {
+					card.MatchedAnchor = fm.MatchedAnchor
+				}
+				if fm.EchoReason != "" {
+					card.EchoReason = fm.EchoReason
+				}
+				if fm.UserComment != "" {
+					card.UserComment = fm.UserComment
+				}
+				if fm.ReplyCount > 0 {
+					card.ReplyCount = fm.ReplyCount
+				}
+				if fm.RepostCount > 0 {
+					card.RepostCount = fm.RepostCount
+				}
+				if fm.LikeCount > 0 {
+					card.LikeCount = fm.LikeCount
 				}
 				if len(fm.Participants) > 0 {
 					card.Participants = fm.Participants

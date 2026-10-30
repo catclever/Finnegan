@@ -64,6 +64,46 @@ export function computeNextScrollTarget(
  */
 const MACRO_TTL_MS = 24 * 3600 * 1000; // 24 hours macro TTL
 
+/**
+ * Checks whether a card is currently a temporary/volatile card (e.g. Bugu radar discovered cards).
+ * Bugu discovered cards are temporary and MUST scatter freely across the stage!
+ */
+export function isTemporaryCard(card: CosmicCard | any): boolean {
+  if (!card) return false;
+  if (card.isTemporary === false) return false;
+  return Boolean(card.isTemporary || card.origin === 'bugu' || card.origin === 'atproto' || card.type === 'radar');
+}
+
+/**
+ * Checks whether a card is a collected child card that should physically cluster under a mother card on stage.
+ * STRICT CONDITION:
+ * 1. Card must be COLLECTED (isTemporary === false, NOT a temporary card discovered on the fly).
+ * 2. Card must have an echoOf pointing to a mother card.
+ * 3. The mother card must be present and solid on stage.
+ */
+export function isClusteredChildCard(card: CosmicCard | null | undefined, allCards: CosmicCard[] = []): boolean {
+  if (!card) return false;
+  if (isTemporaryCard(card)) return false;
+  if (!card.echoOf) return false;
+  return allCards.some(m => m.id === card.echoOf && !m.isFadingOut);
+}
+
+/**
+ * Computes clustered coordinates for a collected child card stacked directly under its mother card in scattered state.
+ * Formula: x = mother.x + index * 5, y = mother.y + index * 5, z = mother.z + 2.5, rot = mother.rotation + index * 1.2
+ */
+export function computeClusteredChildCoords(
+  mother: { x: number; y: number; z: number; rotation: number },
+  index: number
+): StageCoordinates {
+  return {
+    x: mother.x + index * 5,
+    y: mother.y + index * 5,
+    z: Number((mother.z + 2.5).toFixed(1)),
+    rotation: Number((mother.rotation + index * 1.2).toFixed(2))
+  };
+}
+
 export function calculateSpatialPlacement(
   activeCards: CosmicCard[] = [],
   _scrollExpansion: number = 0,
@@ -72,6 +112,18 @@ export function calculateSpatialPlacement(
   explicitTargetY?: number
 ): StageCoordinates {
   const solidCards = activeCards.filter(c => !c.isFadingOut);
+
+  // ONLY if candidate is an ALREADY COLLECTED child card with a mother card present on stage, cluster directly under mother.
+  // Newly discovered temporary Bugu cards MUST bypass clustering and scatter freely via spatial placement below!
+  if (candidate && isClusteredChildCard(candidate, solidCards)) {
+    const mother = solidCards.find(c => c.id === candidate.echoOf);
+    if (mother) {
+      const siblings = solidCards.filter(c => isClusteredChildCard(c, solidCards) && c.echoOf === mother.id);
+      const existingIdx = siblings.findIndex(c => c.id === candidate.id);
+      const childIdx = existingIdx >= 0 ? existingIdx + 1 : (siblings.length + 1);
+      return computeClusteredChildCoords(mother, childIdx);
+    }
+  }
 
   const viewCenterY = explicitTargetY !== undefined ? explicitTargetY : Math.round(_scrollExpansion * 300);
   const screenZones = explicitTargetY !== undefined
@@ -112,6 +164,7 @@ export function calculateSpatialPlacement(
 
       let minCandidateDist = Infinity;
       for (const other of solidCards) {
+        if (isClusteredChildCard(other, solidCards)) continue;
         const dx = Math.abs(pt.x - other.x);
         const dy = Math.abs(pt.y - other.y);
         const normDist = Math.sqrt(Math.pow(dx / CARD_CLEARANCE.dx, 2) + Math.pow(dy / CARD_CLEARANCE.dy, 2));

@@ -340,37 +340,31 @@ func ExecuteRadar(cfg *config.Config, router *llm.Router, searxURL, jinaKey stri
 				var jinaErr error
 				usedSearchSnippet := false
 
-				// Fast path: Reddit URLs route directly to residential IP .json extractor
-				if fetcher.IsRedditURL(item.URL) {
-					log.Printf("[Reddit FastPath] Extracting via direct JSON -> %s", item.URL)
-					var rErr error
-					md, rErr = redditClient.Extract(item.URL)
-					if rErr != nil || isBlockedOrLowQualityMarkdown(md) {
-						log.Printf("[Reddit FastPath] Failed or blocked (%v, len: %d). Falling back to search snippet.", rErr, len(md))
-						if strings.TrimSpace(item.Content) != "" || strings.TrimSpace(item.Title) != "" {
-							md = fmt.Sprintf("# %s\n\n%s", item.Title, item.Content)
-							usedSearchSnippet = true
-						} else {
-							log.Printf("[Bugu Module] Skipping %s: Reddit extraction failed and empty search snippet", item.URL)
-							continue
-						}
-					}
-				} else {
-					// Cloud path: All other URLs use Jina Reader API
-					log.Printf("[Jina Reader] Extracting -> %s", item.URL)
-					md, jinaErr = jinaClient.Extract(item.URL)
+				// Primary path: Extract full markdown via Jina Reader API
+				log.Printf("[Jina Reader] Extracting -> %s", item.URL)
+				md, jinaErr = jinaClient.Extract(item.URL)
 
-					// Detect anti-crawler walls (Zhihu login wall, Cloudflare blocks) or extraction errors
-					if jinaErr != nil || isBlockedOrLowQualityMarkdown(md) {
-						log.Printf("[Jina Fallback] URL %s blocked or low quality (err: %v, len: %d). Falling back to search snippet.", item.URL, jinaErr, len(md))
-						if strings.TrimSpace(item.Content) != "" || strings.TrimSpace(item.Title) != "" {
-							md = fmt.Sprintf("# %s\n\n%s", item.Title, item.Content)
-							usedSearchSnippet = true
-						} else {
-							// Both Jina and search snippet empty -> skip completely
-							log.Printf("[Bugu Module] Skipping %s: no Jina markdown and empty search snippet", item.URL)
-							continue
-						}
+				// Tier 1 Fallback: If Jina fails or is blocked on a Reddit URL, try direct Reddit .json
+				if (jinaErr != nil || isBlockedOrLowQualityMarkdown(md)) && fetcher.IsRedditURL(item.URL) {
+					log.Printf("[Reddit Direct Fallback] Jina failed (%v, len: %d), falling back to direct JSON -> %s", jinaErr, len(md), item.URL)
+					if redditMD, rErr := redditClient.Extract(item.URL); rErr == nil && !isBlockedOrLowQualityMarkdown(redditMD) {
+						md = redditMD
+						jinaErr = nil
+					} else {
+						log.Printf("[Reddit Direct Fallback] Direct JSON also failed or blocked (%v, len: %d)", rErr, len(redditMD))
+					}
+				}
+
+				// Tier 2 Fallback: If still failed or low quality, fall back to SearxNG search snippet
+				if jinaErr != nil || isBlockedOrLowQualityMarkdown(md) {
+					log.Printf("[Extraction Fallback] URL %s blocked or low quality (err: %v, len: %d). Falling back to search snippet.", item.URL, jinaErr, len(md))
+					if strings.TrimSpace(item.Content) != "" || strings.TrimSpace(item.Title) != "" {
+						md = fmt.Sprintf("# %s\n\n%s", item.Title, item.Content)
+						usedSearchSnippet = true
+					} else {
+						// Both primary/secondary extraction and search snippet empty -> skip completely
+						log.Printf("[Bugu Module] Skipping %s: extraction failed and empty search snippet", item.URL)
+						continue
 					}
 				}
 

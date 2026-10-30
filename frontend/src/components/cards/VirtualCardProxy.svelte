@@ -79,6 +79,13 @@
       on:dblclick={(e) => handleCardDblClick(e, card)}
     >
       <div class="virtual-card-content">
+        {#if card.userComment}
+          <div class="user-comment-bubble">
+            <span class="comment-bubble-icon">💬</span>
+            <span class="comment-bubble-label">批注:</span>
+            <span class="comment-bubble-text">{card.userComment}</span>
+          </div>
+        {/if}
         <svelte:component
           this={getCardComponent(card.type)}
           {card}
@@ -90,13 +97,13 @@
         />
       </div>
 
-      {#if isStackDeck && hasMultiple && i === activeIndex}
+      {#if isStackDeck && i === activeIndex}
         <div class="deck-controls" on:click|stopPropagation>
-          <button on:click={handlePrev} title="上一张">
+          <button on:click={handlePrev} title="上一张" disabled={cards.length <= 1}>
             <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><polyline points="15 18 9 12 15 6"></polyline></svg>
           </button>
           <span>{activeIndex + 1} / {cards.length}</span>
-          <button on:click={handleNext} title="下一张">
+          <button on:click={handleNext} title="下一张" disabled={cards.length <= 1}>
             <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><polyline points="9 18 15 12 9 6"></polyline></svg>
           </button>
         </div>
@@ -222,8 +229,51 @@
     transition: all 0.2s ease;
   }
 
-  .deck-controls button:hover {
+  .deck-controls button:hover:not(:disabled) {
     color: #f59e0b;
     background: rgba(255, 255, 255, 0.15);
+  }
+
+  .deck-controls button:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+
+  .user-comment-bubble {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    margin-bottom: 12px;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    font-size: 13px;
+    color: #1e293b;
+    word-break: break-word;
+    flex-shrink: 0;
+  }
+
+  .comment-bubble-icon {
+    font-size: 14px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
+  .comment-bubble-label {
+    font-weight: 600;
+    color: #475569;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+
+  .comment-bubble-text {
+    flex: 1;
+    font-weight: 500;
+    color: #0f172a;
+    line-height: 1.4;
   }
 </style>

@@ -52,6 +52,7 @@ export interface CosmicCard {
   echoOf?: string;
   matchedAnchor?: string;
   echoReason?: string;
+  userComment?: string;
   x: number;
   y: number;
   rotation: number;

@@ -33,7 +33,7 @@
   import type { BuguBeacon, BuguSession } from '../modules/bugu/types';
   import BskyButterflyBeacon from '../modules/atproto/BskyButterflyBeacon.svelte';
   import type { BskyBeacon } from '../modules/atproto/types';
-  import { getMaxScrollExpansion } from '../lib/stageCoords';
+  import { getMaxScrollExpansion, computeClusteredChildCoords, isClusteredChildCard } from '../lib/stageCoords';
   import VirtualCardProxy from './cards/VirtualCardProxy.svelte';
 
   // Props
@@ -186,6 +186,40 @@
 
   $: isProxyStackDeck = focusedMotherChildrenDeck.length > 0;
 
+  // Requirement 4: Scattered-State Deck Clustering
+  // When a collected card has card.echoOf and is not temporary:
+  // In scattered state (when neither it nor mother is focused), if mother is present in cards:
+  // Physically cluster this child card directly under the mother card:
+  // x = mother.x + index * 5, y = mother.y + index * 5, z = mother.z + 2.5, rot = mother.rotation + index * 1.2
+  $: clusteredChildMap = (() => {
+    const map = new Map<string, { x: number; y: number; z: number; rotation: number; motherId: string }>();
+    if (focusedCardId !== null) return map;
+
+    const motherChildrenMap = new Map<string, CosmicCard[]>();
+    for (const c of cards) {
+      if (isClusteredChildCard(c, cards)) {
+        const mother = cards.find(m => m.id === c.echoOf && !m.isFadingOut);
+        if (mother) {
+          if (!motherChildrenMap.has(mother.id)) {
+            motherChildrenMap.set(mother.id, []);
+          }
+          motherChildrenMap.get(mother.id)!.push(c);
+        }
+      }
+    }
+
+    for (const [motherId, children] of motherChildrenMap.entries()) {
+      const mother = cards.find(m => m.id === motherId)!;
+      children.forEach((child, idx) => {
+        const childIndex = idx + 1;
+        const coords = computeClusteredChildCoords(mother, childIndex);
+        map.set(child.id, { ...coords, motherId });
+      });
+    }
+
+    return map;
+  })();
+
   let isVirtualCardOnTop: boolean = false;
   let lastFocusedCardId: string | null = null;
   $: if (focusedCardId !== lastFocusedCardId) {
@@ -193,7 +227,7 @@
     isVirtualCardOnTop = false;
   }
 
-  $: hasCardsBelow = cards.some(c => !c.isFadingOut && (c.y - scrollExpansion * 300) > 280);
+  $: hasCardsBelow = cards.some(c => !c.isFadingOut && !isClusteredChildCard(c, cards) && (c.y - scrollExpansion * 300) > 280);
   $: hasCardsAbove = scrollExpansion > 0.15;
 
   // Requirement 3:
@@ -327,6 +361,7 @@
         hoveredMotherId={hoveredMotherId}
         isFocused={focusedCardId === card.id}
         isHovered={hoveredCardId === card.id}
+        clusteredOverride={clusteredChildMap.get(card.id) || null}
         onToggleFocus={() => handleToggleFocus(card.id)}
         onFocusedClick={() => { isVirtualCardOnTop = false; }}
         onHover={() => handleHover(card.id)}
