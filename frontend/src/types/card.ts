@@ -18,7 +18,7 @@ export interface CardResurgenceState {
   searchId: string;
 }
 
-export type CardType = 'thought' | 'babel' | 'chat_log' | 'local' | 'note' | string;
+export type CardType = 'thought' | 'babel' | 'chat_log' | 'local' | 'note' | 'curio' | string;
 
 export interface CardTypeDefinition {
   type: string;
@@ -80,6 +80,14 @@ export interface CosmicCard {
   isSearchResult?: boolean;
   auraTraces?: AuraTrace[];
   resurgence?: CardResurgenceState;
+
+  brand?: string;
+  platform?: string;
+  price?: string;
+  intent?: "wish" | "someday" | "archive" | "acquired";
+  availability?: "deadstock" | "available" | "delisted";
+  snapshotPath?: string;
+  screenshotPath?: string;
 }
 
 export interface SearchSession {

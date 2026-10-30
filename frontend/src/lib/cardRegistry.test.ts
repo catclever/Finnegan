@@ -113,6 +113,13 @@ describe('Card Type Registry & Morphology Decoupling Engine', () => {
       assert.equal(def.defaultTitle, 'Curio');
     });
 
+    it('tests "curio" type registration and lookup specifically', () => {
+      const CurioComponent = { name: 'CurioComponent' };
+      registry.register('curio', CurioComponent);
+      assert.equal(registry.has('curio'), true);
+      assert.equal(registry.get('curio'), CurioComponent);
+    });
+
     it('allows updating an existing registered component', () => {
       const CustomNoteBody = { name: 'EnhancedNoteCardBody' };
       registry.register('note', CustomNoteBody);
