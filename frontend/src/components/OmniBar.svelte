@@ -26,6 +26,12 @@
   import { parseCardTypePrefix } from '../lib/cardType';
   import { partitionCardTiers, rankSearchCandidates } from '../lib/paramCandidateEngine';
   import { filterAndRankCommands, resolveCommandInput, matchExactCommand, getCommandIcon } from '../lib/commandEngine';
+  import {
+    collectAllAvailableTags,
+    filterMatchedTags,
+    detectTagTriggerAtCursor,
+    applyTagSelectionToText,
+  } from '../lib/tagAutocomplete';
   import { CaptureChatLog, CaptureChatLogWithImages } from '../../wailsjs/go/main/App.js';
 
   // Props
@@ -65,54 +71,22 @@
   let highlightedTagIndex: number = 0;
   let tagMatchStart: number = -1;
 
-  $: allAvailableTags = (() => {
-    const set = new Set<string>();
-    for (const c of [...cards, ...localVaultPool]) {
-      if (c.tags && Array.isArray(c.tags)) {
-        for (const t of c.tags) {
-          if (typeof t === 'string') {
-            const clean = t.replace(/\*+$/, '').trim();
-            if (clean) set.add(clean);
-          }
-        }
-      }
-      if (c.keywords && typeof c.keywords === 'object') {
-        for (const list of Object.values(c.keywords)) {
-          if (Array.isArray(list)) {
-            for (const kw of list) {
-              if (typeof kw === 'string') {
-                const clean = kw.replace(/\*+$/, '').trim();
-                if (clean) set.add(clean);
-              }
-            }
-          }
-        }
-      }
-    }
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  })();
-
+  $: allAvailableTags = collectAllAvailableTags(cards, localVaultPool);
   $: matchedTags = tagSelectMode
-    ? (tagQuery === ""
-        ? allAvailableTags.slice(0, 15)
-        : allAvailableTags.filter(t => t.toLowerCase().includes(tagQuery.toLowerCase())).slice(0, 15)
-      )
+    ? filterMatchedTags(allAvailableTags, tagQuery, 15)
     : [];
 
   function selectTag(tag: string) {
     if (tagMatchStart < 0) return;
     const cursorPos = omnibarInputEl?.selectionStart ?? omniText.length;
-    const before = omniText.slice(0, tagMatchStart);
-    const after = omniText.slice(cursorPos);
-    const tagWithFormat = tag.includes(' ') ? tag.replace(/\s+/g, '-') : tag;
-    omniText = `${before}#${tagWithFormat} ${after}`;
+    const { newText, newCursor } = applyTagSelectionToText(omniText, tagMatchStart, cursorPos, tag);
+    omniText = newText;
     tagSelectMode = false;
     tagQuery = "";
     tagMatchStart = -1;
 
     setTimeout(() => {
       if (omnibarInputEl) {
-        const newCursor = (before + `#${tagWithFormat} `).length;
         omnibarInputEl.setSelectionRange(newCursor, newCursor);
         omnibarInputEl.focus();
         omnibarInputEl.style.height = 'auto';
@@ -785,14 +759,16 @@
 
     // Hashtag Autocomplete Detection
     const cursorPos = target.selectionStart ?? omniText.length;
-    const textBeforeCursor = omniText.slice(0, cursorPos);
-    const hashMatch = textBeforeCursor.match(/(?:^|\s)#([^\s#]*)$/);
-
-    if (hashMatch && !commandParamMode && !commandSelectMode) {
-      tagSelectMode = true;
-      tagQuery = hashMatch[1];
-      tagMatchStart = textBeforeCursor.lastIndexOf('#');
-      highlightedTagIndex = 0;
+    if (!commandParamMode && !commandSelectMode) {
+      const trigger = detectTagTriggerAtCursor(omniText, cursorPos);
+      if (trigger.isTriggered) {
+        tagSelectMode = true;
+        tagQuery = trigger.tagQuery;
+        tagMatchStart = trigger.tagMatchStart;
+        highlightedTagIndex = 0;
+      } else {
+        tagSelectMode = false;
+      }
     } else {
       tagSelectMode = false;
     }

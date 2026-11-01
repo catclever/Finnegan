@@ -26,6 +26,26 @@ func CleanProfile(profile KeywordsProfile) KeywordsProfile {
 	return clean
 }
 
+// FormatKeywordsYAML serializes a KeywordsProfile into indented YAML suitable for Markdown frontmatter.
+func FormatKeywordsYAML(profile KeywordsProfile) string {
+	clean := CleanProfile(profile)
+	if len(clean) == 0 {
+		return ""
+	}
+	kwBytes, err := yaml.Marshal(clean)
+	if err != nil {
+		return ""
+	}
+	var sb strings.Builder
+	sb.WriteString("keywords:\n")
+	for _, line := range strings.Split(strings.TrimSpace(string(kwBytes)), "\n") {
+		if strings.TrimSpace(line) != "" {
+			sb.WriteString("  " + line + "\n")
+		}
+	}
+	return sb.String()
+}
+
 // ExtractKeywordsFromMarkdown extracts the keywords mapping from a Markdown file's YAML frontmatter.
 // Provides alias backward compatibility by ensuring canonical 4 anchor dimension keys are also populated.
 func ExtractKeywordsFromMarkdown(rawContent []byte) (KeywordsProfile, error) {

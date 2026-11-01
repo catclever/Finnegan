@@ -20,6 +20,7 @@
 
 import type { CosmicCard } from '../types/card';
 import { calculateIntrinsicTargetZ } from './tagNetwork.ts';
+import { isProtectedCard, VIP_INK_BEAM_DURATION_MS } from './stageDecay';
 
 /** Default duration for search auras (15 minutes) */
 export const DEFAULT_SEARCH_AURA_DURATION = 15 * 60 * 1000;
@@ -163,3 +164,76 @@ export function processWindowFocusGravitationalFallback(
     return applyGravitationalFallback(c, now);
   });
 }
+
+export interface WindowFocusEvaluationResult {
+  updatedCards: CosmicCard[];
+  fadingIds: string[];
+  updatedLatestManualCardId: string | null;
+}
+
+/**
+ * Metabolic and gravitational card evaluation loop executed on window focus.
+ * Handles VIP ink beam expiration, temporary card z-retreat/fadeout, and normal card gravitational fallback.
+ */
+export function evaluateCardsOnWindowFocus(
+  cards: CosmicCard[],
+  now: number = Date.now(),
+  focusedCardId?: string | null,
+  activeBuguSourceId?: string | null,
+  latestManualCardId?: string | null
+): WindowFocusEvaluationResult {
+  let nextLatestManualCardId = latestManualCardId ?? null;
+  const fadingIds: string[] = [];
+
+  const updatedCards = cards.map(c => {
+    // If card was marked VIP (water-ink beam) and exceeded the 15-minute duration, extinguish VIP
+    if (c.isVIP) {
+      const birthTime = c.spawnTime || (c.createdAt ? new Date(c.createdAt).getTime() : 0);
+      if (birthTime && (now - birthTime >= VIP_INK_BEAM_DURATION_MS)) {
+        c = { ...c, isVIP: false };
+        if (nextLatestManualCardId === c.id) {
+          nextLatestManualCardId = null;
+        }
+      }
+    }
+
+    if (focusedCardId && c.id === focusedCardId) return c;
+    if (c.isFadingOut) return c;
+
+    if (isTemporaryCard(c)) {
+      if (isProtectedCard(c, cards, activeBuguSourceId || undefined)) return c;
+      if (c.decayDuration && (now - c.spawnTime >= c.decayDuration)) {
+        if (c.z < 65) {
+          return {
+            ...c,
+            z: c.z + 20 + Math.random() * 5,
+            spawnTime: now,
+          };
+        } else {
+          fadingIds.push(c.id);
+          return {
+            ...c,
+            isFadingOut: true,
+          };
+        }
+      }
+      return c;
+    }
+
+    // Active Bugu mother card is protected during active radar session
+    if (activeBuguSourceId && c.id === activeBuguSourceId) {
+      return c;
+    }
+
+    // Universal Gravitational Fallback Engine for permanent/normal cards:
+    // Evaluates cards whose 10-minute elevation protection has elapsed
+    return applyGravitationalFallback(c, now);
+  });
+
+  return {
+    updatedCards,
+    fadingIds,
+    updatedLatestManualCardId: nextLatestManualCardId,
+  };
+}
+

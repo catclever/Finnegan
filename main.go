@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"Finnegan/core/config"
+	"Finnegan/core/module"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -57,6 +58,45 @@ func getContentType(filePath string) string {
 
 func createAssetHandler(app *App) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/api/plugins/") && strings.HasSuffix(r.URL.Path, "/ui.js") {
+			if r.Method != http.MethodGet && r.Method != http.MethodHead {
+				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			rel := strings.TrimPrefix(r.URL.Path, "/api/plugins/")
+			pluginName := strings.TrimSuffix(rel, "/ui.js")
+			if pluginName == "" || strings.Contains(pluginName, "/") || strings.Contains(pluginName, "..") || strings.Contains(pluginName, "\\") {
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
+			if m, ok := module.GetRegistry()[pluginName]; ok {
+				if extMod, ok := m.(*module.ExternalModule); ok {
+					if data, err := extMod.GetUIBundle(); err == nil && len(data) > 0 {
+						w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+						_, _ = w.Write(data)
+						return
+					}
+				}
+			}
+			home := app.Home
+			if home == "" {
+				if _, h, err := config.LoadConfig(); err == nil {
+					home = h
+					app.Home = h
+				}
+			}
+			if home != "" {
+				uiPath := filepath.Join(home, ".finnegan", "plugins", pluginName, "ui.js")
+				if data, err := os.ReadFile(uiPath); err == nil {
+					w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+					_, _ = w.Write(data)
+					return
+				}
+			}
+			http.NotFound(w, r)
+			return
+		}
+
 		if !strings.HasPrefix(r.URL.Path, "/api/assets/") {
 			http.NotFound(w, r)
 			return

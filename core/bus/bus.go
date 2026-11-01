@@ -55,6 +55,9 @@ type Event struct {
 	Data interface{}
 }
 
+// Message is an alias for Event to provide consistent bus message naming.
+type Message = Event
+
 type GlobalEventBus struct {
 	subscribers map[EventType]map[string]chan Event
 	mutex       sync.RWMutex

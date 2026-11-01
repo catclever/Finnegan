@@ -9,23 +9,34 @@
   import OmniBar from './components/OmniBar.svelte';
   import CosmicStage from './components/CosmicStage.svelte';
   import WindowTitleBar from './components/WindowTitleBar.svelte';
-  import { CaptureThought, CaptureThoughtWithImages, CaptureChatLog, CaptureChatLogWithImages, CaptureNote, GetTempCards, LoadLocalCards, SearchLocalCards, GetRegisteredCommands, ExecuteModuleCommand, EvictTempCard, ReloadCard } from '../wailsjs/go/main/App.js';
+  import { CaptureThought, CaptureThoughtWithImages, CaptureChatLog, CaptureChatLogWithImages, CaptureNote, GetTempCards, LoadLocalCards, SearchLocalCards, GetRegisteredCommands, GetModuleManifests, ExecuteModuleCommand, EvictTempCard, ReloadCard } from '../wailsjs/go/main/App.js';
   import { EventsOn } from '../wailsjs/runtime/runtime.js';
   import type { CosmicCard, SearchSession, CommandDef } from './types/card';
+  import { hydrateModuleManifests, getModuleBeaconType } from './lib/promotionRegistry';
+  import { loadExternalPluginCardComponents } from './components/cards/cardRegistry';
   import type { BuguSession, BuguBeacon } from './modules/bugu/types';
   import type { BskyBeacon } from './modules/atproto/types';
   import { generateAuraColor, transformSearchResults, calculateSearchRepulsion, commitUnallocatedSearchResults } from './lib/auraSearch';
-  import { BASE_CAPACITY, MACRO_TTL_MS, BASE_STAGE_DECAY_MS, VIP_INK_BEAM_DURATION_MS, stageCandidate, replenishStageCandidates, isProtectedCard, toCosmicCard, ensureCardStagedInViewport } from './lib/stageDecay';
+  import { BASE_CAPACITY, MACRO_TTL_MS, BASE_STAGE_DECAY_MS, VIP_INK_BEAM_DURATION_MS, stageCandidate, replenishStageCandidates, toCosmicCard, ensureCardStagedInViewport } from './lib/stageDecay';
   import { computeNextScrollTarget } from './lib/stageCoords';
   import { isChatLogFormat } from './lib/chatlog';
   import { createBuguSessionController } from './modules/bugu/buguSession';
   import { createBabelSessionController } from './modules/babel/babelSession';
+  import { createBskySessionController } from './modules/atproto/bskySession';
   import { createStageActivityController } from './lib/stageActivity';
-  import { createOptimisticChatLogCard, reconcileChatLogCard, rollbackOptimisticCard, createNoteCard, mergeCapturedThought } from './lib/cardCapture';
-  import { findUnstagedMatchingCards, cardHasTag, cardHasKeyword, calculateIntrinsicTargetZ, getDistinctTagColor, normalizeTag } from './lib/tagNetwork';
-  import { applyGravitationalFallback } from './lib/gravityFallback';
+  import {
+    createOptimisticChatLogCard,
+    reconcileChatLogCard,
+    rollbackOptimisticCard,
+    createNoteCard,
+    mergeCapturedThought,
+    promoteCardInPools,
+    updateCardInPools,
+    removeCardFromPools,
+  } from './lib/cardCapture';
+  import { toggleTagConstellation } from './lib/tagNetwork';
+  import { evaluateCardsOnWindowFocus } from './lib/gravityFallback';
   import { refreshStageTime } from './lib/time';
-  import type { AuraTrace } from './types/card';
 
   // --- Stage Pools & Selection State ---
   let memoryPool: CosmicCard[] = [], localVaultPool: CosmicCard[] = [], cards: CosmicCard[] = [];
@@ -41,7 +52,6 @@
   let activeBuguSession: BuguSession | null = null;
   let activeBuguBeacon: BuguBeacon | null = null;
   let activeBskyBeacon: BskyBeacon | null = null;
-  let bskyBeaconTimer: any = null;
 
   // --- Gravitational Tide (Multi-Screen Y-Axis Expansion) ---
   let scrollTarget = 0;
@@ -52,6 +62,10 @@
   $: targetCapacity = Math.round(BASE_CAPACITY * (1 + $scrollExpansion * 0.6));
 
   // --- Encapsulated Controllers ---
+  const bskyController = createBskySessionController({
+    onBeaconChange: (beacon) => { activeBskyBeacon = beacon; },
+  });
+
   const babelController = createBabelSessionController({
     getCards: () => cards,
     getMemoryPool: () => memoryPool,
@@ -64,12 +78,12 @@
     stageCandidate,
     onCardStaged: (c) => {
       if (c?.origin === 'atproto' || activeBskyBeacon) {
-        incrementBskyButterfly();
+        bskyController.incrementButterfly();
       }
     },
     onQueueEmpty: () => {
       buguController.finishRadar();
-      finishBskyBeacon();
+      bskyController.finishBeacon();
     },
   });
 
@@ -342,57 +356,18 @@
     }
   }
 
-  // --- Bluesky Butterfly Search Beacon Lifecycle ---
-  function startBskyEcho(sourceCardId?: string | null) {
-    if (bskyBeaconTimer) {
-      clearTimeout(bskyBeaconTimer);
-      bskyBeaconTimer = null;
-    }
-    const initialCount = Math.floor(Math.random() * 4) + 2;
-    activeBskyBeacon = {
-      sourceCardId: sourceCardId || null,
-      status: 'scanning',
-      butterflyCount: initialCount,
-    };
-    bskyBeaconTimer = setTimeout(() => {
-      finishBskyBeacon();
-    }, 35000);
-  }
-
-  function incrementBskyButterfly() {
-    if (activeBskyBeacon && activeBskyBeacon.status !== 'fading' && activeBskyBeacon.status !== 'completed') {
-      if (Math.random() < 0.8 && activeBskyBeacon.butterflyCount < 8) {
-        activeBskyBeacon = {
-          ...activeBskyBeacon,
-          butterflyCount: activeBskyBeacon.butterflyCount + 1,
-        };
-      }
-    }
-  }
-
-  function finishBskyBeacon() {
-    if (bskyBeaconTimer) {
-      clearTimeout(bskyBeaconTimer);
-      bskyBeaconTimer = null;
-    }
-    if (activeBskyBeacon && activeBskyBeacon.status !== 'fading' && activeBskyBeacon.status !== 'completed') {
-      activeBskyBeacon = { ...activeBskyBeacon, status: 'completed' };
-      setTimeout(() => {
-        if (activeBskyBeacon?.status === 'completed') {
-          activeBskyBeacon = { ...activeBskyBeacon, status: 'fading' };
-          setTimeout(() => {
-            if (activeBskyBeacon?.status === 'fading') {
-              activeBskyBeacon = null;
-            }
-          }, 2500);
-        }
-      }, 1800);
-    }
-  }
-
   async function handleExecuteCommand(cmd: CommandDef, card?: CosmicCard | null, textQuery?: string) {
     const paramSpec = cmd.params?.[0];
-    const shouldAutoStage = Boolean(card && (paramSpec?.autoStageToViewport || cmd.id.startsWith('bugu:') || cmd.id === 'atproto:echo'));
+    const beaconType = getModuleBeaconType(cmd.id) || getModuleBeaconType(cmd.namespace);
+    const shouldAutoStage = Boolean(
+      card && (
+        paramSpec?.autoStageToViewport ||
+        beaconType === 'radar' ||
+        beaconType === 'butterfly' ||
+        cmd.id.startsWith('bugu:') ||
+        cmd.id === 'atproto:echo'
+      )
+    );
 
     if (shouldAutoStage && card) {
       const res = ensureCardStagedInViewport(card, $scrollExpansion, cards, memoryPool, { isVIP: true });
@@ -400,12 +375,12 @@
       if (res.updatedMemoryPool) memoryPool = res.updatedMemoryPool;
     }
 
-    if (cmd.id.startsWith('bugu:')) {
+    if (beaconType === 'radar' || cmd.id.startsWith('bugu:')) {
       if (card) {
         buguController.startRadar(card.id, cards, memoryPool, localVaultPool);
       }
-    } else if (cmd.id === 'atproto:echo') {
-      startBskyEcho(card?.id || null);
+    } else if (beaconType === 'butterfly' || cmd.id === 'atproto:echo') {
+      bskyController.startEcho(card?.id || null);
     }
     await ExecuteModuleCommand(cmd.id, {
       cardId: card?.id,
@@ -420,158 +395,34 @@
   function handleTagClick(detail: { tag: string; cardId: string }) {
     const rawTag = detail?.tag;
     if (!rawTag) return;
-    const tag = normalizeTag(rawTag);
-    if (!tag) return;
 
-    if (activeConstellationTags.has(tag)) {
-      // Toggle OFF: delete from map and remove its tag_resurgence_ traces
-      activeConstellationTags.delete(tag);
-      activeConstellationTags = new Map(activeConstellationTags);
-
-      const targetPrefix = 'tag_resurgence_' + tag + '_';
-      cards = cards.map(c => ({
-        ...c,
-        auraTraces: (c.auraTraces || []).filter(t => t.searchId !== 'tag_resurgence_' + tag + '_' + c.id && !t.searchId.startsWith(targetPrefix)),
-      }));
-      return;
-    }
-
-    // Exit focused mode so the user can see the constellation on the cosmic stage
-    if (focusedCardId !== null) {
-      focusedCardId = null;
-    }
-
-    activateConstellationTag(tag);
-  }
-
-  function activateConstellationTag(tag: string) {
-    // Pick a distinct vibrant color using color wheel max angular gap / palette
-    const tagColor = getDistinctTagColor(activeConstellationTags.values());
-    activeConstellationTags.set(tag, tagColor);
-    activeConstellationTags = new Map(activeConstellationTags);
-
-    stageActivity.resetActivityTimer();
-    const now = Date.now();
-
-    // Elevate cards already on stage that possess this tag or keyword:
-    // 1. Z: 10 foreground depth (<= 16 visibility zone)
-    // 2. Neon Trace: { searchId: 'tag_resurgence_' + tag + '_' + c.id, color: tagColor, hitTime: now, duration: 120000 }
-    // 3. elevatedAt: now
-    let currentCards = cards.map(c => {
-      if (cardHasTag(c, tag) || cardHasKeyword(c, tag)) {
-        const searchId = 'tag_resurgence_' + tag + '_' + c.id;
-        const auraTrace: AuraTrace = {
-          searchId,
-          color: tagColor,
-          hitTime: now,
-          duration: 120000,
-        };
-        const existingTraces = (c.auraTraces || []).filter(t => t.searchId !== searchId);
-        return {
-          ...c,
-          z: 10,
-          auraTraces: [...existingTraces, auraTrace],
-          decayDuration: Math.max(c.decayDuration || 0, 120000 + 3600000),
-          isFadingOut: false,
-          elevatedAt: now,
-        };
-      }
-      return c;
+    const res = toggleTagConstellation({
+      rawTag,
+      activeConstellationTags,
+      cards,
+      memoryPool,
+      localVaultPool,
+      scrollExpansion: $scrollExpansion,
+      sourceCardId: activeBuguBeacon?.sourceCardId,
     });
 
-    // Query unstaged matching cards from memoryPool and localVaultPool for this tag
-    const unstaged = findUnstagedMatchingCards(tag, currentCards, memoryPool, localVaultPool);
-    if (unstaged.length === 0) {
-      cards = currentCards;
-      return;
+    activeConstellationTags = res.activeConstellationTags;
+    cards = res.cards;
+    memoryPool = res.memoryPool;
+    if (res.shouldClearFocus && focusedCardId !== null) {
+      focusedCardId = null;
     }
-
-    let nextMemoryPool = [...memoryPool];
-    const viewportCenterY = Math.round($scrollExpansion * 300);
-
-    for (const candidate of unstaged) {
-      // Stage candidate near viewport center
-      const res = stageCandidate(
-        candidate,
-        false,
-        $scrollExpansion,
-        currentCards,
-        nextMemoryPool,
-        activeBuguBeacon?.sourceCardId || null,
-        viewportCenterY
-      );
-
-      currentCards = res.updatedActiveCards;
-      nextMemoryPool = res.updatedMemoryPool;
-
-      // Resurgence Lifecycle:
-      // Fixed at foreground Z: 10 during the 2-minute reading window.
-      // Candidate receives trace for this newly activated tag, AND for any other active tags it matches.
-      const tracesToAdd: AuraTrace[] = [];
-      for (const [activeTag, color] of activeConstellationTags.entries()) {
-        if (cardHasTag(candidate, activeTag) || cardHasKeyword(candidate, activeTag)) {
-          tracesToAdd.push({
-            searchId: 'tag_resurgence_' + activeTag + '_' + candidate.id,
-            color,
-            hitTime: now,
-            duration: 120000,
-          });
-        }
-      }
-
-      currentCards = currentCards.map(c => {
-        if (c.id === candidate.id) {
-          const idsToAdd = new Set(tracesToAdd.map(t => t.searchId));
-          const existing = (c.auraTraces || []).filter(t => !idsToAdd.has(t.searchId));
-          return {
-            ...c,
-            z: 10,
-            auraTraces: [...existing, ...tracesToAdd],
-            decayDuration: Math.max(c.decayDuration || 0, 120000 + 3600000),
-            isFadingOut: false,
-            elevatedAt: now,
-          };
-        }
-        return c;
-      });
-
-      // Ensure candidate is recorded in memoryPool with 24h macro TTL if permanent vault card
-      if (!nextMemoryPool.some(m => m.id === candidate.id)) {
-        nextMemoryPool = [
-          {
-            ...candidate,
-            macroExpiresAt: now + MACRO_TTL_MS,
-          },
-          ...nextMemoryPool,
-        ];
-      }
+    if (res.didActivate) {
+      stageActivity.resetActivityTimer();
     }
-
-    cards = currentCards;
-    memoryPool = nextMemoryPool;
   }
 
   function handleCardPromoted(detail: { originalId: string; card: CosmicCard }) {
-    if (!detail) return;
-    const { originalId, card: promoted } = detail;
-    cards = cards.map(c => {
-      if (c.id === originalId) {
-        return {
-          ...c,
-          ...promoted,
-          isTemporary: false,
-          macroExpiresAt: undefined,
-        };
-      }
-      return c;
-    });
-    memoryPool = memoryPool.filter(c => c.id !== originalId && c.id !== promoted.id);
-    if (focusedCardId === originalId) {
-      focusedCardId = promoted.id;
-    }
-    if (!localVaultPool.some(v => v.id === promoted.id)) {
-      localVaultPool = [promoted, ...localVaultPool];
-    }
+    const res = promoteCardInPools(detail, { cards, memoryPool, localVaultPool, focusedCardId });
+    cards = res.cards;
+    memoryPool = res.memoryPool;
+    localVaultPool = res.localVaultPool;
+    focusedCardId = res.focusedCardId;
   }
 
   // --- Tilt, Focus, & Keydown Delegators ---
@@ -690,67 +541,22 @@
   }
 
   function applyCardUpdate(updatedCard: any) {
-    if (!updatedCard) return;
-    const updated = toCosmicCard(updatedCard, updatedCard.type || 'thought', 'local');
-
-    cards = cards.map(existing => {
-      const isMatch = existing.id === updated.id || 
-        (Boolean(existing.filePath) && Boolean(updated.filePath) && existing.filePath === updated.filePath) ||
-        (Boolean(existing.filePath) && existing.filePath.endsWith(updated.id)) ||
-        (Boolean(updated.filePath) && updated.filePath.endsWith(existing.id));
-      if (isMatch) {
-        return {
-          ...existing,
-          title: updated.title,
-          content: updated.content,
-          originalText: updated.originalText,
-          translatedText: updated.translatedText,
-          images: updated.images,
-          keywords: updated.keywords || existing.keywords,
-          type: updated.type || existing.type,
-          filePath: updated.filePath || existing.filePath,
-        };
-      }
-      return existing;
-    });
-
-    localVaultPool = localVaultPool.map(existing => {
-      const isMatch = existing.id === updated.id || 
-        (Boolean(existing.filePath) && Boolean(updated.filePath) && existing.filePath === updated.filePath);
-      if (isMatch) {
-        return {
-          ...existing,
-          title: updated.title,
-          content: updated.content,
-          images: updated.images,
-          keywords: updated.keywords || existing.keywords,
-          type: updated.type || existing.type,
-          filePath: updated.filePath || existing.filePath,
-        };
-      }
-      return existing;
-    });
-
-    memoryPool = memoryPool.map(existing => {
-      const isMatch = existing.id === updated.id || 
-        (Boolean(existing.filePath) && Boolean(updated.filePath) && existing.filePath === updated.filePath);
-      if (isMatch) {
-        return {
-          ...existing,
-          title: updated.title,
-          content: updated.content,
-          images: updated.images,
-          keywords: updated.keywords || existing.keywords,
-          type: updated.type || existing.type,
-          filePath: updated.filePath || existing.filePath,
-        };
-      }
-      return existing;
-    });
+    const res = updateCardInPools(updatedCard, { cards, memoryPool, localVaultPool });
+    cards = res.cards;
+    memoryPool = res.memoryPool;
+    localVaultPool = res.localVaultPool;
   }
 
   onMount(() => {
     GetRegisteredCommands().then(cmds => { if (Array.isArray(cmds)) availableCommands = cmds; }).catch(console.warn);
+    if (typeof GetModuleManifests === 'function') {
+      GetModuleManifests().then((manifests: any) => {
+        if (Array.isArray(manifests)) {
+          hydrateModuleManifests(manifests);
+          loadExternalPluginCardComponents(manifests).catch(console.warn);
+        }
+      }).catch(console.warn);
+    }
 
     Promise.all([LoadLocalCards(), GetTempCards()]).then(([localCards, tempCards]) => {
       if (tempCards?.length) memoryPool = tempCards.map(c => ({ ...toCosmicCard(c, c.type || 'babel', (c as any).origin || 'bugu', MACRO_TTL_MS), isFresh: false, spawnTime: 0, decayDuration: 0, z: 50 }));
@@ -783,14 +589,14 @@
     function handleBabelCardSpawned(c: any) {
       babelController.enqueue(c, c?.origin);
       if (c?.origin === 'atproto' || activeBskyBeacon) {
-        incrementBskyButterfly();
+        bskyController.incrementButterfly();
       }
     }
 
     function handleBabelSessionCompleted() {
       babelController.finishSession();
       buguController.finishRadar();
-      finishBskyBeacon();
+      bskyController.finishBeacon();
     }
 
     EventsOn("babel:card_spawned", handleBabelCardSpawned);
@@ -804,14 +610,11 @@
     });
 
     EventsOn("card:deleted", (data: any) => {
-      const id = data?.id;
-      const filePath = data?.filePath;
-      if (id || filePath) {
-        cards = cards.filter(c => c.id !== id && (!filePath || c.filePath !== filePath));
-        localVaultPool = localVaultPool.filter(c => c.id !== id && (!filePath || c.filePath !== filePath));
-        memoryPool = memoryPool.filter(c => c.id !== id && (!filePath || c.filePath !== filePath));
-        if (focusedCardId === id) focusedCardId = null;
-      }
+      const res = removeCardFromPools(data, { cards, memoryPool, localVaultPool, focusedCardId });
+      cards = res.cards;
+      memoryPool = res.memoryPool;
+      localVaultPool = res.localVaultPool;
+      focusedCardId = res.focusedCardId;
     });
 
     const handleWindowFocus = () => {
@@ -827,56 +630,19 @@
       }
 
       const now = Date.now();
-      const fadingIds: string[] = [];
-      cards = cards.map(c => {
-        // If card was marked VIP (water-ink beam) and exceeded the 15-minute duration, extinguish VIP
-        if (c.isVIP) {
-          const birthTime = c.spawnTime || (c.createdAt ? new Date(c.createdAt).getTime() : 0);
-          if (birthTime && (now - birthTime >= VIP_INK_BEAM_DURATION_MS)) {
-            c = { ...c, isVIP: false };
-            if (latestManualCardId === c.id) {
-              latestManualCardId = null;
-            }
-          }
-        }
+      const res = evaluateCardsOnWindowFocus(
+        cards,
+        now,
+        focusedCardId,
+        activeBuguBeacon?.sourceCardId || null,
+        latestManualCardId
+      );
+      cards = res.updatedCards;
+      latestManualCardId = res.updatedLatestManualCardId;
 
-        if (c.id === focusedCardId) return c;
-        if (c.isFadingOut) return c;
-
-        const isTemporary = c.isTemporary === false ? false : Boolean(c.isTemporary || c.origin === 'bugu' || c.origin === 'atproto' || c.type === 'radar');
-        if (isTemporary) {
-          if (isProtectedCard(c, cards, activeBuguBeacon?.sourceCardId)) return c;
-          if (c.decayDuration && (now - c.spawnTime >= c.decayDuration)) {
-            if (c.z < 65) {
-              return {
-                ...c,
-                z: c.z + 20 + Math.random() * 5,
-                spawnTime: now
-              };
-            } else {
-              fadingIds.push(c.id);
-              return {
-                ...c,
-                isFadingOut: true
-              };
-            }
-          }
-          return c;
-        }
-
-        // Active Bugu mother card is protected during active radar session
-        if (activeBuguBeacon?.sourceCardId && c.id === activeBuguBeacon.sourceCardId) {
-          return c;
-        }
-
-        // Universal Gravitational Fallback Engine for permanent/normal cards:
-        // Evaluates cards whose 10-minute elevation protection has elapsed
-        return applyGravitationalFallback(c, now);
-      });
-
-      if (fadingIds.length > 0) {
+      if (res.fadingIds.length > 0) {
         setTimeout(() => {
-          cards = cards.filter(c => !fadingIds.includes(c.id));
+          cards = cards.filter(c => !res.fadingIds.includes(c.id));
         }, 2500);
       }
     };
@@ -929,7 +695,7 @@
       clearInterval(metabolicInterval);
       if (scrollIdleTimer) clearTimeout(scrollIdleTimer);
       if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
-      if (bskyBeaconTimer) clearTimeout(bskyBeaconTimer);
+      bskyController.destroy();
       babelController.destroy();
       buguController.destroy();
       stageActivity.destroy();

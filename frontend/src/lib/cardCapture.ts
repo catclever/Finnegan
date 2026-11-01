@@ -335,3 +335,141 @@ export function mergeCapturedThought(params: MergeCapturedThoughtParams) {
     latestManualCardId,
   };
 }
+
+export interface CardPools {
+  cards: CosmicCard[];
+  memoryPool: CosmicCard[];
+  localVaultPool: CosmicCard[];
+  focusedCardId?: string | null;
+}
+
+/**
+ * Reconciles temporary card in-place promotion across stage, memory, and local vault pools.
+ */
+export function promoteCardInPools(
+  detail: { originalId: string; card: CosmicCard },
+  pools: CardPools
+): {
+  cards: CosmicCard[];
+  memoryPool: CosmicCard[];
+  localVaultPool: CosmicCard[];
+  focusedCardId: string | null;
+} {
+  const { cards, memoryPool, localVaultPool, focusedCardId = null } = pools;
+  if (!detail) {
+    return { cards, memoryPool, localVaultPool, focusedCardId };
+  }
+  const { originalId, card: promoted } = detail;
+  const updatedCards = cards.map(c => {
+    if (c.id === originalId) {
+      return {
+        ...c,
+        ...promoted,
+        isTemporary: false,
+        macroExpiresAt: undefined,
+      };
+    }
+    return c;
+  });
+  const updatedMemoryPool = memoryPool.filter(c => c.id !== originalId && c.id !== promoted.id);
+  const nextFocusedId = focusedCardId === originalId ? promoted.id : focusedCardId;
+  const updatedLocalVaultPool = !localVaultPool.some(v => v.id === promoted.id)
+    ? [promoted, ...localVaultPool]
+    : localVaultPool;
+
+  return {
+    cards: updatedCards,
+    memoryPool: updatedMemoryPool,
+    localVaultPool: updatedLocalVaultPool,
+    focusedCardId: nextFocusedId,
+  };
+}
+
+/**
+ * Reconciles external/internal card modifications across stage, local vault, and memory pools.
+ */
+export function updateCardInPools(
+  updatedCard: any,
+  pools: { cards: CosmicCard[]; memoryPool: CosmicCard[]; localVaultPool: CosmicCard[] }
+): { cards: CosmicCard[]; memoryPool: CosmicCard[]; localVaultPool: CosmicCard[] } {
+  const { cards, memoryPool, localVaultPool } = pools;
+  if (!updatedCard) {
+    return { cards, memoryPool, localVaultPool };
+  }
+  const updated = toCosmicCard(updatedCard, updatedCard.type || 'thought', 'local');
+
+  const updateMatch = (existing: CosmicCard) => {
+    const isMatch = existing.id === updated.id || 
+      (Boolean(existing.filePath) && Boolean(updated.filePath) && existing.filePath === updated.filePath) ||
+      (Boolean(existing.filePath) && existing.filePath.endsWith(updated.id)) ||
+      (Boolean(updated.filePath) && updated.filePath.endsWith(existing.id));
+    if (isMatch) {
+      return {
+        ...existing,
+        title: updated.title,
+        content: updated.content,
+        originalText: updated.originalText,
+        translatedText: updated.translatedText,
+        images: updated.images,
+        keywords: updated.keywords || existing.keywords,
+        type: updated.type || existing.type,
+        filePath: updated.filePath || existing.filePath,
+      };
+    }
+    return existing;
+  };
+
+  const updatePoolMatch = (existing: CosmicCard) => {
+    const isMatch = existing.id === updated.id || 
+      (Boolean(existing.filePath) && Boolean(updated.filePath) && existing.filePath === updated.filePath);
+    if (isMatch) {
+      return {
+        ...existing,
+        title: updated.title,
+        content: updated.content,
+        images: updated.images,
+        keywords: updated.keywords || existing.keywords,
+        type: updated.type || existing.type,
+        filePath: updated.filePath || existing.filePath,
+      };
+    }
+    return existing;
+  };
+
+  return {
+    cards: cards.map(updateMatch),
+    localVaultPool: localVaultPool.map(updatePoolMatch),
+    memoryPool: memoryPool.map(updatePoolMatch),
+  };
+}
+
+/**
+ * Removes a deleted card from stage, local vault, and memory pools.
+ */
+export function removeCardFromPools(
+  target: { id?: string; filePath?: string } | any,
+  pools: CardPools
+): {
+  cards: CosmicCard[];
+  memoryPool: CosmicCard[];
+  localVaultPool: CosmicCard[];
+  focusedCardId: string | null;
+} {
+  const { cards, memoryPool, localVaultPool, focusedCardId = null } = pools;
+  const id = target?.id;
+  const filePath = target?.filePath;
+
+  if (!id && !filePath) {
+    return { cards, memoryPool, localVaultPool, focusedCardId };
+  }
+
+  const filterFn = (c: CosmicCard) => c.id !== id && (!filePath || c.filePath !== filePath);
+
+  return {
+    cards: cards.filter(filterFn),
+    localVaultPool: localVaultPool.filter(filterFn),
+    memoryPool: memoryPool.filter(filterFn),
+    focusedCardId: (id && focusedCardId === id) ? null : focusedCardId,
+  };
+}
+

@@ -135,3 +135,15 @@ export function computeAnimatedBeamPath(
     dist,
   };
 }
+
+export {
+  type MotherChildRayDef,
+  type SynapseRayDef,
+  type CosmicRay,
+  type ActiveRayInstance,
+  type AssembleRenderedRaysParams,
+  buildMotherChildRayDefs,
+  buildSynapseRayDefs,
+  assembleRenderedRays,
+} from './cosmicRayEngine';
+

@@ -70,7 +70,7 @@ export interface CosmicCard {
   isVIP: boolean;            // Latest manual user input flag
   isFadingOut?: boolean;     // True when departing stage
   isTemporary?: boolean;     // Volatile temporary card flag
-  origin: 'manual' | 'bugu' | 'local' | 'atproto';
+  origin: 'manual' | 'bugu' | 'local' | 'atproto' | string;
   replyCount?: number;
   repostCount?: number;
   likeCount?: number;
@@ -128,4 +128,29 @@ export interface CommandDef {
   namespace?: string;
   isPrimary?: boolean;
   subCommand?: string;
+}
+
+export interface PromotionStrategySpec {
+  icon: 'default_book' | 'anchor_comment' | string;
+  tooltip: string;
+  hasCommentPrompt: boolean;
+  placeholder: string;
+  bindMotherCard: boolean;
+}
+
+export interface CardTypeSpec {
+  type: string;
+  uiEntry?: string;
+}
+
+export interface ModuleManifest {
+  name: string;
+  version?: string;
+  description?: string;
+  themeColor?: string;
+  beaconType?: 'radar' | 'butterfly' | 'none' | string;
+  promotionStrategy?: PromotionStrategySpec;
+  cardTypes?: CardTypeSpec[];
+  commands?: CommandDef[];
+  isExternal?: boolean;
 }

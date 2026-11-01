@@ -247,3 +247,71 @@ export function calculateSpatialPlacement(
 
   return { x: finalX, y: finalY, rotation, z };
 }
+
+export interface ScatteredSpringTarget {
+  x: number;
+  y: number;
+  rotation: number;
+  opacity: number;
+  scale: number;
+  blur: number;
+  saturation: number;
+  textGray: number;
+  textOpacity: number;
+  rotX: number;
+  rotY: number;
+  z3d: number;
+}
+
+/**
+ * Computes target values for 3D scattered spring physics animation.
+ * Evaluates edge fade, edge blur, depth blur, depth opacity, perspective scale, and text contrast.
+ */
+export function computeScatteredSpringTarget(
+  targetX: number,
+  targetY: number,
+  targetRot: number,
+  targetZ: number,
+  scrollOffsetY: number,
+  isFresh: boolean,
+  isConstellationDimmed: boolean,
+  hasAnyFocused: boolean,
+  globalTilt: { rx: number; ry: number }
+): ScatteredSpringTarget {
+  const viewY = targetY - scrollOffsetY;
+  const dist = Math.sqrt(targetX * targetX + viewY * viewY);
+  const edgeFade = Math.max(0, Math.min(1, 1 - (dist - 440) / 240));
+  const edgeBlur = Math.max(0, Math.min(5, (dist - 400) * 0.025));
+
+  const zNorm = Math.max(0, Math.min(1, targetZ / 100));
+  const uniformScale = Number((0.55 + 0.70 * Math.pow(1 - zNorm, 1.2)).toFixed(3));
+  const z3dVal = (100 - targetZ) * 2.4 - 120;
+
+  const depthBlur = zNorm > 0.60 ? (zNorm - 0.60) * 6 : 0;
+  const baseBlur = Math.min(4.5, depthBlur + edgeBlur);
+
+  const depthOpacity = 0.96 - (zNorm * 0.32);
+  const baseOpacity = depthOpacity * (isFresh ? Math.max(0.85, edgeFade) : edgeFade);
+  const baseSat = Math.max(0.42, 1.0 - (zNorm * 0.5));
+
+  const targetGray = Math.round(34 + zNorm * 111);
+  const targetTextOp = Number((0.98 - zNorm * 0.16).toFixed(2));
+
+  const finalOpacity = isConstellationDimmed ? 0.35 : (hasAnyFocused ? baseOpacity * 0.35 : baseOpacity);
+
+  return {
+    x: targetX,
+    y: targetY,
+    rotation: targetRot,
+    opacity: finalOpacity,
+    scale: uniformScale,
+    blur: hasAnyFocused ? baseBlur + 10 : baseBlur,
+    saturation: hasAnyFocused ? baseSat * 0.5 : baseSat,
+    textGray: targetGray,
+    textOpacity: targetTextOp,
+    rotX: (globalTilt?.rx || 0) * 0.08,
+    rotY: (globalTilt?.ry || 0) * 0.08,
+    z3d: z3dVal,
+  };
+}
+

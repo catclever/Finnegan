@@ -18,7 +18,6 @@ import (
 	"Finnegan/core/watcher"
 
 	"github.com/oklog/ulid/v2"
-	"gopkg.in/yaml.v3"
 )
 
 func sanitizeSlug(s string) string {
@@ -55,25 +54,6 @@ func StripAndExtractHashtags(text string) (string, []string) {
 func ExtractHashtags(text string) []string {
 	_, tags := keywords.StripAndExtractHashtags(text)
 	return tags
-}
-
-func formatKeywordsYAML(profile keywords.KeywordsProfile) string {
-	clean := keywords.CleanProfile(profile)
-	if len(clean) == 0 {
-		return ""
-	}
-	kwBytes, err := yaml.Marshal(clean)
-	if err != nil {
-		return ""
-	}
-	var sb strings.Builder
-	sb.WriteString("keywords:\n")
-	for _, line := range strings.Split(strings.TrimSpace(string(kwBytes)), "\n") {
-		if strings.TrimSpace(line) != "" {
-			sb.WriteString("  " + line + "\n")
-		}
-	}
-	return sb.String()
 }
 
 func (a *App) CaptureThought(text string) (string, error) {
@@ -131,7 +111,7 @@ func (a *App) CaptureThought(text string) (string, error) {
 	sb.WriteString(fmt.Sprintf("created: %s\n", now.Format(time.RFC3339)))
 	sb.WriteString(fmt.Sprintf("updated: %s\n", now.Format(time.RFC3339)))
 	sb.WriteString("source: local\n")
-	if kwYAML := formatKeywordsYAML(kwProfile); kwYAML != "" {
+	if kwYAML := keywords.FormatKeywordsYAML(kwProfile); kwYAML != "" {
 		sb.WriteString(kwYAML)
 	}
 	sb.WriteString("publish: false\n")
@@ -421,7 +401,7 @@ func (a *App) CaptureThoughtWithImages(text string, images []ImagePayload) (stri
 	sb.WriteString(fmt.Sprintf("created: %s\n", now.Format(time.RFC3339)))
 	sb.WriteString(fmt.Sprintf("updated: %s\n", now.Format(time.RFC3339)))
 	sb.WriteString("source: local\n")
-	if kwYAML := formatKeywordsYAML(kwProfile); kwYAML != "" {
+	if kwYAML := keywords.FormatKeywordsYAML(kwProfile); kwYAML != "" {
 		sb.WriteString(kwYAML)
 	}
 	sb.WriteString("publish: false\n")

@@ -1,17 +1,20 @@
 <!--
   ======================================================================================
   FINNEGAN COSMIC STAGE - CardAuraGlow Component
-  Unified Border Beam Engine:
-  - Strict outer-edge alignment matching Aura (inset: 1.5px, no outer gap)
-  - Ink wash (飞白) exclusively features card-surface scanning light sweep
-  - Bugu & Bluesky strictly maintain clean single-segment trailing beams with zero card bleed
+  Decoupled Universal Border Beam Presenter:
+  - Consumes resolved preset from BorderBeamRegistry (zero hardcoded module styles)
+  - Pure presenter: Single .beam-container + .beam-spinner + .beam-mask
+  - 1.5px outer-boundary alignment matching Aura (zero outer gap)
   ======================================================================================
 -->
 <script lang="ts">
+  import { resolveCardBorderBeam } from '../../lib/borderBeamRegistry';
+
   export let card: any;
   export let hasAura: boolean = false;
   export let auraStage: number = 0;
   export let conicGradient: string = '';
+  // Legacy props kept for backwards compatibility with UICard caller
   export let isBuguEcho: boolean = false;
   export let isBskyEcho: boolean = false;
   export let isFocused: boolean = false;
@@ -19,96 +22,21 @@
   export let isTemporary: boolean = false;
   export let isStopped: boolean = false;
 
-  interface BeamConfig {
-    type: 'aura' | 'bsky' | 'bugu' | 'ink';
-    gradient: string;
-    duration: string;
-    delay: number;
-    surfaceScan: boolean;
-  }
+  $: void isBuguEcho;
+  $: void isBskyEcho;
 
-  $: animDelay = -((card?.id ? card.id.charCodeAt(card.id.length - 1) : 0) % 5);
-  $: hash = card?.id ? card.id.split('').reduce((a: number, b: string) => a + b.charCodeAt(0), 0) : 0;
-  $: auraDelay = -((hash % 40) / 10);
+  $: activeBeam = resolveCardBorderBeam(card, {
+    hasAura,
+    auraStage,
+    conicGradient,
+    isFocused,
+    isRecentVIP,
+    isTemporary,
+  });
 
-  // 1. Single-segment Ice Blue tail for Bluesky (冰蓝单段彗尾: 290°~360°)
-  const BSKY_GRADIENT = `conic-gradient(
-    from 0deg,
-    transparent 0deg,
-    transparent 290deg,
-    rgba(56, 189, 248, 0) 295deg,
-    rgba(56, 189, 248, 0.25) 325deg,
-    rgba(125, 211, 252, 0.75) 350deg,
-    rgba(224, 242, 254, 1) 360deg
-  )`;
-
-  // 2. Single-segment Amber Gold tail for Bugu (琥珀金单段彗尾: 290°~360°)
-  const BUGU_GRADIENT = `conic-gradient(
-    from 0deg,
-    transparent 0deg,
-    transparent 290deg,
-    rgba(245, 158, 11, 0) 295deg,
-    rgba(245, 158, 11, 0.25) 325deg,
-    rgba(251, 191, 36, 0.75) 350deg,
-    rgba(254, 240, 138, 1) 360deg
-  )`;
-
-  // 3. Double-segment Ink Wash for recent VIP (水墨双段飞白: 135°~185° + 220°~355°)
-  const INK_GRADIENT = `conic-gradient(
-    from 0deg,
-    transparent 0deg,
-    transparent 135deg,
-    rgba(148, 163, 184, 0.20) 155deg,
-    rgba(100, 116, 139, 0.45) 175deg,
-    transparent 185deg,
-    transparent 220deg,
-    rgba(148, 163, 184, 0.22) 245deg,
-    rgba(100, 116, 139, 0.52) 280deg,
-    rgba(71, 85, 105, 0.72) 315deg,
-    rgba(71, 85, 105, 0.88) 345deg,
-    rgba(51, 65, 85, 0.88) 355deg,
-    transparent 360deg
-  )`;
-
-  $: activeBeam = ((): BeamConfig | null => {
-    if (hasAura && auraStage < 3) {
-      return {
-        type: 'aura',
-        gradient: conicGradient,
-        duration: auraStage === 2 ? '9s' : '4s',
-        delay: auraDelay,
-        surfaceScan: false
-      };
-    }
-    if (isBskyEcho && !isFocused) {
-      return {
-        type: 'bsky',
-        gradient: BSKY_GRADIENT,
-        duration: '4.6s',
-        delay: animDelay,
-        surfaceScan: false
-      };
-    }
-    if (isBuguEcho && !isFocused) {
-      return {
-        type: 'bugu',
-        gradient: BUGU_GRADIENT,
-        duration: '4.6s',
-        delay: animDelay,
-        surfaceScan: false
-      };
-    }
-    if (isRecentVIP && !isFocused) {
-      return {
-        type: 'ink',
-        gradient: INK_GRADIENT,
-        duration: '11.4s',
-        delay: animDelay,
-        surfaceScan: true
-      };
-    }
-    return null;
-  })();
+  $: maskBg = activeBeam
+    ? (isTemporary ? (activeBeam.maskTemporaryBackground || activeBeam.maskBackground || '') : (activeBeam.maskBackground || ''))
+    : '';
 </script>
 
 {#if activeBeam}
@@ -128,10 +56,7 @@
     class:surface-scan={activeBeam.surfaceScan}
     class:temporary={isTemporary}
     class:focused={isFocused}
-    class:type-bsky={activeBeam.type === 'bsky'}
-    class:type-bugu={activeBeam.type === 'bugu'}
-    class:type-aura={activeBeam.type === 'aura'}
-    class:type-ink={activeBeam.type === 'ink'}
+    style="{maskBg ? `background: ${maskBg};` : ''}"
   ></div>
 {/if}
 
@@ -170,7 +95,7 @@
     }
   }
 
-  /* 统一卡片内遮罩层：位于最外边界内侧 1.5px，对齐 Aura，留出 1.5px 纯净外缘光轨 */
+  /* 统一内遮罩层：位于最外边界内侧 1.5px，对齐 Aura，留出 1.5px 纯净外缘光轨 */
   .beam-mask {
     position: absolute;
     inset: 1.5px;
@@ -181,31 +106,5 @@
 
   .beam-mask.focused {
     border-radius: 26.5px;
-  }
-
-  /* 1. 水墨飞白 (Ink) 专属：微透漫射，独享卡面水墨流光扫掠质感 */
-  .beam-mask.surface-scan {
-    background: rgba(255, 255, 255, 0.91);
-  }
-
-  .beam-mask.surface-scan.temporary {
-    background: linear-gradient(135deg, rgba(226, 236, 248, 0.88) 0%, rgba(210, 222, 238, 0.80) 100%);
-  }
-
-  /* 2. 布谷、Bluesky 与 Aura：不透明底色彻底隔断，严禁光线漏入卡面，仅保留最外边缘单段彗尾 */
-  .beam-mask.type-bsky {
-    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-  }
-
-  .beam-mask.type-bugu {
-    background: linear-gradient(135deg, #eef5fc 0%, #e1ebf7 100%);
-  }
-
-  .beam-mask.type-aura {
-    background: rgba(255, 255, 255, 0.98);
-  }
-
-  .beam-mask.type-aura.temporary {
-    background: linear-gradient(135deg, #e2ecf8 0%, #d2def0 100%);
   }
 </style>

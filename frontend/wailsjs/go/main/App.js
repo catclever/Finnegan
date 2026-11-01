@@ -34,6 +34,10 @@ export function EvictTempCard(arg1) {
   return window['go']['main']['App']['EvictTempCard'](arg1);
 }
 
+export function ExecuteModuleAction(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ExecuteModuleAction'](arg1, arg2, arg3);
+}
+
 export function ExecuteModuleCommand(arg1, arg2) {
   return window['go']['main']['App']['ExecuteModuleCommand'](arg1, arg2);
 }
@@ -48,6 +52,10 @@ export function GetAvailableTags() {
 
 export function GetKeywordEngine() {
   return window['go']['main']['App']['GetKeywordEngine']();
+}
+
+export function GetModuleManifests() {
+  return window['go']['main']['App']['GetModuleManifests']();
 }
 
 export function GetNote(arg1) {

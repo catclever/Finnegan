@@ -11,9 +11,12 @@
   import type { CosmicCard } from '../../types/card';
   import type { BuguBeacon } from '../../modules/bugu/types';
   import BuguRadarBeacon from '../../modules/bugu/BuguRadarBeacon.svelte';
-  import { computeAnimatedBeamPath, type BeamCoordinates } from '../../lib/beamMath';
-  import { cardHasTag, cardHasKeyword, getCardTags } from '../../lib/tagNetwork';
-  import { isClusteredChildCard } from '../../lib/stageCoords';
+  import {
+    buildMotherChildRayDefs,
+    buildSynapseRayDefs,
+    assembleRenderedRays,
+    type ActiveRayInstance,
+  } from '../../lib/cosmicRayEngine';
 
   export let cards: CosmicCard[] = [];
   export let beacon: BuguBeacon | null = null;
@@ -33,99 +36,29 @@
     ? cards.find(c => c.id === activeBeacon.sourceCardId && !c.isFadingOut) 
     : null;
 
-  interface CosmicRay {
-    id: string;
-    type: 'mother_child' | 'synapse';
-    origin: string; // 'bugu' | 'atproto' | 'synapse'
-    source: CosmicCard;
-    target: CosmicCard;
-    badgeText?: string;
-    badgeTitle?: string;
-    coords: BeamCoordinates;
-    staggerIndex: number;
-    isPermanent: boolean;
-  }
-
   // 1. Mother-Child Rays (Bugu & Bluesky)
-  $: motherChildRayDefs = (() => {
-    const list: Array<{
-      id: string;
-      source: CosmicCard;
-      target: CosmicCard;
-      origin: string;
-      matchedAnchor?: string;
-      echoReason?: string;
-    }> = [];
-
-    for (const child of cards) {
-      if ((child.origin === 'bugu' || child.origin === 'atproto') && child.echoOf && !child.isFadingOut) {
-        if (isClusteredChildCard(child, cards)) continue;
-        const mother = cards.find(c => c.id === child.echoOf && !c.isFadingOut);
-        if (mother) {
-          list.push({
-            id: `mc:${mother.id}->${child.id}`,
-            source: mother,
-            target: child,
-            origin: child.origin,
-            matchedAnchor: child.matchedAnchor,
-            echoReason: child.echoReason,
-          });
-        }
-      }
-    }
-    return list;
-  })();
+  $: motherChildRayDefs = buildMotherChildRayDefs(cards);
 
   // 2. Synapse Rays (Hovered Tag Association Network)
-  $: synapseRayDefs = (() => {
-    if (focusedCardId !== null || !hoveredCardId) return [];
+  $: synapseRayDefs = buildSynapseRayDefs(cards, hoveredCardId, focusedCardId);
 
-    const hoveredCard = cards.find(c => c.id === hoveredCardId && !c.isFadingOut);
-    if (!hoveredCard) return [];
+  // Periodic ambient pulse scheduler for Mother-Child rays: 10s ~ 30s random single-pulse interval
+  const MIN_AMBIENT_INTERVAL_MS = 10000;
+  const MAX_AMBIENT_INTERVAL_MS = 30000;
 
-    const hoveredTags = getCardTags(hoveredCard);
-    if (hoveredTags.length === 0) return [];
-
-    const list: Array<{
-      id: string;
-      source: CosmicCard;
-      target: CosmicCard;
-      tag: string;
-    }> = [];
-
-    const seen = new Set<string>();
-    for (const other of cards) {
-      if (other.id !== hoveredCard.id && !other.isFadingOut) {
-        const sharedTag = hoveredTags.find(tag => cardHasTag(other, tag) || cardHasKeyword(other, tag));
-        if (sharedTag) {
-          const key = [hoveredCard.id, other.id].sort().join('--');
-          if (!seen.has(key)) {
-            seen.add(key);
-            list.push({
-              id: `syn:${key}`,
-              source: hoveredCard,
-              target: other,
-              tag: sharedTag,
-            });
-          }
-        }
-      }
-    }
-    return list;
-  })();
-
-  // Periodic ambient pulse scheduler for Mother-Child rays
-  const SINGLE_PULSE_MS = 4800;
-  const MIN_NEXT_DELAY_MS = SINGLE_PULSE_MS;
-  const RANDOM_ADDITIONAL_MS = 2400;
-
-  let activeAmbientRayIds: string[] = [];
+  let activeInstance: ActiveRayInstance | null = null;
+  let nextInstanceId = 0;
   let ambientSpawnTimer: any = null;
   let lastSpawnedId = '';
+
+  function getRandomAmbientDelay(): number {
+    return MIN_AMBIENT_INTERVAL_MS + Math.floor(Math.random() * (MAX_AMBIENT_INTERVAL_MS - MIN_AMBIENT_INTERVAL_MS));
+  }
 
   function spawnNextAmbientRay() {
     if (motherChildRayDefs.length === 0) {
       ambientSpawnTimer = null;
+      activeInstance = null;
       return;
     }
 
@@ -134,27 +67,46 @@
       ? candidates[Math.floor(Math.random() * candidates.length)]
       : motherChildRayDefs[0];
 
+    const id = ++nextInstanceId;
     lastSpawnedId = selected.id;
-    activeAmbientRayIds = [selected.id];
 
-    const delay = MIN_NEXT_DELAY_MS + Math.floor(Math.random() * RANDOM_ADDITIONAL_MS);
+    // Single-pulse strictly enforced: only 1 ambient ray active at a time
+    activeInstance = {
+      instanceId: id,
+      rayId: selected.id,
+      sourceId: selected.source.id,
+      targetId: selected.target.id,
+    };
+
+    // Schedule next pulse event at random 10s ~ 30s interval
+    const nextDelay = getRandomAmbientDelay();
     ambientSpawnTimer = setTimeout(() => {
       ambientSpawnTimer = null;
       spawnNextAmbientRay();
-    }, delay);
+    }, nextDelay);
+  }
+
+  function handleRayFinished(instanceId: number) {
+    if (activeInstance && activeInstance.instanceId === instanceId) {
+      activeInstance = null;
+    }
   }
 
   $: {
     if (motherChildRayDefs.length > 0) {
-      if (!ambientSpawnTimer && activeAmbientRayIds.length === 0) {
-        spawnNextAmbientRay();
+      if (!ambientSpawnTimer && activeInstance === null) {
+        const initialDelay = getRandomAmbientDelay();
+        ambientSpawnTimer = setTimeout(() => {
+          ambientSpawnTimer = null;
+          spawnNextAmbientRay();
+        }, initialDelay);
       }
     } else {
       if (ambientSpawnTimer) {
         clearTimeout(ambientSpawnTimer);
         ambientSpawnTimer = null;
       }
-      activeAmbientRayIds = [];
+      activeInstance = null;
     }
   }
 
@@ -163,56 +115,14 @@
   });
 
   // Consolidated Rendered Rays with Staggered Cascading
-  $: renderedRays = (() => {
-    // Hide all rays during full modal focus
-    if (focusedCardId !== null) return [];
-
-    const rays: CosmicRay[] = [];
-    let cascadeIndex = 0;
-
-    // A. Mother-Child Rays
-    for (const def of motherChildRayDefs) {
-      const isMotherHovered = hoveredMotherId !== null && (hoveredMotherId === def.source.id || hoveredMotherId === def.target.id);
-      const isScanning = activeBeacon && activeBeacon.sourceCardId === def.source.id && activeBeacon.status === 'scanning';
-      const isAmbientActive = activeAmbientRayIds.includes(def.id);
-
-      // Render if hovered, during active scanning, or triggered by ambient pulse
-      if (isMotherHovered || isScanning || isAmbientActive) {
-        const coords = computeAnimatedBeamPath(def.source, def.target);
-        rays.push({
-          id: def.id,
-          type: 'mother_child',
-          origin: def.origin,
-          source: def.source,
-          target: def.target,
-          badgeText: def.matchedAnchor,
-          badgeTitle: def.echoReason || def.matchedAnchor,
-          coords,
-          staggerIndex: cascadeIndex++,
-          isPermanent: Boolean(isMotherHovered),
-        });
-      }
-    }
-
-    // B. Synapse Rays (Cascading Ice Blue)
-    for (const syn of synapseRayDefs) {
-      const coords = computeAnimatedBeamPath(syn.source, syn.target);
-      rays.push({
-        id: syn.id,
-        type: 'synapse',
-        origin: 'atproto', // Synapse rays use ice blue theme
-        source: syn.source,
-        target: syn.target,
-        badgeText: syn.tag,
-        badgeTitle: `关联标签: ${syn.tag}`,
-        coords,
-        staggerIndex: cascadeIndex++,
-        isPermanent: true, // While hovered, maintain steady connection
-      });
-    }
-
-    return rays;
-  })();
+  $: renderedRays = assembleRenderedRays({
+    cards,
+    focusedCardId,
+    hoveredCardId,
+    motherChildRayDefs,
+    synapseRayDefs,
+    activeInstance,
+  });
 </script>
 
 <div class="cosmic-ray-network">
@@ -310,6 +220,11 @@
             class="beam-pulse" 
             class:permanent-pulse={ray.isPermanent}
             style="animation-delay: {ray.staggerIndex * 90}ms;"
+            on:animationend={() => {
+              if (!ray.isPermanent && ray.instanceId) {
+                handleRayFinished(ray.instanceId);
+              }
+            }}
           />
 
           <!-- Target Node Aperture Bloom (Erupts upon photon arrival) -->
@@ -376,177 +291,384 @@
     pointer-events: none;
   }
 
-  /* Amber Aperture Rings & Dots (Bugu) */
+  /* Amber Aperture Rings & Dots (Bugu) - Hardware RadialGradient, Zero CPU Drop-Shadow */
   .glow-ring {
     transform-origin: 0 0;
-    filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.95)) drop-shadow(0 0 16px rgba(217, 119, 6, 0.6));
   }
 
   .core-dot {
     transform-origin: 0 0;
-    filter: drop-shadow(0 0 3px rgba(245, 158, 11, 1));
   }
 
   /* Ice Blue Aperture Rings & Dots (Bluesky & Synapse) */
   .is-bsky .glow-ring,
   .is-synapse .glow-ring {
-    filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.95)) drop-shadow(0 0 16px rgba(14, 165, 233, 0.6));
+    transform-origin: 0 0;
   }
 
   .is-bsky .core-dot,
   .is-synapse .core-dot {
-    filter: drop-shadow(0 0 3px #38bdf8);
+    transform-origin: 0 0;
   }
 
   /* Beam Track: Delicate Ethereal Fiber */
   .beam-track {
     fill: none;
-    stroke: #f59e0b;
-    stroke-width: 0.9px;
+    stroke: rgba(245, 158, 11, 0.45);
+    stroke-width: 1px;
     stroke-linecap: round;
-    filter: drop-shadow(0 0 2px rgba(245, 158, 11, 0.35));
-    animation: cosmic-track-decay 4.8s ease-in-out forwards;
+    animation: cosmic-track-decay 14.4s ease-in-out forwards;
   }
 
   .is-bsky .beam-track,
   .is-synapse .beam-track {
-    stroke: #38bdf8;
-    filter: drop-shadow(0 0 2px rgba(56, 189, 248, 0.35));
+    stroke: rgba(56, 189, 248, 0.45);
   }
 
-  /* Traveling Photon Pulse */
+  /* Traveling Photon Pulse: Brilliant GPU Laser Filament */
   .beam-pulse {
     fill: none;
-    stroke: #f59e0b;
-    stroke-width: 1.6px;
+    stroke: #fbbf24;
+    stroke-width: 1.8px;
     stroke-linecap: round;
     stroke-dasharray: 24 100;
-    filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.95)) drop-shadow(0 0 10px rgba(217, 119, 6, 0.5));
-    animation: cosmic-beam-pulse 4.8s ease-in-out forwards;
+    animation: cosmic-beam-pulse 14.4s ease-in-out forwards;
   }
 
   .is-bsky .beam-pulse,
   .is-synapse .beam-pulse {
     stroke: #7dd3fc;
-    filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.95)) drop-shadow(0 0 10px rgba(14, 165, 233, 0.5));
   }
 
   /* Permanent Hovered States */
   .permanent-track {
     animation: none !important;
-    opacity: 0.8 !important;
+    opacity: 0.35 !important;
   }
 
   .permanent-pulse {
-    animation: cosmic-beam-pulse-loop 2.4s ease-in-out infinite !important;
+    animation: cosmic-beam-pulse-continuous 1.8s linear infinite !important;
     opacity: 0.95 !important;
   }
 
   .permanent-bloom {
     animation: none !important;
-    opacity: 0.9 !important;
-    transform: scale(1) !important;
+    opacity: 0.92 !important;
+    transform: scale(1.25) !important;
   }
 
   .source-bloom {
-    animation: cosmic-source-bloom 4.8s ease-in-out forwards;
+    animation: cosmic-source-bloom 14.4s ease-in-out forwards;
   }
 
   .target-bloom {
-    animation: cosmic-target-bloom 4.8s ease-in-out forwards;
+    animation: cosmic-target-bloom 14.4s ease-in-out forwards;
   }
 
-  /* Keyframe Animations */
+  /* Keyframe Animations (Synchronized 14.4s 3-Cycle Physical Clock) */
   @keyframes cosmic-track-decay {
-    0% {
-      opacity: 0;
-    }
-    10% {
-      opacity: 0.85;
-    }
-    60% {
-      opacity: 0.7;
-    }
-    100% {
-      opacity: 0;
-    }
+    /* Cycle 1 (0 ~ 4.8s): Base Track Opacity 0.22 */
+    0% { opacity: 0; }
+    3% { opacity: 0.22; }
+    30% { opacity: 0.22; }
+    33.3% { opacity: 0.22; }
+
+    /* Cycle 2 (4.8s ~ 9.6s): Base Track Opacity 0.12 */
+    33.4% { opacity: 0.12; }
+    63% { opacity: 0.12; }
+    66.6% { opacity: 0.12; }
+
+    /* Cycle 3 (9.6s ~ 14.4s): Base Track Opacity 0.04 */
+    66.7% { opacity: 0.04; }
+    96% { opacity: 0.04; }
+    100% { opacity: 0; }
   }
 
   @keyframes cosmic-beam-pulse {
-    0% {
-      stroke-dashoffset: 100;
+    /* Cycle 1 (0 ~ 4.8s): Pulse Peak Opacity 0.92 */
+    0%, 4% {
+      stroke-dashoffset: 24;
       opacity: 0;
     }
-    10% {
-      opacity: 0.95;
+    5% {
+      stroke-dashoffset: 24;
+      opacity: 0.92;
     }
-    80% {
-      stroke-dashoffset: -24;
-      opacity: 0.95;
+    7% {
+      stroke-dashoffset: 10;
+      opacity: 0.92;
+    }
+    22% {
+      stroke-dashoffset: -85;
+      opacity: 0.92;
+    }
+    25% {
+      stroke-dashoffset: -100;
+      opacity: 0.92;
+    }
+    26.5% {
+      stroke-dashoffset: -105;
+      opacity: 0;
+    }
+    33.3% {
+      stroke-dashoffset: -105;
+      opacity: 0;
+    }
+
+    /* Cycle 2 (4.8s ~ 9.6s): Pulse Peak Opacity 0.58 */
+    33.4%, 37.3% {
+      stroke-dashoffset: 24;
+      opacity: 0;
+    }
+    38.3% {
+      stroke-dashoffset: 24;
+      opacity: 0.58;
+    }
+    40.3% {
+      stroke-dashoffset: 10;
+      opacity: 0.58;
+    }
+    55.3% {
+      stroke-dashoffset: -85;
+      opacity: 0.58;
+    }
+    58.3% {
+      stroke-dashoffset: -100;
+      opacity: 0.58;
+    }
+    59.8% {
+      stroke-dashoffset: -105;
+      opacity: 0;
+    }
+    66.6% {
+      stroke-dashoffset: -105;
+      opacity: 0;
+    }
+
+    /* Cycle 3 (9.6s ~ 14.4s): Pulse Peak Opacity 0.28 */
+    66.7%, 70.7% {
+      stroke-dashoffset: 24;
+      opacity: 0;
+    }
+    71.7% {
+      stroke-dashoffset: 24;
+      opacity: 0.28;
+    }
+    73.7% {
+      stroke-dashoffset: 10;
+      opacity: 0.28;
+    }
+    88.7% {
+      stroke-dashoffset: -85;
+      opacity: 0.28;
+    }
+    91.7% {
+      stroke-dashoffset: -100;
+      opacity: 0.28;
+    }
+    93.2% {
+      stroke-dashoffset: -105;
+      opacity: 0;
     }
     100% {
-      stroke-dashoffset: -24;
+      stroke-dashoffset: -105;
       opacity: 0;
     }
   }
 
-  @keyframes cosmic-beam-pulse-loop {
+  /* Continuous seamless linear loop when permanently hovered */
+  @keyframes cosmic-beam-pulse-continuous {
     0% {
-      stroke-dashoffset: 100;
-      opacity: 0;
-    }
-    15% {
-      opacity: 0.95;
-    }
-    85% {
-      stroke-dashoffset: -24;
+      stroke-dashoffset: 24;
       opacity: 0.95;
     }
     100% {
-      stroke-dashoffset: -24;
-      opacity: 0;
+      stroke-dashoffset: -100;
+      opacity: 0.95;
     }
   }
 
   @keyframes cosmic-source-bloom {
+    /* Cycle 1 (0 ~ 4.8s): Charges up, PEAKS at launch (4% ~ 7%), fades as pulse moves away */
     0% {
       opacity: 0;
       transform: scale(0.35);
     }
-    8% {
-      opacity: 0.95;
+    4% {
+      opacity: 0.92;
       transform: scale(1.25);
     }
-    20% {
-      opacity: 0.6;
-      transform: scale(0.9);
+    7% {
+      opacity: 0.92;
+      transform: scale(1.15);
     }
-    45% {
+    11% {
+      opacity: 0.65;
+      transform: scale(0.95);
+    }
+    15% {
+      opacity: 0.30;
+      transform: scale(0.70);
+    }
+    18% {
       opacity: 0;
-      transform: scale(0.4);
+      transform: scale(0.40);
+    }
+    33.3% {
+      opacity: 0;
+      transform: scale(0.40);
+    }
+
+    /* Cycle 2 (4.8s ~ 9.6s) */
+    33.4% {
+      opacity: 0;
+      transform: scale(0.35);
+    }
+    37.3% {
+      opacity: 0.58;
+      transform: scale(1.25);
+    }
+    40.3% {
+      opacity: 0.58;
+      transform: scale(1.15);
+    }
+    44.3% {
+      opacity: 0.40;
+      transform: scale(0.95);
+    }
+    48.3% {
+      opacity: 0.18;
+      transform: scale(0.70);
+    }
+    51.3% {
+      opacity: 0;
+      transform: scale(0.40);
+    }
+    66.6% {
+      opacity: 0;
+      transform: scale(0.40);
+    }
+
+    /* Cycle 3 (9.6s ~ 14.4s) */
+    66.7% {
+      opacity: 0;
+      transform: scale(0.35);
+    }
+    70.7% {
+      opacity: 0.28;
+      transform: scale(1.25);
+    }
+    73.7% {
+      opacity: 0.28;
+      transform: scale(1.15);
+    }
+    77.7% {
+      opacity: 0.18;
+      transform: scale(0.95);
+    }
+    81.7% {
+      opacity: 0.08;
+      transform: scale(0.70);
+    }
+    84.7% {
+      opacity: 0;
+      transform: scale(0.40);
     }
     100% {
       opacity: 0;
-      transform: scale(0.4);
+      transform: scale(0.40);
     }
   }
 
   @keyframes cosmic-target-bloom {
-    0%, 35% {
+    /* Cycle 1 (0 ~ 4.8s): Warms up as pulse approaches, PEAKS upon arrival (25%), fades till 33.3% */
+    0%, 15% {
       opacity: 0;
-      transform: scale(0.35);
+      transform: scale(0.40);
     }
-    60% {
-      opacity: 0.95;
-      transform: scale(1.3);
+    18% {
+      opacity: 0.20;
+      transform: scale(0.70);
     }
-    80% {
-      opacity: 0.6;
-      transform: scale(0.9);
+    22% {
+      opacity: 0.65;
+      transform: scale(0.95);
+    }
+    25% {
+      opacity: 0.92;
+      transform: scale(1.25);
+    }
+    27.5% {
+      opacity: 0.68;
+      transform: scale(1.10);
+    }
+    31% {
+      opacity: 0.18;
+      transform: scale(0.75);
+    }
+    33.3% {
+      opacity: 0;
+      transform: scale(0.45);
+    }
+
+    /* Cycle 2 (4.8s ~ 9.6s): Warms up, PEAKS upon arrival (58.3%), fades till 66.6% */
+    33.4%, 48.3% {
+      opacity: 0;
+      transform: scale(0.40);
+    }
+    51.3% {
+      opacity: 0.12;
+      transform: scale(0.70);
+    }
+    55.3% {
+      opacity: 0.40;
+      transform: scale(0.95);
+    }
+    58.3% {
+      opacity: 0.58;
+      transform: scale(1.25);
+    }
+    60.8% {
+      opacity: 0.42;
+      transform: scale(1.10);
+    }
+    64.3% {
+      opacity: 0.12;
+      transform: scale(0.75);
+    }
+    66.6% {
+      opacity: 0;
+      transform: scale(0.45);
+    }
+
+    /* Cycle 3 (9.6s ~ 14.4s): Warms up, PEAKS upon arrival (91.7%), fades till 100% */
+    66.7%, 81.7% {
+      opacity: 0;
+      transform: scale(0.40);
+    }
+    84.7% {
+      opacity: 0.06;
+      transform: scale(0.70);
+    }
+    88.7% {
+      opacity: 0.18;
+      transform: scale(0.95);
+    }
+    91.7% {
+      opacity: 0.28;
+      transform: scale(1.25);
+    }
+    94.2% {
+      opacity: 0.18;
+      transform: scale(1.10);
+    }
+    97.7% {
+      opacity: 0.05;
+      transform: scale(0.75);
     }
     100% {
       opacity: 0;
-      transform: scale(0.4);
+      transform: scale(0.45);
     }
   }
 

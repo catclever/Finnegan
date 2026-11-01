@@ -7,24 +7,41 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	goRuntime "runtime"
+	"sort"
 	"strings"
 
 	"Finnegan/core/module"
 	"Finnegan/core/search"
 	"Finnegan/core/watcher"
-	"Finnegan/modules/bugu/api"
-	"Finnegan/modules/bugu/models"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type WatcherStorage struct {
-	ctx context.Context
+	ctx        context.Context
+	onChange   func(id, data string)
+	onDelete   func(id string)
+	onConflict func(id string, paths []string)
+}
+
+func (w *WatcherStorage) SetOnChange(fn func(id, data string)) {
+	w.onChange = fn
+}
+
+func (w *WatcherStorage) SetOnDelete(fn func(id string)) {
+	w.onDelete = fn
+}
+
+func (w *WatcherStorage) SetOnConflict(fn func(id string, paths []string)) {
+	w.onConflict = fn
 }
 
 func (w *WatcherStorage) SaveNote(id, data string) error {
-	if w.ctx != nil {
+	if w.onChange != nil {
+		w.onChange(id, data)
+	} else if w.ctx != nil {
 		runtime.EventsEmit(w.ctx, "notes:changed", map[string]interface{}{
 			"docId": id,
 			"op":    "upsert",
@@ -34,7 +51,9 @@ func (w *WatcherStorage) SaveNote(id, data string) error {
 }
 
 func (w *WatcherStorage) DeleteNote(id string) error {
-	if w.ctx != nil {
+	if w.onDelete != nil {
+		w.onDelete(id)
+	} else if w.ctx != nil {
 		runtime.EventsEmit(w.ctx, "notes:changed", map[string]interface{}{
 			"docId": id,
 			"op":    "remove",
@@ -48,7 +67,9 @@ func (w *WatcherStorage) GetNote(id string) (string, error) {
 }
 
 func (w *WatcherStorage) EmitConflict(id string, paths []string) {
-	if w.ctx != nil {
+	if w.onConflict != nil {
+		w.onConflict(id, paths)
+	} else if w.ctx != nil {
 		runtime.EventsEmit(w.ctx, "card:id_conflict", map[string]interface{}{
 			"id":    id,
 			"paths": paths,
@@ -56,21 +77,55 @@ func (w *WatcherStorage) EmitConflict(id string, paths []string) {
 	}
 }
 
-func (a *App) GetRadarTargets() []models.Target {
-	if a.buguModule == nil {
-		return []models.Target{}
+func (a *App) GetRadarTargets() []interface{} {
+	m, ok := module.GetRegistry()["bugu"]
+	if !ok || m == nil {
+		return []interface{}{}
 	}
-	return a.buguModule.GetRadarTargets()
+	rv := reflect.ValueOf(m)
+	method := rv.MethodByName("GetRadarTargets")
+	if !method.IsValid() {
+		return []interface{}{}
+	}
+	out := method.Call(nil)
+	if len(out) == 0 || !out[0].IsValid() {
+		return []interface{}{}
+	}
+	sliceVal := out[0]
+	if sliceVal.Kind() != reflect.Slice {
+		return []interface{}{}
+	}
+	res := make([]interface{}, sliceVal.Len())
+	for i := 0; i < sliceVal.Len(); i++ {
+		res[i] = sliceVal.Index(i).Interface()
+	}
+	return res
 }
 
-func (a *App) RunRadar(intent string) api.RadarResponse {
-	if a.buguModule == nil {
-		return api.RadarResponse{
-			Status: "error",
-			Error:  "Bugu configuration is not loaded",
+func (a *App) RunRadar(intent string) interface{} {
+	m, ok := module.GetRegistry()["bugu"]
+	if !ok || m == nil {
+		return map[string]interface{}{
+			"status": "error",
+			"error":  "Bugu configuration is not loaded",
 		}
 	}
-	return a.buguModule.RunRadar(intent)
+	rv := reflect.ValueOf(m)
+	method := rv.MethodByName("RunRadar")
+	if method.IsValid() {
+		out := method.Call([]reflect.Value{reflect.ValueOf(intent)})
+		if len(out) > 0 && out[0].IsValid() {
+			return out[0].Interface()
+		}
+	}
+	res, err := a.ExecuteModuleCommand("bugu:radar", map[string]interface{}{"text": intent})
+	if err != nil {
+		return map[string]interface{}{
+			"status": "error",
+			"error":  err.Error(),
+		}
+	}
+	return res
 }
 
 func (a *App) GetTempCards() []Card {
@@ -117,12 +172,7 @@ func (a *App) findCardPath(cardID string) string {
 		}
 	}
 
-	// 3. Fallback to api.FindCardFilePath
-	if p := api.FindCardFilePath(cardID); p != "" {
-		return p
-	}
-
-	// 4. Scan Scattering and Weaving directories by filename or frontmatter id
+	// 3. Scan Scattering and Weaving directories by filename or frontmatter id
 	if a.Home != "" {
 		dirs := []string{
 			filepath.Join(a.Home, "Scattering"),
@@ -320,6 +370,36 @@ func (a *App) GetRegisteredCommands() []module.CommandDef {
 	}
 
 	return commands
+}
+
+// GetModuleManifests returns the normalized ModuleManifest for all registered built-in and external modules.
+func (a *App) GetModuleManifests() []module.ModuleManifest {
+	reg := module.GetRegistry()
+	manifests := make([]module.ModuleManifest, 0, len(reg))
+	for _, m := range reg {
+		manifests = append(manifests, module.BuildModuleManifest(m))
+	}
+	sort.Slice(manifests, func(i, j int) bool {
+		return manifests[i].Name < manifests[j].Name
+	})
+	return manifests
+}
+
+// ExecuteModuleAction dispatches a custom UI/RPC action to the target module's ActionProvider.
+func (a *App) ExecuteModuleAction(moduleName string, actionID string, payload map[string]interface{}) (interface{}, error) {
+	m, ok := module.GetRegistry()[moduleName]
+	if !ok || m == nil {
+		return nil, fmt.Errorf("module not found: %s", moduleName)
+	}
+	ap, ok := m.(module.ActionProvider)
+	if !ok {
+		return nil, fmt.Errorf("module %s does not implement ActionProvider", moduleName)
+	}
+	ctx := a.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return ap.ExecuteAction(ctx, actionID, payload)
 }
 
 // ExecuteModuleCommand dispatches a command to the module that owns cmdID.

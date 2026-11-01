@@ -18,7 +18,7 @@ import ChatLogCardBody from './ChatLogCardBody.svelte';
 import BabelCardBody from './BabelCardBody.svelte';
 import CurioCardBody from './CurioCardBody.svelte';
 import { CardRegistry } from '../../lib/cardRegistry';
-import type { CardTypeDefinition } from '../../types/card';
+import type { CardTypeDefinition, ModuleManifest } from '../../types/card';
 
 // Initialize component registry with ThoughtCardBody as the default component
 const globalCardRegistry = new CardRegistry<any>(ThoughtCardBody);
@@ -68,6 +68,32 @@ export function getCardTypeDefinition(type?: string | null): CardTypeDefinition 
  */
 export function getAllCardTypeDefinitions(): CardTypeDefinition[] {
   return globalCardRegistry.getAllDefinitions();
+}
+
+/**
+ * Dynamically imports and registers external plugin card UI bundles declared in ModuleManifests.
+ */
+export async function loadExternalPluginCardComponents(manifests?: ModuleManifest[] | null): Promise<void> {
+  if (!Array.isArray(manifests)) return;
+  for (const m of manifests) {
+    if (!m?.cardTypes || !Array.isArray(m.cardTypes)) continue;
+    for (const spec of m.cardTypes) {
+      if (!spec?.type || !spec.uiEntry) continue;
+      try {
+        const mod = await import(/* @vite-ignore */ spec.uiEntry);
+        const comp = mod?.default || mod?.CardComponent || mod?.[spec.type];
+        if (comp) {
+          registerCardComponent(spec.type, comp, {
+            type: spec.type,
+            name: m.name || spec.type,
+            description: m.description,
+          });
+        }
+      } catch (err) {
+        console.warn(`[CardRegistry] Failed to load external UI bundle for card type "${spec.type}" from ${spec.uiEntry}:`, err);
+      }
+    }
+  }
 }
 
 export { globalCardRegistry };

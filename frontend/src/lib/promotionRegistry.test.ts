@@ -1,67 +1,71 @@
-import { describe, it, beforeEach } from 'node:test';
-import assert from 'node:assert';
+import test from 'node:test';
+import assert from 'node:assert/strict';
 import {
-  DEFAULT_PROMOTION_STRATEGY,
-  BUGU_PROMOTION_STRATEGY,
-  ATPROTO_PROMOTION_STRATEGY,
-  getPromotionStrategy,
+  hydrateModuleManifests,
   getCardPromotionStrategy,
-  registerPromotionStrategy,
-  resetPromotionStrategies
+  getModuleThemeColor,
+  getModuleBeaconType,
+  resetPromotionStrategies,
+  DEFAULT_PROMOTION_STRATEGY,
 } from './promotionRegistry.ts';
+import type { ModuleManifest } from '../types/card.ts';
 
-describe('Promotion Strategy Registry Engine', () => {
-  beforeEach(() => {
-    resetPromotionStrategies();
-  });
+test('promotionRegistry: built-in presets for bugu and atproto work out of the box', () => {
+  resetPromotionStrategies();
 
-  it('provides sensible default strategy for unknown or empty keys', () => {
-    const s1 = getPromotionStrategy(null);
-    assert.strictEqual(s1.icon, 'default_book');
-    assert.strictEqual(s1.hasCommentPrompt, false);
-    assert.strictEqual(s1.bindMotherCard, false);
+  const buguStrat = getCardPromotionStrategy({ origin: 'bugu', type: 'babel' });
+  assert.equal(buguStrat.icon, 'anchor_comment');
+  assert.equal(buguStrat.bindMotherCard, true);
 
-    const s2 = getPromotionStrategy('unknown_module');
-    assert.strictEqual(s2.icon, 'default_book');
-    assert.strictEqual(s2.hasCommentPrompt, false);
-  });
+  const atprotoStrat = getCardPromotionStrategy({ origin: 'atproto', type: 'babel' });
+  assert.equal(atprotoStrat.icon, 'anchor_comment');
+  assert.equal(atprotoStrat.bindMotherCard, true);
 
-  it('retrieves bugu and atproto strategies accurately', () => {
-    const bugu = getPromotionStrategy('bugu');
-    assert.strictEqual(bugu.icon, 'anchor_comment');
-    assert.strictEqual(bugu.hasCommentPrompt, true);
-    assert.strictEqual(bugu.bindMotherCard, true);
-    assert.ok(bugu.placeholder.includes('批注'));
+  const defaultStrat = getCardPromotionStrategy({ origin: 'local', type: 'thought' });
+  assert.deepEqual(defaultStrat, DEFAULT_PROMOTION_STRATEGY);
 
-    const atproto = getPromotionStrategy('atproto');
-    assert.strictEqual(atproto.icon, 'anchor_comment');
-    assert.strictEqual(atproto.hasCommentPrompt, true);
-    assert.strictEqual(atproto.bindMotherCard, true);
-  });
+  assert.equal(getModuleThemeColor('bugu'), '#f59e0b');
+  assert.equal(getModuleThemeColor('atproto'), '#38bdf8');
+  assert.equal(getModuleBeaconType('bugu:radar'), 'radar');
+  assert.equal(getModuleBeaconType('atproto:echo'), 'butterfly');
+});
 
-  it('resolves strategy for cards based on origin or type', () => {
-    const cardBugu = { id: 'c1', origin: 'bugu', type: 'babel' };
-    const strat1 = getCardPromotionStrategy(cardBugu);
-    assert.strictEqual(strat1.icon, 'anchor_comment');
-    assert.strictEqual(strat1.hasCommentPrompt, true);
+test('promotionRegistry: hydrateModuleManifests registers external plugin strategy, theme, and beacon', () => {
+  resetPromotionStrategies();
 
-    const cardLocal = { id: 'c2', origin: 'local', type: 'thought' };
-    const strat2 = getCardPromotionStrategy(cardLocal);
-    assert.strictEqual(strat2.icon, 'default_book');
-    assert.strictEqual(strat2.hasCommentPrompt, false);
-  });
+  const manifests: ModuleManifest[] = [
+    {
+      name: 'taohuo',
+      version: '1.0.0',
+      themeColor: '#ec4899',
+      beaconType: 'radar',
+      isExternal: true,
+      promotionStrategy: {
+        icon: 'default_book',
+        tooltip: '收录好物卡片',
+        hasCommentPrompt: false,
+        placeholder: '',
+        bindMotherCard: false,
+      },
+      cardTypes: [{ type: 'taohuo_item', uiEntry: '/api/plugins/taohuo/ui.js' }],
+      commands: [{ id: 'taohuo:hunt', name: '淘货寻宝', trigger: 'taohuo', description: '寻宝', namespace: 'taohuo' }],
+    },
+  ];
 
-  it('allows dynamic registration of custom promotion strategies', () => {
-    registerPromotionStrategy('research', {
-      icon: 'anchor_comment',
-      tooltip: '沉淀学术文献附注',
-      hasCommentPrompt: true,
-      placeholder: '记录文献提炼想法...',
-      bindMotherCard: true
-    });
+  hydrateModuleManifests(manifests);
 
-    const custom = getPromotionStrategy('research');
-    assert.strictEqual(custom.tooltip, '沉淀学术文献附注');
-    assert.strictEqual(custom.hasCommentPrompt, true);
-  });
+  // Lookup by card origin
+  const byOrigin = getCardPromotionStrategy({ origin: 'taohuo', type: 'babel' });
+  assert.equal(byOrigin.tooltip, '收录好物卡片');
+  assert.equal(byOrigin.bindMotherCard, false);
+
+  // Lookup by custom cardType
+  const byType = getCardPromotionStrategy({ origin: 'manual', type: 'taohuo_item' });
+  assert.equal(byType.tooltip, '收录好物卡片');
+
+  // Theme color & beacon type
+  assert.equal(getModuleThemeColor('taohuo'), '#ec4899');
+  assert.equal(getModuleBeaconType('taohuo'), 'radar');
+  assert.equal(getModuleBeaconType('taohuo:hunt'), 'radar');
+  assert.equal(getModuleBeaconType('taohuo:subcmd'), 'radar');
 });

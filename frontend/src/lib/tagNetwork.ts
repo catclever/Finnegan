@@ -10,7 +10,8 @@
  * - Zero DOM dependencies
  */
 
-import type { CosmicCard } from '../types/card';
+import type { CosmicCard, AuraTrace } from '../types/card';
+import { stageCandidate, MACRO_TTL_MS } from './stageDecay';
 
 /**
  * Normalizes a tag string by stripping leading hashtags, trailing asterisks, and trimming whitespace.
@@ -355,4 +356,195 @@ export function getDistinctTagColor(existingColors: Iterable<string> | string[] 
  * Alias for getDistinctTagColor.
  */
 export const assignTagColor = getDistinctTagColor;
+
+export interface TagConstellationParams {
+  rawTag: string;
+  activeConstellationTags: Map<string, string>;
+  cards: CosmicCard[];
+  memoryPool: CosmicCard[];
+  localVaultPool: CosmicCard[];
+  scrollExpansion: number;
+  sourceCardId?: string | null;
+  macroTtlMs?: number;
+  now?: number;
+}
+
+export interface TagConstellationResult {
+  activeConstellationTags: Map<string, string>;
+  cards: CosmicCard[];
+  memoryPool: CosmicCard[];
+  shouldClearFocus: boolean;
+  didActivate: boolean;
+}
+
+/**
+ * Activates a constellation tag, elevates matching stage cards to foreground depth (z: 10),
+ * and stages unstaged matching cards from memoryPool and localVaultPool near the viewport center.
+ */
+export function activateTagConstellation(params: TagConstellationParams): TagConstellationResult {
+  const {
+    rawTag,
+    activeConstellationTags,
+    cards,
+    memoryPool,
+    localVaultPool,
+    scrollExpansion,
+    sourceCardId,
+    macroTtlMs = MACRO_TTL_MS,
+    now = Date.now(),
+  } = params;
+
+  const tag = normalizeTag(rawTag);
+  if (!tag) {
+    return {
+      activeConstellationTags,
+      cards,
+      memoryPool,
+      shouldClearFocus: false,
+      didActivate: false,
+    };
+  }
+
+  const nextActiveTags = new Map(activeConstellationTags);
+  const tagColor = getDistinctTagColor(nextActiveTags.values());
+  nextActiveTags.set(tag, tagColor);
+
+  // Elevate cards already on stage that possess this tag or keyword:
+  let currentCards = cards.map(c => {
+    if (cardHasTag(c, tag) || cardHasKeyword(c, tag)) {
+      const searchId = 'tag_resurgence_' + tag + '_' + c.id;
+      const auraTrace: AuraTrace = {
+        searchId,
+        color: tagColor,
+        hitTime: now,
+        duration: 120000,
+      };
+      const existingTraces = (c.auraTraces || []).filter(t => t.searchId !== searchId);
+      return {
+        ...c,
+        z: 10,
+        auraTraces: [...existingTraces, auraTrace],
+        decayDuration: Math.max(c.decayDuration || 0, 120000 + 3600000),
+        isFadingOut: false,
+        elevatedAt: now,
+      };
+    }
+    return c;
+  });
+
+  // Query unstaged matching cards from memoryPool and localVaultPool for this tag
+  const unstaged = findUnstagedMatchingCards(tag, currentCards, memoryPool, localVaultPool);
+  if (unstaged.length === 0) {
+    return {
+      activeConstellationTags: nextActiveTags,
+      cards: currentCards,
+      memoryPool,
+      shouldClearFocus: true,
+      didActivate: true,
+    };
+  }
+
+  let nextMemoryPool = [...memoryPool];
+  const viewportCenterY = Math.round(scrollExpansion * 300);
+
+  for (const candidate of unstaged) {
+    const res = stageCandidate(
+      candidate,
+      false,
+      scrollExpansion,
+      currentCards,
+      nextMemoryPool,
+      sourceCardId || null,
+      viewportCenterY
+    );
+
+    currentCards = res.updatedActiveCards;
+    nextMemoryPool = res.updatedMemoryPool;
+
+    const tracesToAdd: AuraTrace[] = [];
+    for (const [activeTag, color] of nextActiveTags.entries()) {
+      if (cardHasTag(candidate, activeTag) || cardHasKeyword(candidate, activeTag)) {
+        tracesToAdd.push({
+          searchId: 'tag_resurgence_' + activeTag + '_' + candidate.id,
+          color,
+          hitTime: now,
+          duration: 120000,
+        });
+      }
+    }
+
+    currentCards = currentCards.map(c => {
+      if (c.id === candidate.id) {
+        const idsToAdd = new Set(tracesToAdd.map(t => t.searchId));
+        const existing = (c.auraTraces || []).filter(t => !idsToAdd.has(t.searchId));
+        return {
+          ...c,
+          z: 10,
+          auraTraces: [...existing, ...tracesToAdd],
+          decayDuration: Math.max(c.decayDuration || 0, 120000 + 3600000),
+          isFadingOut: false,
+          elevatedAt: now,
+        };
+      }
+      return c;
+    });
+
+    if (!nextMemoryPool.some(m => m.id === candidate.id)) {
+      nextMemoryPool = [
+        {
+          ...candidate,
+          macroExpiresAt: now + macroTtlMs,
+        },
+        ...nextMemoryPool,
+      ];
+    }
+  }
+
+  return {
+    activeConstellationTags: nextActiveTags,
+    cards: currentCards,
+    memoryPool: nextMemoryPool,
+    shouldClearFocus: true,
+    didActivate: true,
+  };
+}
+
+/**
+ * Toggles a constellation tag on or off.
+ * If already active, toggles off and clears its resurgence neon traces.
+ * If inactive, activates it and recalls unstaged candidates.
+ */
+export function toggleTagConstellation(params: TagConstellationParams): TagConstellationResult {
+  const { rawTag, activeConstellationTags, cards, memoryPool } = params;
+  const tag = normalizeTag(rawTag);
+  if (!tag) {
+    return {
+      activeConstellationTags,
+      cards,
+      memoryPool,
+      shouldClearFocus: false,
+      didActivate: false,
+    };
+  }
+
+  if (activeConstellationTags.has(tag)) {
+    const nextActiveTags = new Map(activeConstellationTags);
+    nextActiveTags.delete(tag);
+    const targetPrefix = 'tag_resurgence_' + tag + '_';
+    const updatedCards = cards.map(c => ({
+      ...c,
+      auraTraces: (c.auraTraces || []).filter(t => t.searchId !== 'tag_resurgence_' + tag + '_' + c.id && !t.searchId.startsWith(targetPrefix)),
+    }));
+    return {
+      activeConstellationTags: nextActiveTags,
+      cards: updatedCards,
+      memoryPool,
+      shouldClearFocus: false,
+      didActivate: false,
+    };
+  }
+
+  return activateTagConstellation(params);
+}
+
 

@@ -3,9 +3,7 @@
 import {main} from '../models';
 import {chatlog} from '../models';
 import {keywords} from '../models';
-import {models} from '../models';
 import {module} from '../models';
-import {api} from '../models';
 
 export function CaptureChatLog(arg1:string):Promise<main.ChatLogCaptureResult>;
 
@@ -23,6 +21,8 @@ export function DeriveChatLogTitle(arg1:string,arg2:Array<string>):Promise<chatl
 
 export function EvictTempCard(arg1:string):Promise<boolean>;
 
+export function ExecuteModuleAction(arg1:string,arg2:string,arg3:Record<string, any>):Promise<any>;
+
 export function ExecuteModuleCommand(arg1:string,arg2:Record<string, any>):Promise<any>;
 
 export function ExtractCardKeywords(arg1:string,arg2:string,arg3:string):Promise<void>;
@@ -31,9 +31,11 @@ export function GetAvailableTags():Promise<Array<string>>;
 
 export function GetKeywordEngine():Promise<keywords.KeywordEngine>;
 
+export function GetModuleManifests():Promise<Array<module.ModuleManifest>>;
+
 export function GetNote(arg1:string):Promise<string>;
 
-export function GetRadarTargets():Promise<Array<models.Target>>;
+export function GetRadarTargets():Promise<Array<any>>;
 
 export function GetRegisteredCommands():Promise<Array<module.CommandDef>>;
 
@@ -53,6 +55,6 @@ export function PromoteTempCard(arg1:string,arg2:string,arg3:string):Promise<mai
 
 export function ReloadCard(arg1:string):Promise<main.Card>;
 
-export function RunRadar(arg1:string):Promise<api.RadarResponse>;
+export function RunRadar(arg1:string):Promise<any>;
 
 export function SearchLocalCards(arg1:string):Promise<Array<main.Card>>;

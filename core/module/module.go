@@ -3,8 +3,16 @@ package module
 import (
 	"strings"
 
+	"Finnegan/core/models"
 	"gopkg.in/yaml.v3"
 )
+
+// HostAPI provides callbacks for modules (built-in or external) to interact with the Finnegan host runtime.
+type HostAPI interface {
+	SpawnCard(card models.BabelCard)
+	CompleteSession(cardID string)
+	EmitEvent(eventName string, data interface{})
+}
 
 // LLMConfig represents the network-level LLM configuration from the global config
 type LLMConfig struct {
@@ -46,6 +54,7 @@ type Context struct {
 	LLMs    map[string]LLMConfig
 	Storage StorageInterface
 	Watcher WatcherInterface
+	Host    HostAPI
 }
 
 // Module represents the standard interface that all Finnegan modules must implement

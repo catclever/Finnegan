@@ -5,7 +5,7 @@
   export let content: string = '';
   export let isFocused: boolean = false;
 
-  $: parsedHtml = DOMPurify.sanitize(marked.parse(content || '') as string);
+  $: parsedHtml = DOMPurify.sanitize(marked.parse(content || '', { breaks: true }) as string);
 </script>
 
 <div class="markdown-content" class:focused={isFocused}>
@@ -143,6 +143,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     max-height: 100%;
+    width: 100%;
   }
 
   :global(.markdown-content:not(.focused) *) {
@@ -150,10 +151,24 @@
     padding: 0 !important;
   }
 
-  :global(.markdown-content:not(.focused) p),
+  :global(.markdown-content:not(.focused) p) {
+    display: block;
+    margin: 0 0 3px !important;
+  }
+
+  :global(.markdown-content:not(.focused) p:last-child) {
+    margin-bottom: 0 !important;
+  }
+
   :global(.markdown-content:not(.focused) ul),
   :global(.markdown-content:not(.focused) ol) {
-    display: inline;
+    display: block;
+    margin: 0 0 2px !important;
+  }
+
+  :global(.markdown-content:not(.focused) ul:last-child),
+  :global(.markdown-content:not(.focused) ol:last-child) {
+    margin-bottom: 0 !important;
   }
 
   :global(.markdown-content:not(.focused) li) {
@@ -165,22 +180,27 @@
     margin-left: 4px;
   }
 
+  :global(.markdown-content:not(.focused) li:first-child::before) {
+    margin-left: 0;
+  }
+
   :global(.markdown-content:not(.focused) h1),
   :global(.markdown-content:not(.focused) h2),
   :global(.markdown-content:not(.focused) h3),
   :global(.markdown-content:not(.focused) h4),
   :global(.markdown-content:not(.focused) h5),
   :global(.markdown-content:not(.focused) h6) {
-    display: inline;
-    font-size: 1em;
+    display: block;
+    font-size: 1.05em;
     font-weight: 600;
-    margin-right: 4px !important;
+    margin: 0 0 2px !important;
   }
 
   :global(.markdown-content:not(.focused) blockquote) {
-    display: inline;
+    display: block;
     font-style: italic;
     color: rgba(30, 30, 30, 0.75);
+    margin: 0 0 2px !important;
     border-left: none;
     background: transparent;
   }
@@ -194,9 +214,11 @@
   }
 
   :global(.markdown-content:not(.focused) pre) {
-    display: inline;
+    display: block;
     background: transparent;
-    white-space: normal;
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin: 0 0 2px !important;
   }
 
   :global(.markdown-content:not(.focused) pre code) {
@@ -207,6 +229,6 @@
   }
 
   :global(.markdown-content:not(.focused) br) {
-    display: none;
+    display: inline;
   }
 </style>

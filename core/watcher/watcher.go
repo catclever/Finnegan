@@ -53,6 +53,30 @@ type GlobalWatcher struct {
 	homeDir string
 }
 
+// Watcher is an alias for GlobalWatcher.
+type Watcher = GlobalWatcher
+
+// SetOnChange configures an optional storage change callback.
+func (w *GlobalWatcher) SetOnChange(fn func(id, data string)) {
+	if ws, ok := w.storage.(interface{ SetOnChange(func(id, data string)) }); ok {
+		ws.SetOnChange(fn)
+	}
+}
+
+// SetOnDelete configures an optional storage deletion callback.
+func (w *GlobalWatcher) SetOnDelete(fn func(id string)) {
+	if ws, ok := w.storage.(interface{ SetOnDelete(func(id string)) }); ok {
+		ws.SetOnDelete(fn)
+	}
+}
+
+// SetOnConflict configures an optional storage conflict callback.
+func (w *GlobalWatcher) SetOnConflict(fn func(id string, paths []string)) {
+	if ws, ok := w.storage.(interface{ SetOnConflict(func(id string, paths []string)) }); ok {
+		ws.SetOnConflict(fn)
+	}
+}
+
 var instance *GlobalWatcher
 var once sync.Once
 
