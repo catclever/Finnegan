@@ -34,10 +34,12 @@ type BuguModule struct {
 	MyConfig     *BuguConfig
 	Router       *llm.Router
 	RadarTargets *config.Config
+	ctx          *module.Context
 }
 
 // Compile-time check that BuguModule implements module.CommandProvider
 var _ module.CommandProvider = (*BuguModule)(nil)
+var _ module.ManifestProvider = (*BuguModule)(nil)
 
 func (b *BuguModule) Name() string {
 	return "bugu"
@@ -74,6 +76,7 @@ func (b *BuguModule) ConfigTarget() interface{} {
 }
 
 func (b *BuguModule) Init(ctx *module.Context) error {
+	b.ctx = ctx
 	paths := []string{
 		"modules/bugu/radar_targets.yml",
 		"bugu/radar_targets.yml",
@@ -115,7 +118,10 @@ func (b *BuguModule) Init(ctx *module.Context) error {
 	if routerID == "" {
 		routerID = "default"
 	}
-	rawRouterLLM := ctx.LLMs[routerID]
+	var rawRouterLLM module.LLMConfig
+		if ctx != nil && ctx.LLMs != nil {
+			rawRouterLLM = ctx.LLMs[routerID]
+		}
 	routerLLM := module.LLMConfig{
 		Provider:     rawRouterLLM.Provider,
 		APIKey:       rawRouterLLM.APIKey,
@@ -149,7 +155,10 @@ func (b *BuguModule) Init(ctx *module.Context) error {
 	if distillerID == "" {
 		distillerID = "default"
 	}
-	rawDistillerLLM := ctx.LLMs[distillerID]
+	var rawDistillerLLM module.LLMConfig
+		if ctx != nil && ctx.LLMs != nil {
+			rawDistillerLLM = ctx.LLMs[distillerID]
+		}
 	distillerLLM := module.LLMConfig{
 		Provider:     rawDistillerLLM.Provider,
 		APIKey:       rawDistillerLLM.APIKey,
@@ -309,4 +318,20 @@ func (b *BuguModule) RunRadar(intent string) api.RadarResponse {
 
 func init() {
 	module.Register(&BuguModule{})
+}
+
+func (b *BuguModule) GetManifest() module.ModuleManifest {
+	return module.ModuleManifest{
+		Name:       "bugu",
+		ThemeColor: "#f59e0b",
+		BeaconType: "radar",
+		PromotionStrategy: &module.PromotionStrategySpec{
+			Icon:             "anchor_comment",
+			Tooltip:          "附着母卡收录（附带批注）",
+			HasCommentPrompt: true,
+			Placeholder:      "留下附着批注（回车直接收录）...",
+			BindMotherCard:   true,
+		},
+		Commands: b.GetCommands(),
+	}
 }

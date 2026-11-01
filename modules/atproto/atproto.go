@@ -14,7 +14,8 @@ import (
 	"Finnegan/modules/atproto/config"
 	"Finnegan/modules/atproto/fetcher"
 	"Finnegan/modules/atproto/publisher"
-	bugullm "Finnegan/modules/bugu/llm"
+	corellm "Finnegan/core/llm"
+	coremodels "Finnegan/core/models"
 
 	"github.com/oklog/ulid/v2"
 )
@@ -29,6 +30,8 @@ type AtProtoModule struct {
 
 var _ module.Module = (*AtProtoModule)(nil)
 var _ module.CommandProvider = (*AtProtoModule)(nil)
+var _ module.ManifestProvider = (*AtProtoModule)(nil)
+var _ module.ActionProvider = (*AtProtoModule)(nil)
 
 // AtProtoAPI defines the methods exposed to the Wails frontend (Svelte)
 type AtProtoAPI struct {
@@ -313,7 +316,7 @@ func (m *AtProtoModule) ExecuteCommand(ctx context.Context, cmdID string, params
 						llmCfg = c
 					}
 				}
-				translator := babel.NewUniversalTranslator(llmCfg, "gemini-3.8-flash", bugullm.GenerateCompletion)
+				translator := babel.NewUniversalTranslator(llmCfg, "gemini-3.8-flash", corellm.GenerateCompletion)
 				gatekeeper := babel.NewBlueskyGatekeeper(translator)
 
 				b := bus.GetBus()
@@ -340,20 +343,28 @@ func (m *AtProtoModule) ExecuteCommand(ctx context.Context, cmdID string, params
 						continue
 					}
 
-					b.Publish(bus.Event{
-						Type: bus.EventBabelCardSpawned,
-						Data: *card,
-					})
+					if m.ctx != nil && m.ctx.Host != nil {
+						m.ctx.Host.SpawnCard(*card)
+					} else {
+						b.Publish(bus.Event{
+							Type: bus.EventBabelCardSpawned,
+							Data: *card,
+						})
+					}
 				}
 			}
-			bus.GetBus().Publish(bus.Event{
-				Type: bus.EventBabelSessionCompleted,
-				Data: map[string]string{"cardId": cID},
-			})
-			bus.GetBus().Publish(bus.Event{
-				Type: bus.EventBuguRadarCompleted,
-				Data: map[string]string{"cardId": cID},
-			})
+			if m.ctx != nil && m.ctx.Host != nil {
+				m.ctx.Host.CompleteSession(cID)
+			} else {
+				bus.GetBus().Publish(bus.Event{
+					Type: bus.EventBabelSessionCompleted,
+					Data: map[string]string{"cardId": cID},
+				})
+				bus.GetBus().Publish(bus.Event{
+					Type: bus.EventBuguRadarCompleted,
+					Data: map[string]string{"cardId": cID},
+				})
+			}
 		}(keywords, cardID)
 
 		return map[string]interface{}{
@@ -450,4 +461,72 @@ func (api *AtProtoAPI) SearchSimilar(query string, limit int) (string, error) {
 		})
 	}
 	return "Search dispatched", nil
+}
+
+func (m *AtProtoModule) GetManifest() module.ModuleManifest {
+	return module.ModuleManifest{
+		Name:       "atproto",
+		ThemeColor: "#38bdf8",
+		BeaconType: "butterfly",
+		PromotionStrategy: &module.PromotionStrategySpec{
+			Icon:             "anchor_comment",
+			Tooltip:          "附着母卡收录（附带批注）",
+			HasCommentPrompt: true,
+			Placeholder:      "留下附着批注（回车直接收录）...",
+			BindMotherCard:   true,
+		},
+		Commands: m.GetCommands(),
+	}
+}
+
+func (m *AtProtoModule) ExecuteAction(ctx context.Context, actionID string, payload map[string]interface{}) (interface{}, error) {
+	if actionID == "fetch_comments" {
+		uri, ok := payload["uri"].(string)
+		if !ok || uri == "" {
+			return nil, fmt.Errorf("uri is required")
+		}
+
+		parentCardID, _ := payload["parentCardId"].(string)
+		if parentCardID == "" {
+			parentCardID, _ = payload["parentCardID"].(string)
+		}
+
+		f := m.fetcher
+		if f == nil {
+			f = fetcher.NewFetcher()
+		}
+
+		comments, err := f.FetchComments(uri, parentCardID)
+		if err != nil {
+			return nil, err
+		}
+
+		b := bus.GetBus()
+		for _, comment := range comments {
+			if m.ctx != nil && m.ctx.Host != nil {
+				m.ctx.Host.SpawnCard(coremodels.BabelCard{
+					Origin:       "atproto",
+					Title:        "Bluesky Echo",
+					Content:      comment.Content,
+					SourceURL:    comment.SourceURL,
+					OriginalText: comment.OriginalText,
+					AuthorName:   comment.AuthorName,
+					AuthorAvatar: comment.AuthorAvatar,
+					EchoOf:       comment.EchoOf,
+					ReplyCount:   comment.ReplyCount,
+					RepostCount:  comment.RepostCount,
+					LikeCount:    comment.LikeCount,
+				})
+			} else {
+				b.Publish(bus.Event{
+					Type: bus.EventBabelCardSpawned,
+					Data: comment,
+				})
+			}
+		}
+
+		return map[string]interface{}{"status": "ok", "count": len(comments)}, nil
+	}
+
+	return nil, fmt.Errorf("unknown action: %s", actionID)
 }

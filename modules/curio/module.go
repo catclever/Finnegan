@@ -10,6 +10,7 @@ type CurioModule struct {}
 
 var _ module.CommandProvider = (*CurioModule)(nil)
 var _ module.Module = (*CurioModule)(nil)
+var _ module.ManifestProvider = (*CurioModule)(nil)
 
 func (m *CurioModule) Name() string {
 	return "curio"
@@ -57,6 +58,16 @@ func (m *CurioModule) ExecuteCommand(ctx context.Context, cmdID string, params m
 		}, nil
 	}
 	return nil, fmt.Errorf("unknown command: %s", cmdID)
+}
+
+func (m *CurioModule) GetManifest() module.ModuleManifest {
+	return module.ModuleManifest{
+		Name: "curio",
+		CardTypes: []module.CardTypeSpec{
+			{Type: "curio"},
+		},
+		Commands: m.GetCommands(),
+	}
 }
 
 func init() {

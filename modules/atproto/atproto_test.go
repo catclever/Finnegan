@@ -370,3 +370,48 @@ func TestAtProtoModule_ExecuteCommand_Publish(t *testing.T) {
 		t.Errorf("expected frontmatter to contain published: true, got: %s", contentStr)
 	}
 }
+
+func TestAtProtoModule_GetManifest(t *testing.T) {
+	m := &AtProtoModule{}
+	manifest := m.GetManifest()
+
+	if manifest.Name != "atproto" {
+		t.Errorf("Expected Name 'atproto', got '%s'", manifest.Name)
+	}
+	if manifest.ThemeColor != "#38bdf8" {
+		t.Errorf("Expected ThemeColor '#38bdf8', got '%s'", manifest.ThemeColor)
+	}
+	if manifest.BeaconType != "butterfly" {
+		t.Errorf("Expected BeaconType 'butterfly', got '%s'", manifest.BeaconType)
+	}
+	if manifest.PromotionStrategy == nil {
+		t.Fatalf("Expected PromotionStrategy to not be nil")
+	}
+	if !manifest.PromotionStrategy.HasCommentPrompt {
+		t.Errorf("Expected HasCommentPrompt to be true")
+	}
+	if !manifest.PromotionStrategy.BindMotherCard {
+		t.Errorf("Expected BindMotherCard to be true")
+	}
+
+	cmds := m.GetCommands()
+	if len(manifest.Commands) != len(cmds) {
+		t.Errorf("Expected %d commands, got %d", len(cmds), len(manifest.Commands))
+	}
+}
+
+func TestAtProtoModule_ExecuteAction_FetchComments(t *testing.T) {
+	m := &AtProtoModule{}
+
+	// Test missing URI
+	_, err := m.ExecuteAction(context.Background(), "fetch_comments", map[string]interface{}{})
+	if err == nil || err.Error() != "uri is required" {
+		t.Errorf("Expected error 'uri is required', got %v", err)
+	}
+
+	// Test unknown action
+	_, err = m.ExecuteAction(context.Background(), "unknown_action", nil)
+	if err == nil || err.Error() != "unknown action: unknown_action" {
+		t.Errorf("Expected error 'unknown action: unknown_action', got %v", err)
+	}
+}
