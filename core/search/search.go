@@ -9,16 +9,17 @@ import (
 
 // Card defines the searchable consciousness stream card model.
 type Card struct {
-	ID             string    `json:"id"`
-	Type           string    `json:"type,omitempty"`
-	Title          string    `json:"title"`
-	Content        string    `json:"content"`
-	Tags           []string  `json:"tags,omitempty"`
-	SourceURL      string    `json:"sourceUrl,omitempty"`
-	OriginalText   string    `json:"originalText,omitempty"`
-	TranslatedText string    `json:"translatedText,omitempty"`
-	EchoOf         string    `json:"echoOf,omitempty"`
-	CreatedAt      time.Time `json:"createdAt,omitempty"`
+	ID             string              `json:"id"`
+	Type           string              `json:"type,omitempty"`
+	Title          string              `json:"title"`
+	Content        string              `json:"content"`
+	Tags           []string            `json:"tags,omitempty"`
+	Keywords       map[string][]string `json:"keywords,omitempty"`
+	SourceURL      string              `json:"sourceUrl,omitempty"`
+	OriginalText   string              `json:"originalText,omitempty"`
+	TranslatedText string              `json:"translatedText,omitempty"`
+	EchoOf         string              `json:"echoOf,omitempty"`
+	CreatedAt      time.Time           `json:"createdAt,omitempty"`
 }
 
 // isWordBoundary checks if a rune is a whitespace or punctuation delimiter.
@@ -221,14 +222,46 @@ func SearchCards(query string, cards []Card) []Card {
 			}
 		}
 
-		if !titleMatched && !contentMatched && !tagMatched {
+		keywordScore := 0.0
+		keywordMatched := false
+		if card.Keywords != nil {
+			dims := []string{"object", "motif", "mood", "concept"}
+			for _, dim := range dims {
+				if kwList, ok := card.Keywords[dim]; ok {
+					for _, kw := range kwList {
+						s, m := MatchScore(kw, trimmedQuery)
+						if m && s > keywordScore {
+							keywordScore = s
+							keywordMatched = true
+						}
+					}
+				}
+			}
+			for dim, kwList := range card.Keywords {
+				if dim == "object" || dim == "motif" || dim == "mood" || dim == "concept" {
+					continue
+				}
+				for _, kw := range kwList {
+					s, m := MatchScore(kw, trimmedQuery)
+					if m && s > keywordScore {
+						keywordScore = s
+						keywordMatched = true
+					}
+				}
+			}
+		}
+
+		if !titleMatched && !contentMatched && !tagMatched && !keywordMatched {
 			continue
 		}
 
-		// Title has highest weight (3.0), Tags have medium weight (2.0), Content has base weight (1.0)
+		// Title has highest weight (3.0), Keywords have high weight (2.5), Tags have medium weight (2.0), Content has base weight (1.0)
 		totalScore := 0.0
 		if titleMatched {
 			totalScore += titleScore * 3.0
+		}
+		if keywordMatched {
+			totalScore += keywordScore * 2.5
 		}
 		if tagMatched {
 			totalScore += tagScore * 2.0

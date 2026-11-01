@@ -35,12 +35,14 @@
   export let activeConstellationTag: string | null = null;
   export let isSearchStopped: boolean = false;
   export let clusteredOverride: { x: number; y: number; z: number; rotation: number; motherId: string } | null = null;
+  export let themePeekRole: 'left' | 'right' | null = null;
+  export let isThemeActive: boolean = false;
 
   let lastNavDir: 'prev' | 'next' | null = null;
   $: if (!isFocused) lastNavDir = null;
 
   let isVisible = true;
-  $: isVisible = isFocused || Math.abs(card.y - scrollExpansion * 300) <= 850;
+  $: isVisible = isFocused || themePeekRole !== null || Math.abs(card.y - scrollExpansion * 300) <= 850;
 
   let animSpring = spring({
     x: card.x,
@@ -214,6 +216,36 @@
         rotY: 0,
         z3d: 160
       });
+    } else if (themePeekRole === 'left') {
+      animSpring.set({
+        x: -360,
+        y: scrollOffsetY,
+        rotation: 0,
+        opacity: 0.95,
+        scale: 0.82,
+        blur: 0,
+        saturation: 1,
+        textGray: 38,
+        textOpacity: 0.95,
+        rotX: 0,
+        rotY: 14,
+        z3d: 125
+      });
+    } else if (themePeekRole === 'right') {
+      animSpring.set({
+        x: 360,
+        y: scrollOffsetY,
+        rotation: 0,
+        opacity: 0.95,
+        scale: 0.82,
+        blur: 0,
+        saturation: 1,
+        textGray: 38,
+        textOpacity: 0.95,
+        rotX: 0,
+        rotY: -14,
+        z3d: 125
+      });
     } else if (isHovered) {
       const pullX = Math.max(-440, Math.min(440, card.x));
       const pullY = Math.max(scrollOffsetY - 260, Math.min(scrollOffsetY + 260, card.y));
@@ -325,8 +357,8 @@
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <div 
   class="card"
-  class:inert={hasAnyFocused && !isFocused}
-  class:constellation-dimmed={isConstellationDimmed}
+  class:inert={hasAnyFocused && !isFocused && !themePeekRole}
+  class:constellation-dimmed={isConstellationDimmed && !themePeekRole}
   class:bugu-echo={isBuguEcho}
   class:bsky-echo={isBskyEcho}
   class:temporary={isTemporary}
@@ -338,6 +370,8 @@
   class:aura-stage-1={auraStage === 1}
   class:aura-stage-2={auraStage === 2}
   class:aura-stage-3={auraStage === 3}
+  class:theme-peek={themePeekRole !== null}
+  class:theme-aura={isThemeActive}
   title={isTemporary ? '需先收集卡片才能编辑' : (isFocused ? '双击进行编辑' : '⌥ + 单击在外部编辑')}
   on:click={handleClick}
   on:dblclick={handleDoubleClick}
@@ -353,7 +387,7 @@
                scale({$animSpring.scale});
     opacity: {$animSpring.opacity};
     filter: blur({$animSpring.blur}px) saturate({$animSpring.saturation});
-    z-index: {isFocused ? 1000 : (isHovered && !hasAnyFocused ? 999 : (hasAura ? 300 : Math.round(50 - (card.z || 0) * 0.3)))};
+    z-index: {isFocused ? 1000 : (themePeekRole ? 850 : (isHovered && !hasAnyFocused ? 999 : (hasAura ? 300 : Math.round(50 - (card.z || 0) * 0.3))))};
     {dynamicBoxShadow ? `box-shadow: ${dynamicBoxShadow};` : ''}
     {hasAura ? `border: 1.5px solid ${toHsla(latestColor, auraStage === 1 ? 0.95 : (auraStage === 2 ? 0.8 : 0.65))} !important;` : ''}
     --card-text-color: rgba({Math.round($animSpring.textGray || 38)}, {Math.round($animSpring.textGray || 38)}, {Math.round($animSpring.textGray || 38)}, {($animSpring.textOpacity ?? 0.95).toFixed(2)});
@@ -550,5 +584,53 @@
 
   .card.clustered-child {
     pointer-events: none !important;
+  }
+
+  /* Theme Aura: Vibrant Aurora Gradient Border Glow */
+  .card.theme-aura {
+    box-shadow: 
+      0 0 0 1.5px rgba(56, 189, 248, 0.75),
+      0 0 24px rgba(56, 189, 248, 0.45),
+      0 0 48px rgba(168, 85, 247, 0.3),
+      0 40px 100px rgba(0, 0, 0, 0.22) !important;
+  }
+
+  .card.theme-aura::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    padding: 2px;
+    background: conic-gradient(from 0deg at 50% 50%, #38bdf8, #818cf8, #c084fc, #f472b6, #38bdf8);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0.85;
+    animation: theme-aurora-spin 6s linear infinite;
+  }
+
+  @keyframes theme-aurora-spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .card.theme-peek {
+    cursor: pointer;
+    pointer-events: auto !important;
+    transition: box-shadow 0.2s ease, filter 0.2s ease;
+  }
+
+  .card.theme-peek:hover {
+    filter: brightness(1.05) saturate(1.1);
+    box-shadow: 
+      0 0 0 2px rgba(56, 189, 248, 0.9),
+      0 0 32px rgba(56, 189, 248, 0.6),
+      0 0 60px rgba(168, 85, 247, 0.35),
+      0 20px 60px rgba(0, 0, 0, 0.2) !important;
   }
 </style>

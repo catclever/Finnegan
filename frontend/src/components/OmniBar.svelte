@@ -31,8 +31,10 @@
     filterMatchedTags,
     detectTagTriggerAtCursor,
     applyTagSelectionToText,
+    detectAtTriggerAtCursor,
+    applyAtSelectionToText,
   } from '../lib/tagAutocomplete';
-  import { CaptureChatLog, CaptureChatLogWithImages } from '../../wailsjs/go/main/App.js';
+  import { CaptureChatLog, CaptureChatLogWithImages, SearchLocalCards } from '../../wailsjs/go/main/App.js';
 
   // Props
   export let availableCommands: CommandDef[] = [];
@@ -93,6 +95,68 @@
         omnibarInputEl.style.height = omnibarInputEl.scrollHeight + 'px';
       }
     }, 10);
+  }
+
+  // Card Association State: @
+  let atSelectMode: boolean = false;
+  let atQuery: string = "";
+  let atMatchStart: number = -1;
+  let atCandidateItems: CandidateCardItem[] = [];
+  let atHighlightedIndex: number = 0;
+  let atSearchDebounceTimer: any = null;
+  let trackedThreads: Array<{ id: string; title: string }> = [];
+
+  function selectAtCard(candidate: CosmicCard) {
+    if (atMatchStart < 0) return;
+    const cursorPos = omnibarInputEl?.selectionStart ?? omniText.length;
+    const { newText, newCursor } = applyAtSelectionToText(omniText, atMatchStart, cursorPos, candidate.title);
+    omniText = newText;
+
+    if (!trackedThreads.some(t => t.id === candidate.id)) {
+      trackedThreads = [...trackedThreads, { id: candidate.id, title: candidate.title }];
+    }
+
+    atSelectMode = false;
+    atQuery = "";
+    atMatchStart = -1;
+    atCandidateItems = [];
+
+    setTimeout(() => {
+      if (omnibarInputEl) {
+        omnibarInputEl.setSelectionRange(newCursor, newCursor);
+        omnibarInputEl.focus();
+        omnibarInputEl.style.height = 'auto';
+        omnibarInputEl.style.height = omnibarInputEl.scrollHeight + 'px';
+      }
+    }, 10);
+  }
+
+  function searchAtCandidates(query: string) {
+    if (atSearchDebounceTimer) clearTimeout(atSearchDebounceTimer);
+    const q = query.trim();
+    atSearchDebounceTimer = setTimeout(async () => {
+      try {
+        if (!q) {
+          const res = partitionCardTiers(cards, localVaultPool, scrollExpansion, null, 25);
+          atCandidateItems = res.items;
+          atHighlightedIndex = 0;
+          return;
+        }
+
+        const results = onSearchLocalCards ? await onSearchLocalCards(q) : await SearchLocalCards(q);
+        if (results && results.length > 0) {
+          atCandidateItems = rankSearchCandidates(results, cards, scrollExpansion, null, 30);
+          atHighlightedIndex = 0;
+        } else {
+          atCandidateItems = [];
+          atHighlightedIndex = 0;
+        }
+      } catch (err) {
+        console.error("searchAtCandidates error:", err);
+        atCandidateItems = [];
+        atHighlightedIndex = 0;
+      }
+    }, 200);
   }
 
   function addImageFiles(files: FileList | File[]) {
@@ -293,6 +357,11 @@
       deleteHighlightIndex = -1;
       return true;
     }
+    if (atSelectMode) {
+      atSelectMode = false;
+      atCandidateItems = [];
+      return true;
+    }
     if (tagSelectMode) {
       tagSelectMode = false;
       return true;
@@ -342,6 +411,7 @@
     }
     isOmnibarFocused = false;
     tagSelectMode = false;
+    atSelectMode = false;
   }
 
   export function clearText(): void {
@@ -349,6 +419,8 @@
     attachedImages = [];
     deleteHighlightIndex = -1;
     tagSelectMode = false;
+    atSelectMode = false;
+    trackedThreads = [];
     if (omnibarInputEl) {
       omnibarInputEl.style.height = 'auto';
     }
@@ -459,6 +531,8 @@
     omniText = "";
     attachedImages = [];
     deleteHighlightIndex = -1;
+    atSelectMode = false;
+    trackedThreads = [];
     if (omnibarInputEl) {
       omnibarInputEl.style.height = 'auto';
     }
@@ -505,6 +579,8 @@
 
     omniText = "";
     commandSelectMode = false;
+    atSelectMode = false;
+    trackedThreads = [];
     deleteHighlightIndex = -1;
     if (omnibarInputEl) {
       omnibarInputEl.style.height = 'auto';
@@ -550,6 +626,33 @@
         commandSelectMode = false;
         commandParamMode = false;
         if (omnibarInputEl) omnibarInputEl.style.height = 'auto';
+        return;
+      }
+    }
+
+    // Card Association Dropdown Active: @
+    if (atSelectMode && atCandidateItems.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        atHighlightedIndex = (atHighlightedIndex + 1) % atCandidateItems.length;
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        atHighlightedIndex = (atHighlightedIndex - 1 + atCandidateItems.length) % atCandidateItems.length;
+        return;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        if (atHighlightedIndex >= 0 && atHighlightedIndex < atCandidateItems.length) {
+          selectAtCard(atCandidateItems[atHighlightedIndex].card);
+        }
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        atSelectMode = false;
+        atCandidateItems = [];
         return;
       }
     }
@@ -757,20 +860,31 @@
     target.style.height = 'auto';
     target.style.height = target.scrollHeight + 'px';
 
-    // Hashtag Autocomplete Detection
+    // Card Association @ Detection & Hashtag Autocomplete Detection
     const cursorPos = target.selectionStart ?? omniText.length;
     if (!commandParamMode && !commandSelectMode) {
-      const trigger = detectTagTriggerAtCursor(omniText, cursorPos);
-      if (trigger.isTriggered) {
-        tagSelectMode = true;
-        tagQuery = trigger.tagQuery;
-        tagMatchStart = trigger.tagMatchStart;
-        highlightedTagIndex = 0;
-      } else {
+      const atTrigger = detectAtTriggerAtCursor(omniText, cursorPos);
+      if (atTrigger.isTriggered) {
+        atSelectMode = true;
+        atQuery = atTrigger.cardQuery;
+        atMatchStart = atTrigger.cardMatchStart;
         tagSelectMode = false;
+        searchAtCandidates(atQuery);
+      } else {
+        atSelectMode = false;
+        const trigger = detectTagTriggerAtCursor(omniText, cursorPos);
+        if (trigger.isTriggered) {
+          tagSelectMode = true;
+          tagQuery = trigger.tagQuery;
+          tagMatchStart = trigger.tagMatchStart;
+          highlightedTagIndex = 0;
+        } else {
+          tagSelectMode = false;
+        }
       }
     } else {
       tagSelectMode = false;
+      atSelectMode = false;
     }
 
     if (!commandParamMode) {
@@ -798,7 +912,7 @@
         if (onRevertSearch) onRevertSearch();
         dispatch('revertSearch');
       }
-    } else if (isNoteFormat || omniText.startsWith(':')) {
+    } else if (isNoteFormat || omniText.startsWith(':') || atSelectMode) {
       commandSelectMode = false;
       if (searchSession.isActive) {
         if (onRevertSearch) onRevertSearch();
@@ -837,6 +951,7 @@
   onDestroy(() => {
     if (toastTimer) clearTimeout(toastTimer);
     if (paramSearchDebounceTimer) clearTimeout(paramSearchDebounceTimer);
+    if (atSearchDebounceTimer) clearTimeout(atSearchDebounceTimer);
   });
 </script>
 
@@ -997,6 +1112,17 @@
       highlightedIndex={highlightedTagIndex}
       onHighlight={(idx) => highlightedTagIndex = idx}
       onSelect={selectTag}
+    />
+  {/if}
+
+  <!-- Dropdown: Card Association Suggestions (@) -->
+  {#if atSelectMode && atCandidateItems.length > 0}
+    <CardCandidateDropdown
+      candidateItems={atCandidateItems}
+      highlightedCardIndex={atHighlightedIndex}
+      omniText={atQuery}
+      onSelect={(cand) => selectAtCard(cand)}
+      onHighlight={(idx) => atHighlightedIndex = idx}
     />
   {/if}
 

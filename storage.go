@@ -64,6 +64,7 @@ func ParseCardFile(filePath string) (*Card, error) {
 				Images         []string            `yaml:"images"`
 				Keywords       map[string][]string `yaml:"keywords"`
 				Tags           []string            `yaml:"tags"`
+				Threads        []ThreadRef         `yaml:"threads"`
 				Brand          string              `yaml:"brand"`
 				Platform       string              `yaml:"platform"`
 				Price          string              `yaml:"price"`
@@ -154,6 +155,9 @@ func ParseCardFile(filePath string) (*Card, error) {
 				}
 				if len(fm.Tags) > 0 {
 					card.Tags = fm.Tags
+				}
+				if len(fm.Threads) > 0 {
+					card.Threads = fm.Threads
 				}
 				if fm.Brand != "" {
 					card.Brand = fm.Brand

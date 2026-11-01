@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"Finnegan/core/bus"
@@ -165,6 +166,16 @@ func (a *App) CaptureChatLogWithImages(rawText string, images []ImagePayload) (*
 	docID := ulid.Make().String()
 	contentStr := chatlog.FormatCardMarkdown(docID, title, parsed, savedImageNames)
 
+	threads := a.ExtractThreadRefs(rawText)
+	if len(threads) > 0 {
+		var thStr strings.Builder
+		thStr.WriteString("threads:\n")
+		for _, th := range threads {
+			thStr.WriteString(fmt.Sprintf("  - id: %q\n    title: %q\n", th.ID, th.Title))
+		}
+		contentStr = strings.Replace(contentStr, "---\n\n", thStr.String()+"---\n\n", 1)
+	}
+
 	err = watcher.GetWatcher().WriteFile(targetPath, []byte(contentStr), "capture")
 	if err != nil {
 		return nil, err
@@ -183,6 +194,7 @@ func (a *App) CaptureChatLogWithImages(rawText string, images []ImagePayload) (*
 			Participants: parsed.Participants,
 			StartedAt:    parsed.StartedAt,
 			EndedAt:      parsed.EndedAt,
+			Threads:      threads,
 		},
 	})
 

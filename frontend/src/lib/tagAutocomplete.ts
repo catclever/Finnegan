@@ -109,3 +109,57 @@ export function applyTagSelectionToText(
   const newCursor = (before + inserted).length;
   return { newText, newCursor };
 }
+
+export interface AtTriggerResult {
+  isTriggered: boolean;
+  cardQuery: string;
+  cardMatchStart: number;
+}
+
+/**
+ * Detects whether the cursor in omnibar text is preceded by a '@' card association trigger token.
+ */
+export function detectAtTriggerAtCursor(
+  omniText: string,
+  cursorPos: number
+): AtTriggerResult {
+  if (typeof omniText !== 'string' || cursorPos < 0) {
+    return { isTriggered: false, cardQuery: '', cardMatchStart: -1 };
+  }
+  const textBeforeCursor = omniText.slice(0, cursorPos);
+  const atMatch = textBeforeCursor.match(/(?:^|\s)@([^\s@]*)$/);
+  if (!atMatch) {
+    return { isTriggered: false, cardQuery: '', cardMatchStart: -1 };
+  }
+  return {
+    isTriggered: true,
+    cardQuery: atMatch[1],
+    cardMatchStart: textBeforeCursor.lastIndexOf('@'),
+  };
+}
+
+export interface AtSelectionResult {
+  newText: string;
+  newCursor: number;
+}
+
+/**
+ * Applies a selected card candidate to the text, inserting @Title and appending a trailing space.
+ */
+export function applyAtSelectionToText(
+  omniText: string,
+  cardMatchStart: number,
+  cursorPos: number,
+  title: string
+): AtSelectionResult {
+  if (cardMatchStart < 0) {
+    return { newText: omniText, newCursor: cursorPos };
+  }
+  const before = omniText.slice(0, cardMatchStart);
+  const after = omniText.slice(cursorPos);
+  const cleanTitle = (title || 'Card').trim();
+  const inserted = `@${cleanTitle} `;
+  const newText = `${before}${inserted}${after}`;
+  const newCursor = (before + inserted).length;
+  return { newText, newCursor };
+}

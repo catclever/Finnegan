@@ -307,6 +307,8 @@ func (a *App) SearchLocalCards(query string) []Card {
 			Type:           string(c.Type),
 			Title:          c.Title,
 			Content:        c.Content,
+			Tags:           c.Tags,
+			Keywords:       c.Keywords,
 			SourceURL:      c.SourceURL,
 			OriginalText:   c.OriginalText,
 			TranslatedText: c.TranslatedText,

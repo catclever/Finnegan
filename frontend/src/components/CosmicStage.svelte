@@ -35,9 +35,14 @@
   import type { BskyBeacon } from '../modules/atproto/types';
   import { getMaxScrollExpansion, computeClusteredChildCoords, isClusteredChildCard } from '../lib/stageCoords';
   import VirtualCardProxy from './cards/VirtualCardProxy.svelte';
+  import OrbitalThemeDial from './cards/OrbitalThemeDial.svelte';
 
   // Props
   export let cards: CosmicCard[] = [];
+  export let activeThemeId: string | null = null;
+  export let cardThemes: any[] = [];
+  export let leftPeekCardId: string | null = null;
+  export let rightPeekCardId: string | null = null;
 
   export let globalTilt: { rx: number; ry: number } = { rx: 0, ry: 0 };
   export let scrollExpansion: number = 0;
@@ -70,6 +75,8 @@
   let screen1DwellTimer: any = null;
   let bottomDwellTimer: any = null;
   let prevScrollDir: 'down' | 'up' = 'down';
+  let isLeftNavHovered: boolean = false;
+  let isRightNavHovered: boolean = false;
 
   // Track max scroll depth and boundaries
   $: maxScroll = getMaxScrollExpansion(cards, totalAvailableCards);
@@ -289,11 +296,37 @@
   on:click={handleWrapperClick}
 >
   {#if focusedCardId !== null}
-    <div class="nav-button nav-left" on:click={handleNavLeft}>
+    <div 
+      class="nav-button nav-left" 
+      class:theme-active={activeThemeId !== null}
+      on:mouseenter={() => isLeftNavHovered = true}
+      on:mouseleave={() => isLeftNavHovered = false}
+      on:click={handleNavLeft}
+    >
       <svg viewBox="0 0 24 24" width="32" height="32" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+      <OrbitalThemeDial
+        themes={cardThemes}
+        activeThemeId={activeThemeId}
+        isRightSide={false}
+        isNavHovered={isLeftNavHovered}
+        on:toggleTheme={(e) => dispatch('toggleTheme', e.detail)}
+      />
     </div>
-    <div class="nav-button nav-right" on:click={handleNavRight}>
+    <div 
+      class="nav-button nav-right" 
+      class:theme-active={activeThemeId !== null}
+      on:mouseenter={() => isRightNavHovered = true}
+      on:mouseleave={() => isRightNavHovered = false}
+      on:click={handleNavRight}
+    >
       <svg viewBox="0 0 24 24" width="32" height="32" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+      <OrbitalThemeDial
+        themes={cardThemes}
+        activeThemeId={activeThemeId}
+        isRightSide={true}
+        isNavHovered={isRightNavHovered}
+        on:toggleTheme={(e) => dispatch('toggleTheme', e.detail)}
+      />
     </div>
   {/if}
   <!-- svelte-ignore a11y-click-events-have-key-events -->
@@ -348,6 +381,8 @@
     {/if}
 
     {#each cards as card (card.id)}
+      {@const peekRole = activeThemeId !== null ? (card.id === leftPeekCardId ? 'left' : (card.id === rightPeekCardId ? 'right' : null)) : null}
+      {@const isCardThemeActive = activeThemeId !== null && (focusedCardId === card.id || card.id === leftPeekCardId || card.id === rightPeekCardId)}
       <UICard 
         {card}
 
@@ -361,6 +396,8 @@
         hoveredMotherId={hoveredMotherId}
         isFocused={focusedCardId === card.id}
         isHovered={hoveredCardId === card.id}
+        themePeekRole={peekRole}
+        isThemeActive={isCardThemeActive}
         clusteredOverride={clusteredChildMap.get(card.id) || null}
         onToggleFocus={() => handleToggleFocus(card.id)}
         onFocusedClick={() => { isVirtualCardOnTop = false; }}
@@ -497,6 +534,19 @@
     color: rgba(20, 30, 40, 0.9);
     transform: translateY(-50%) scale(1.1);
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+  }
+
+  /* Vibrant Theme Aurora Glow on Nav Buttons */
+  .nav-button.theme-active {
+    background: rgba(255, 255, 255, 0.75);
+    border-color: rgba(56, 189, 248, 0.85);
+    color: #0284c7;
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.55), 0 0 38px rgba(168, 85, 247, 0.35), 0 8px 24px rgba(0, 0, 0, 0.1);
+  }
+
+  .nav-button.theme-active:hover {
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 0 28px rgba(56, 189, 248, 0.75), 0 0 54px rgba(168, 85, 247, 0.5), 0 12px 32px rgba(0, 0, 0, 0.15);
   }
 
   .nav-left {

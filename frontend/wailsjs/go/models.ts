@@ -147,6 +147,20 @@ export namespace keywords {
 
 export namespace main {
 	
+	export class ThreadRef {
+	    id: string;
+	    title: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ThreadRef(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.title = source["title"];
+	    }
+	}
 	export class Card {
 	    id: string;
 	    type: string;
@@ -177,6 +191,7 @@ export namespace main {
 	    filePath?: string;
 	    keywords?: Record<string, Array<string>>;
 	    tags?: string[];
+	    threads?: ThreadRef[];
 	    brand?: string;
 	    platform?: string;
 	    price?: string;
@@ -217,6 +232,7 @@ export namespace main {
 	        this.filePath = source["filePath"];
 	        this.keywords = source["keywords"];
 	        this.tags = source["tags"];
+	        this.threads = this.convertValues(source["threads"], ThreadRef);
 	        this.brand = source["brand"];
 	        this.platform = source["platform"];
 	        this.price = source["price"];

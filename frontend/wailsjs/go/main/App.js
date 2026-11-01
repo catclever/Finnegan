@@ -46,6 +46,10 @@ export function ExtractCardKeywords(arg1, arg2, arg3) {
   return window['go']['main']['App']['ExtractCardKeywords'](arg1, arg2, arg3);
 }
 
+export function ExtractThreadRefs(arg1) {
+  return window['go']['main']['App']['ExtractThreadRefs'](arg1);
+}
+
 export function GetAvailableTags() {
   return window['go']['main']['App']['GetAvailableTags']();
 }

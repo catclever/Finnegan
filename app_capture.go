@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -56,6 +58,78 @@ func ExtractHashtags(text string) []string {
 	return tags
 }
 
+// ExtractThreadRefs extracts @<cardTitle> references from text and resolves them to ThreadRef
+func (a *App) ExtractThreadRefs(text string) []ThreadRef {
+	if !strings.Contains(text, "@") {
+		return nil
+	}
+
+	var allCards []Card
+	if a != nil {
+		allCards = append(allCards, a.LoadLocalCards()...)
+		if a.CardManager != nil {
+			allCards = append(allCards, a.CardManager.GetTempCards()...)
+		}
+	}
+
+	seenIDs := make(map[string]bool)
+	var threads []ThreadRef
+
+	// Sort cards by Title length descending so longer titles match before substrings
+	sortCards := make([]Card, len(allCards))
+	copy(sortCards, allCards)
+	sort.SliceStable(sortCards, func(i, j int) bool {
+		return len(sortCards[i].Title) > len(sortCards[j].Title)
+	})
+
+	for _, c := range sortCards {
+		trimmedTitle := strings.TrimSpace(c.Title)
+		if trimmedTitle == "" || c.ID == "" {
+			continue
+		}
+		if seenIDs[c.ID] {
+			continue
+		}
+		targetToken := "@" + trimmedTitle
+		if strings.Contains(text, targetToken) {
+			seenIDs[c.ID] = true
+			threads = append(threads, ThreadRef{
+				ID:    c.ID,
+				Title: trimmedTitle,
+			})
+		}
+	}
+
+	// Also extract generic @token patterns and match against card titles / IDs
+	atRegex := regexp.MustCompile(`@([^\s@#,\n]+)`)
+	matches := atRegex.FindAllStringSubmatch(text, -1)
+	for _, m := range matches {
+		if len(m) < 2 {
+			continue
+		}
+		token := strings.TrimSpace(m[1])
+		token = strings.TrimRight(token, ".,!?;:，。！？")
+		if token == "" {
+			continue
+		}
+		for _, c := range allCards {
+			if seenIDs[c.ID] {
+				continue
+			}
+			if strings.EqualFold(strings.TrimSpace(c.Title), token) || c.ID == token {
+				seenIDs[c.ID] = true
+				threads = append(threads, ThreadRef{
+					ID:    c.ID,
+					Title: c.Title,
+				})
+				break
+			}
+		}
+	}
+
+	return threads
+}
+
 func (a *App) CaptureThought(text string) (string, error) {
 	text = strings.TrimSpace(text)
 	if text == "" {
@@ -64,6 +138,7 @@ func (a *App) CaptureThought(text string) (string, error) {
 
 	cleanBody, tags := StripAndExtractHashtags(text)
 	kwProfile := keywords.RouteTagsToKeywords(tags)
+	threads := a.ExtractThreadRefs(text)
 
 	home := a.Home
 	if home == "" {
@@ -114,6 +189,12 @@ func (a *App) CaptureThought(text string) (string, error) {
 	if kwYAML := keywords.FormatKeywordsYAML(kwProfile); kwYAML != "" {
 		sb.WriteString(kwYAML)
 	}
+	if len(threads) > 0 {
+		sb.WriteString("threads:\n")
+		for _, th := range threads {
+			sb.WriteString(fmt.Sprintf("  - id: %q\n    title: %q\n", th.ID, th.Title))
+		}
+	}
 	sb.WriteString("publish: false\n")
 	sb.WriteString("---\n\n")
 	sb.WriteString(cleanBody)
@@ -135,6 +216,7 @@ func (a *App) CaptureThought(text string) (string, error) {
 			CapturedAt: now,
 			Tags:       tags,
 			Keywords:   kwProfile,
+			Threads:    threads,
 		},
 	})
 
@@ -193,6 +275,7 @@ func (a *App) CaptureNote(text string) (string, error) {
 
 	docID := ulid.Make().String()
 	tags := ExtractHashtags(text)
+	threads := a.ExtractThreadRefs(text)
 
 	var sb strings.Builder
 	sb.WriteString("---\n")
@@ -204,6 +287,12 @@ func (a *App) CaptureNote(text string) (string, error) {
 	sb.WriteString(fmt.Sprintf("created: %s\n", now.Format(time.RFC3339)))
 	sb.WriteString(fmt.Sprintf("updated: %s\n", now.Format(time.RFC3339)))
 	sb.WriteString("source: local\n")
+	if len(threads) > 0 {
+		sb.WriteString("threads:\n")
+		for _, th := range threads {
+			sb.WriteString(fmt.Sprintf("  - id: %q\n    title: %q\n", th.ID, th.Title))
+		}
+	}
 	sb.WriteString("publish: false\n")
 	sb.WriteString("---\n\n")
 	sb.WriteString(body)
@@ -224,6 +313,7 @@ func (a *App) CaptureNote(text string) (string, error) {
 			Type:       "note",
 			CapturedAt: now,
 			Tags:       tags,
+			Threads:    threads,
 		},
 	})
 
@@ -368,6 +458,7 @@ func (a *App) CaptureThoughtWithImages(text string, images []ImagePayload) (stri
 	now := time.Now()
 	cleanBody, tags := StripAndExtractHashtags(text)
 	kwProfile := keywords.RouteTagsToKeywords(tags)
+	threads := a.ExtractThreadRefs(text)
 
 	slugSrc := cleanBody
 	if slugSrc == "" {
@@ -404,6 +495,12 @@ func (a *App) CaptureThoughtWithImages(text string, images []ImagePayload) (stri
 	if kwYAML := keywords.FormatKeywordsYAML(kwProfile); kwYAML != "" {
 		sb.WriteString(kwYAML)
 	}
+	if len(threads) > 0 {
+		sb.WriteString("threads:\n")
+		for _, th := range threads {
+			sb.WriteString(fmt.Sprintf("  - id: %q\n    title: %q\n", th.ID, th.Title))
+		}
+	}
 	sb.WriteString("publish: false\n")
 	if len(savedImageNames) > 0 {
 		sb.WriteString("images:\n")
@@ -434,6 +531,7 @@ func (a *App) CaptureThoughtWithImages(text string, images []ImagePayload) (stri
 			Images:     savedImageNames,
 			Tags:       tags,
 			Keywords:   kwProfile,
+			Threads:    threads,
 		},
 	})
 

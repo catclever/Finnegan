@@ -89,6 +89,18 @@ export interface CosmicCard {
   availability?: "deadstock" | "available" | "delisted";
   snapshotPath?: string;
   screenshotPath?: string;
+  threads?: Array<{ id: string; title: string }>;
+}
+
+export interface ThreadRef {
+  id: string;
+  title: string;
+}
+
+export interface ThemeThread {
+  id: string;
+  title: string;
+  cards: CosmicCard[];
 }
 
 export interface SearchSession {

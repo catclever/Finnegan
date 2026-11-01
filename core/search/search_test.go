@@ -174,4 +174,40 @@ func TestSearchCards(t *testing.T) {
 	if len(noResults) != 0 {
 		t.Fatalf("expected 0 matches for 'xylophone', got %d", len(noResults))
 	}
+
+	// 6. Keywords multi-dimensional evaluation (weight 2.5)
+	kwCards := []Card{
+		{
+			ID:      "card-content-match",
+			Title:   "普通卡片",
+			Content: "这里提到了松弛感三个字",
+		},
+		{
+			ID:    "card-tag-match",
+			Title: "普通卡片2",
+			Tags:  []string{"松弛感"},
+		},
+		{
+			ID:    "card-kw-match",
+			Title: "普通卡片3",
+			Keywords: map[string][]string{
+				"mood": {"松弛感"},
+			},
+		},
+		{
+			ID:    "card-title-match",
+			Title: "松弛感",
+		},
+	}
+	kwResults := SearchCards("松弛感", kwCards)
+	if len(kwResults) != 4 {
+		t.Fatalf("expected 4 matches for '松弛感', got %d", len(kwResults))
+	}
+	// Expected ranking order: Title (3.0) > Keyword (2.5) > Tag (2.0) > Content (1.0)
+	expectedOrder := []string{"card-title-match", "card-kw-match", "card-tag-match", "card-content-match"}
+	for i, expID := range expectedOrder {
+		if kwResults[i].ID != expID {
+			t.Fatalf("expected ranking #%d to be %s, but got %s", i, expID, kwResults[i].ID)
+		}
+	}
 }

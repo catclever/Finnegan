@@ -26,6 +26,12 @@ const (
 	CardTypeCurio   CardType = "curio"
 )
 
+// ThreadRef defines a reference to another card in a theme thread
+type ThreadRef struct {
+	ID    string `json:"id" yaml:"id"`
+	Title string `json:"title" yaml:"title"`
+}
+
 // Card defines the core data model for a consciousness stream piece
 type Card struct {
 	ID             string              `json:"id"`
@@ -54,6 +60,7 @@ type Card struct {
 	FilePath       string              `json:"filePath,omitempty"`
 	Keywords       map[string][]string `json:"keywords,omitempty"`
 	Tags           []string            `json:"tags,omitempty"`
+	Threads        []ThreadRef         `json:"threads,omitempty" yaml:"threads,omitempty"`
 
 	// Curio Fields
 	Brand          string              `json:"brand,omitempty"`
@@ -364,6 +371,17 @@ func (m *CardManager) PromoteToLocalWithOpts(cardID string, home string, comment
 		if kwBytes, err := yaml.Marshal(card.Keywords); err == nil {
 			sb.WriteString("keywords:\n")
 			lines := strings.Split(strings.TrimSpace(string(kwBytes)), "\n")
+			for _, line := range lines {
+				sb.WriteString("  " + line + "\n")
+			}
+		}
+	}
+
+	// Associated Threads
+	if len(card.Threads) > 0 {
+		if thBytes, err := yaml.Marshal(card.Threads); err == nil {
+			sb.WriteString("threads:\n")
+			lines := strings.Split(strings.TrimSpace(string(thBytes)), "\n")
 			for _, line := range lines {
 				sb.WriteString("  " + line + "\n")
 			}

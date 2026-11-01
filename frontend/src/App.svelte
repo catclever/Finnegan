@@ -37,12 +37,47 @@
   import { toggleTagConstellation } from './lib/tagNetwork';
   import { evaluateCardsOnWindowFocus } from './lib/gravityFallback';
   import { refreshStageTime } from './lib/time';
+  import { extractCardThemes } from './lib/themeOrbit';
 
   // --- Stage Pools & Selection State ---
   let memoryPool: CosmicCard[] = [], localVaultPool: CosmicCard[] = [], cards: CosmicCard[] = [];
   let latestManualCardId: string | null = null, focusedCardId: string | null = null, hoveredCardId: string | null = null;
+  let activeThemeId: string | null = null;
   let activeConstellationTags: Map<string, string> = new Map();
   $: activeConstellationTag = activeConstellationTags.size > 0 ? Array.from(activeConstellationTags.keys())[0] : null;
+
+  // --- Theme Thread & Carousel Orbit State ---
+  $: allKnownCards = (() => {
+    const map = new Map<string, CosmicCard>();
+    cards.forEach(c => map.set(c.id, c));
+    memoryPool.forEach(c => map.set(c.id, c));
+    localVaultPool.forEach(c => map.set(c.id, c));
+    return Array.from(map.values());
+  })();
+
+  $: focusedCard = focusedCardId ? (allKnownCards.find(c => c.id === focusedCardId) || null) : null;
+  $: cardThemes = focusedCard ? extractCardThemes(focusedCard, allKnownCards) : [];
+  $: activeTheme = (activeThemeId && cardThemes.length > 0) ? (cardThemes.find(t => t.id === activeThemeId) || null) : null;
+  $: themeCards = activeTheme ? activeTheme.cards : [];
+
+  $: leftPeekCardId = (() => {
+    if (!activeThemeId || themeCards.length < 2 || !focusedCardId) return null;
+    const idx = themeCards.findIndex(c => c.id === focusedCardId);
+    if (idx === -1) return null;
+    if (themeCards.length === 2) {
+      return themeCards[(idx + 1) % 2].id;
+    }
+    const prevIdx = (idx - 1 + themeCards.length) % themeCards.length;
+    return themeCards[prevIdx].id;
+  })();
+
+  $: rightPeekCardId = (() => {
+    if (!activeThemeId || themeCards.length < 3 || !focusedCardId) return null;
+    const idx = themeCards.findIndex(c => c.id === focusedCardId);
+    if (idx === -1) return null;
+    const nextIdx = (idx + 1) % themeCards.length;
+    return themeCards[nextIdx].id;
+  })();
   let isOmnibarFocused = false, capturePending = false;
   let isWindowFocused = true, isStageSleeping = false;
   let focusNavDirection: 'prev' | 'next' | null = null;
@@ -435,8 +470,19 @@
   }
 
   function toggleFocus(id: string) {
-    focusedCardId = focusedCardId === id ? null : id;
-    focusNavDirection = null;
+    if (focusedCardId === id) {
+      focusedCardId = null;
+      activeThemeId = null;
+      focusNavDirection = null;
+      return;
+    }
+    if (activeThemeId && (id === leftPeekCardId || id === rightPeekCardId)) {
+      focusNavDirection = id === leftPeekCardId ? 'prev' : 'next';
+    } else {
+      focusNavDirection = null;
+      activeThemeId = null;
+    }
+    focusedCardId = id;
     if (focusedCardId !== null) {
       globalTilt.set({ rx: 0, ry: 0 }, { hard: true });
       omniBarRef?.blurInput();
@@ -445,8 +491,65 @@
     }
   }
 
+  function handleToggleTheme(detail: any) {
+    const themeId = typeof detail === 'string' ? detail : detail?.themeId;
+    if (!themeId) return;
+
+    if (activeThemeId === themeId) {
+      activeThemeId = null;
+      return;
+    }
+
+    const targetTheme = cardThemes.find(t => t.id === themeId);
+    if (targetTheme && targetTheme.cards.length > 0) {
+      let toAdd: CosmicCard[] = [];
+      for (const tc of targetTheme.cards) {
+        if (!cards.some(c => c.id === tc.id) && !toAdd.some(c => c.id === tc.id)) {
+          toAdd.push({
+            ...tc,
+            spawnTime: tc.spawnTime || Date.now(),
+            decayDuration: tc.decayDuration || 2 * 3600 * 1000,
+            isFadingOut: false
+          });
+        }
+      }
+      if (toAdd.length > 0) {
+        cards = [...cards, ...toAdd];
+      }
+
+      const isCurrentInTheme = targetTheme.cards.some(c => c.id === focusedCardId);
+      if (!isCurrentInTheme) {
+        focusedCardId = targetTheme.cards[0].id;
+      }
+    }
+    activeThemeId = themeId;
+  }
+
   function navigateFocus(direction: 'prev' | 'next') {
     if (focusedCardId === null) return;
+
+    // Theme carousel mode: cycle strictly within theme cards
+    if (activeThemeId && themeCards.length > 1) {
+      const currentIndex = themeCards.findIndex(c => c.id === focusedCardId);
+      if (currentIndex !== -1) {
+        let targetIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
+        if (targetIndex < 0) targetIndex = themeCards.length - 1;
+        if (targetIndex >= themeCards.length) targetIndex = 0;
+
+        const targetCard = themeCards[targetIndex];
+        if (!cards.some(c => c.id === targetCard.id)) {
+          cards = [...cards, {
+            ...targetCard,
+            spawnTime: targetCard.spawnTime || Date.now(),
+            decayDuration: targetCard.decayDuration || 2 * 3600 * 1000,
+            isFadingOut: false
+          }];
+        }
+        focusNavDirection = direction;
+        focusedCardId = targetCard.id;
+        return;
+      }
+    }
 
     const allCardsMap = new Map<string, CosmicCard>();
     cards.forEach(c => allCardsMap.set(c.id, c));
@@ -493,8 +596,11 @@
     omniBarRef?.blurInput();
     omniBarRef?.closeCommandSelect();
     if (searchSession.isActive && !searchSession.isConfirmed) { revertSearchView(); omniBarRef?.clearText(); }
-    if (target && !target.closest('.card') && !target.closest('.nav-button') && !target.closest('.thought-tag') && !target.closest('.babel-tag') && !target.closest('.note-tag') && !target.closest('.chatlog-tag')) {
-      if (focusedCardId !== null) focusedCardId = null;
+    if (target && !target.closest('.card') && !target.closest('.nav-button') && !target.closest('.thought-tag') && !target.closest('.babel-tag') && !target.closest('.note-tag') && !target.closest('.chatlog-tag') && !target.closest('.orbital-theme-btn')) {
+      if (focusedCardId !== null) {
+        focusedCardId = null;
+        activeThemeId = null;
+      }
       if (activeConstellationTags.size > 0) {
         activeConstellationTags = new Map();
         cards = cards.map(c => ({
@@ -526,7 +632,11 @@
         }));
         return;
       }
-      if (focusedCardId !== null) { focusedCardId = null; return; }
+      if (focusedCardId !== null) {
+        focusedCardId = null;
+        activeThemeId = null;
+        return;
+      }
       if (searchSession.isActive && searchSession.isConfirmed) {
         restoreConfirmedSearch();
         return;
@@ -711,6 +821,10 @@
   <WindowTitleBar />
   <CosmicStage
     {cards}
+    {activeThemeId}
+    {cardThemes}
+    {leftPeekCardId}
+    {rightPeekCardId}
     totalAvailableCards={cards.length + memoryPool.length + localVaultPool.length}
     buguBeacon={activeBuguBeacon} buguSession={activeBuguSession}
     bskyBeacon={activeBskyBeacon}
@@ -723,6 +837,7 @@
     onToggleFocus={toggleFocus} onHoverCard={(id) => { hoveredCardId = id; }}
     onLeaveCard={() => hoveredCardId = null} onBgClick={handleWindowClick}
     on:navigate={(e) => navigateFocus(e.detail)}
+    on:toggleTheme={(e) => handleToggleTheme(e.detail)}
     on:tagClick={(e) => handleTagClick(e.detail)}
     on:cardPromoted={(e) => handleCardPromoted(e.detail)}
   />

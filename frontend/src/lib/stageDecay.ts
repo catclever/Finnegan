@@ -59,6 +59,7 @@ export function toCosmicCard(
     images,
     keywords: c.keywords || c.Keywords,
     tags: c.tags || c.Tags || [],
+    threads: c.threads || c.Threads || undefined,
     isEnriching: c.isEnriching !== undefined ? c.isEnriching : false,
     filePath: c.filePath || c.FilePath || '',
     x: 0, y: 0, rotation: 0, z: 50,
