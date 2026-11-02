@@ -1,6 +1,6 @@
 import type { CosmicCard } from '../types/card';
-import { toCosmicCard, stageCandidate, isProtectedCard, BASE_STAGE_DECAY_MS } from './stageDecay';
-import { extractHashTitle, isChatLogFormat } from './chatlog';
+import { toCosmicCard, stageCandidate, isProtectedCard, BASE_STAGE_DECAY_MS } from './stageDecay.ts';
+import { extractHashTitle, isChatLogFormat } from './chatlog.ts';
 
 export interface CreateOptimisticChatLogParams {
   text: string;
@@ -93,6 +93,7 @@ export function reconcileChatLogCard(params: ReconcileChatLogParams) {
   const realStartedAt = res?.startedAt || res?.StartedAt;
   const realEndedAt = res?.endedAt || res?.EndedAt;
   const realImages = res?.images || res?.Images || originalImages;
+  const realThreads = res?.threads || res?.Threads;
 
   if (latestManualCardId === tempId && realId) {
     latestManualCardId = realId;
@@ -108,6 +109,7 @@ export function reconcileChatLogCard(params: ReconcileChatLogParams) {
         startedAt: realStartedAt || c.startedAt,
         endedAt: realEndedAt || c.endedAt,
         images: realImages || c.images,
+        threads: realThreads || c.threads,
         isEnriching: false,
       };
     }
@@ -144,10 +146,11 @@ export interface CreateNoteCardParams {
   scrollExpansion: number;
   sourceCardId?: string;
   latestManualCardId?: string | null;
+  threads?: Array<{ id: string; title: string }>;
 }
 
 export function createNoteCard(params: CreateNoteCardParams) {
-  const { docId, text, memoryPool, localVaultPool, scrollExpansion, sourceCardId } = params;
+  const { docId, text, memoryPool, localVaultPool, scrollExpansion, sourceCardId, threads } = params;
   let { cards, latestManualCardId } = params;
 
   if (latestManualCardId) {
@@ -170,7 +173,8 @@ export function createNoteCard(params: CreateNoteCardParams) {
     title: noteTitle,
     type: 'note',
     content: noteBody,
-    createdAt: Date.now()
+    createdAt: Date.now(),
+    threads: threads,
   }, 'note', 'manual');
 
   const { stagedCard, updatedActiveCards, updatedMemoryPool } = stageCandidate(
@@ -184,6 +188,7 @@ export function createNoteCard(params: CreateNoteCardParams) {
   const nextMemoryPool = updatedMemoryPool || memoryPool;
   const newCard = {
     ...stagedCard,
+    threads: threads || stagedCard.threads,
     isVIP: true,
     decayDuration: 12 * 3600 * 1000,
     z: stagedCard.z ?? 3,
@@ -226,7 +231,10 @@ export function mergeCapturedThought(params: MergeCapturedThoughtParams) {
       title: cardTitle || (data.Text ? (data.Text.length > 20 ? data.Text.slice(0, 20) + '...' : data.Text) : 'Note'),
       type: 'note',
       content: data.Text,
-      createdAt: data.CapturedAt || Date.now()
+      createdAt: data.CapturedAt || Date.now(),
+      tags: data.Tags || data.tags,
+      keywords: data.Keywords || data.keywords,
+      threads: data.Threads || data.threads,
     }, 'note', 'manual');
 
     const existingCard = cards.find(c => c.id === cardId);
@@ -239,17 +247,27 @@ export function mergeCapturedThought(params: MergeCapturedThoughtParams) {
         memoryPool,
         sourceCardId
       );
+      const finalCard = {
+        ...stagedCard,
+        threads: data.Threads || data.threads || stagedCard.threads,
+      };
       return {
-        cards: [...updatedActiveCards.filter(c => c.id !== stagedCard.id), stagedCard],
+        cards: [...updatedActiveCards.filter(c => c.id !== stagedCard.id), finalCard],
         memoryPool: updatedMemoryPool || memoryPool,
-        localVaultPool: [stagedCard, ...localVaultPool.filter(c => c.id !== cardId)],
+        localVaultPool: [finalCard, ...localVaultPool.filter(c => c.id !== cardId)],
         latestManualCardId,
       };
     } else {
+      const updatedExisting = {
+        ...existingCard,
+        tags: data.Tags || data.tags || existingCard.tags,
+        keywords: data.Keywords || data.keywords || existingCard.keywords,
+        threads: data.Threads || data.threads || existingCard.threads,
+      };
       return {
-        cards,
+        cards: cards.map(c => c.id === cardId ? updatedExisting : c),
         memoryPool,
-        localVaultPool: [existingCard, ...localVaultPool.filter(c => c.id !== cardId)],
+        localVaultPool: [updatedExisting, ...localVaultPool.filter(c => c.id !== cardId)],
         latestManualCardId,
       };
     }
@@ -272,6 +290,7 @@ export function mergeCapturedThought(params: MergeCapturedThoughtParams) {
           endedAt: data.EndedAt || data.endedAt || c.endedAt,
           tags: data.Tags || data.tags || c.tags,
           keywords: data.Keywords || data.keywords || c.keywords,
+          threads: data.Threads || data.threads || c.threads,
           isEnriching: false,
         };
       }
@@ -309,6 +328,7 @@ export function mergeCapturedThought(params: MergeCapturedThoughtParams) {
     endedAt: data.EndedAt || data.endedAt,
     tags: data.Tags || data.tags,
     keywords: data.Keywords || data.keywords,
+    threads: data.Threads || data.threads,
   }, isChat ? 'chat_log' : 'thought', 'manual');
 
   const { stagedCard, updatedActiveCards, updatedMemoryPool } = stageCandidate(
@@ -321,6 +341,7 @@ export function mergeCapturedThought(params: MergeCapturedThoughtParams) {
   );
   const newCard = {
     ...stagedCard,
+    threads: data.Threads || data.threads || stagedCard.threads,
     images: data.Images || data.images || stagedCard.images,
     isVIP: true,
     decayDuration: 12 * 3600 * 1000,

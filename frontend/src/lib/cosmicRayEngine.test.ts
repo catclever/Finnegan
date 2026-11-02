@@ -4,7 +4,7 @@ import {
   buildMotherChildRayDefs,
   buildSynapseRayDefs,
   assembleRenderedRays,
-} from './cosmicRayEngine';
+} from './cosmicRayEngine.ts';
 
 describe('Cosmic Ray Engine', () => {
   const motherCard: any = {

@@ -77,3 +77,50 @@ func TestThreadReference_CaptureAndLoad(t *testing.T) {
 		t.Fatalf("expected markdown file to contain noteID %s, got:\n%s", noteID, rawStr)
 	}
 }
+
+func TestThreadReference_LeadingMentionSlugSanitization(t *testing.T) {
+	tempHome, err := os.MkdirTemp("", "finnegan_slug_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempHome)
+
+	app := &App{
+		Home:        tempHome,
+		CardManager: NewCardManager(),
+	}
+
+	// 1. Root card
+	_, err = app.CaptureThought("今年紫色真的很流行 各种配饰都很好看")
+	if err != nil {
+		t.Fatalf("CaptureThought root failed: %v", err)
+	}
+
+	// 2. Child card referencing root with leading @
+	childID, err := app.CaptureThought("@今年紫色真的很流行 昨天去眼镜店看到非常惊艳")
+	if err != nil {
+		t.Fatalf("CaptureThought child failed: %v", err)
+	}
+
+	// 3. Check filename of child card on disk
+	files, _ := filepath.Glob(filepath.Join(tempHome, "Scattering", "*.epiphany.md"))
+	var childFile string
+	for _, f := range files {
+		content, _ := os.ReadFile(f)
+		if strings.Contains(string(content), childID) {
+			childFile = filepath.Base(f)
+			break
+		}
+	}
+	if childFile == "" {
+		t.Fatal("child epiphany file not found")
+	}
+
+	// Ensure filename does not contain '@' and starts with stripped slug (e.g. '昨天去眼镜店')
+	if strings.Contains(childFile, "@") {
+		t.Fatalf("expected child filename NOT to contain '@', got: %s", childFile)
+	}
+	if !strings.Contains(childFile, "昨天去眼镜店") {
+		t.Fatalf("expected child filename to contain '昨天去眼镜店', got: %s", childFile)
+	}
+}

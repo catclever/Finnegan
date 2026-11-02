@@ -6,6 +6,11 @@ import {
   extractCardThemes,
   computeOrbitalButtonLayout,
   getCardTimestamp,
+  findAvailableTheme,
+  recordThemeEmit,
+  clearThemeEmitHistory,
+  getThemeCooldownRemaining,
+  THEME_COOLDOWN_MS
 } from './themeOrbit.ts';
 
 describe('Finnegan Theme Thread & Orbital Layout Engine (Task 150)', () => {
@@ -114,6 +119,73 @@ describe('Finnegan Theme Thread & Orbital Layout Engine (Task 150)', () => {
       assert.equal(themes.length, 2);
       assert.deepEqual(themes.map(t => t.id).sort(), ['t1', 't2']);
     });
+
+    it('transitive chain C -> B -> A resolves to single unified theme A for all cards', () => {
+      const cardA: CosmicCard = {
+        id: 'card-a',
+        title: 'Theme Root A',
+        content: 'I am root',
+        createdAt: '2026-10-01T10:00:00Z',
+        x: 0, y: 0, rotation: 0, z: 0,
+        spawnTime: 0, decayDuration: 0, isFresh: false, isVIP: false, origin: 'manual'
+      };
+
+      const cardB: CosmicCard = {
+        id: 'card-b',
+        title: 'Middle B',
+        content: 'References @Theme Root A',
+        createdAt: '2026-10-02T10:00:00Z',
+        threads: [{ id: 'card-a', title: 'Theme Root A' }],
+        x: 0, y: 0, rotation: 0, z: 0,
+        spawnTime: 0, decayDuration: 0, isFresh: false, isVIP: false, origin: 'manual'
+      };
+
+      const cardC: CosmicCard = {
+        id: 'card-c',
+        title: 'Leaf C',
+        content: 'References @Middle B',
+        createdAt: '2026-10-03T10:00:00Z',
+        threads: [{ id: 'card-b', title: 'Middle B' }],
+        x: 0, y: 0, rotation: 0, z: 0,
+        spawnTime: 0, decayDuration: 0, isFresh: false, isVIP: false, origin: 'manual'
+      };
+
+      const pool = [cardA, cardB, cardC];
+
+      // Focusing on A, B, or C should all yield the exact same single theme group 'card-a' with [A, B, C]
+      const fromA = extractCardThemes(cardA, pool);
+      assert.equal(fromA.length, 1);
+      assert.equal(fromA[0].id, 'card-a');
+      assert.equal(fromA[0].title, 'Theme Root A');
+      assert.deepEqual(fromA[0].cards.map(c => c.id), ['card-a', 'card-b', 'card-c']);
+
+      const fromB = extractCardThemes(cardB, pool);
+      assert.equal(fromB.length, 1);
+      assert.equal(fromB[0].id, 'card-a');
+      assert.deepEqual(fromB[0].cards.map(c => c.id), ['card-a', 'card-b', 'card-c']);
+
+      const fromC = extractCardThemes(cardC, pool);
+      assert.equal(fromC.length, 1);
+      assert.equal(fromC[0].id, 'card-a');
+      assert.deepEqual(fromC[0].cards.map(c => c.id), ['card-a', 'card-b', 'card-c']);
+
+      // Extended chain D -> C -> B -> A
+      const cardD: CosmicCard = {
+        id: 'card-d',
+        title: 'Leaf D',
+        content: 'References @Leaf C',
+        createdAt: '2026-10-04T10:00:00Z',
+        threads: [{ id: 'card-c', title: 'Leaf C' }],
+        x: 0, y: 0, rotation: 0, z: 0,
+        spawnTime: 0, decayDuration: 0, isFresh: false, isVIP: false, origin: 'manual'
+      };
+
+      const pool4 = [cardA, cardB, cardC, cardD];
+      const fromD = extractCardThemes(cardD, pool4);
+      assert.equal(fromD.length, 1);
+      assert.equal(fromD[0].id, 'card-a');
+      assert.deepEqual(fromD[0].cards.map(c => c.id), ['card-a', 'card-b', 'card-c', 'card-d']);
+    });
   });
 
   describe('computeOrbitalButtonLayout', () => {
@@ -155,6 +227,66 @@ describe('Finnegan Theme Thread & Orbital Layout Engine (Task 150)', () => {
       assert.equal(layoutRight[1].y, 0);
       assert.equal(layoutRight[1].x, -72);
       assert.ok(layoutRight[0].x < 0, 'Right side buttons must all have negative X (pointing inward)');
+    });
+  });
+
+  describe('Theme Barrage Cooldown & Non-Consecutive Selection (30s Window)', () => {
+    it('returns null when themes list is empty', () => {
+      clearThemeEmitHistory();
+      assert.equal(findAvailableTheme([]), null);
+    });
+
+    it('enforces 30s cooldown on a single theme card', () => {
+      clearThemeEmitHistory();
+      const themes = [{ id: 'theme-1', title: '读书笔记' }];
+      const t0 = 100_000;
+
+      // First emit succeeds
+      const chosen1 = findAvailableTheme(themes, t0);
+      assert.equal(chosen1?.id, 'theme-1');
+      recordThemeEmit('theme-1', t0);
+
+      // Within 30s (e.g. at 5s, 15s, 29s), cannot emit again
+      assert.equal(findAvailableTheme(themes, t0 + 5_000), null);
+      assert.equal(findAvailableTheme(themes, t0 + 15_000), null);
+      assert.equal(findAvailableTheme(themes, t0 + 29_999), null);
+      assert.equal(getThemeCooldownRemaining('theme-1', t0 + 10_000), 20_000);
+
+      // At or after 30s, cooldown expires and theme can emit again
+      const chosen2 = findAvailableTheme(themes, t0 + 30_000);
+      assert.equal(chosen2?.id, 'theme-1');
+
+      // bypassCooldown allows instant emit on card switch/focus even if within 30s
+      recordThemeEmit('theme-1', t0 + 30_000);
+      assert.equal(findAvailableTheme(themes, t0 + 31_000, false), null);
+      assert.equal(findAvailableTheme(themes, t0 + 31_000, true)?.id, 'theme-1');
+    });
+
+    it('prevents consecutive back-to-back duplicate emits across multiple themes', () => {
+      clearThemeEmitHistory();
+      const themes = [
+        { id: 'theme-1', title: '读书笔记' },
+        { id: 'theme-2', title: '代码架构' }
+      ];
+      const t0 = 100_000;
+
+      // 1. First choice can be either theme
+      const chosen1 = findAvailableTheme(themes, t0);
+      assert.ok(chosen1 !== null);
+      recordThemeEmit(chosen1.id, t0);
+
+      // 2. Next choice at t0 + 2s must pick the other theme (not on cooldown, and non-consecutive)
+      const chosen2 = findAvailableTheme(themes, t0 + 2_000);
+      assert.ok(chosen2 !== null);
+      assert.notEqual(chosen2.id, chosen1.id);
+      recordThemeEmit(chosen2.id, t0 + 2_000);
+
+      // 3. Now both themes are on cooldown at t0 + 5s
+      assert.equal(findAvailableTheme(themes, t0 + 5_000), null);
+
+      // 4. At t0 + 30_001s, theme-1 expires first and is the only available
+      const chosen3 = findAvailableTheme(themes, t0 + 30_001);
+      assert.equal(chosen3?.id, chosen1.id);
     });
   });
 });

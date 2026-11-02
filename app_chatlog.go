@@ -164,9 +164,12 @@ func (a *App) CaptureChatLogWithImages(rawText string, images []ImagePayload) (*
 	}
 
 	docID := ulid.Make().String()
+	threads := a.ExtractThreadRefs(rawText)
+	if len(threads) > 0 {
+		parsed.Coalesced = StripThreadMentions(parsed.Coalesced, threads)
+	}
 	contentStr := chatlog.FormatCardMarkdown(docID, title, parsed, savedImageNames)
 
-	threads := a.ExtractThreadRefs(rawText)
 	if len(threads) > 0 {
 		var thStr strings.Builder
 		thStr.WriteString("threads:\n")

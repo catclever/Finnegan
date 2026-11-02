@@ -21,6 +21,12 @@
   export let onHighlight: (index: number) => void = () => {};
   export let onLoadMore: () => void = () => {};
 
+  // Stage 2 Source / Self Picker Props
+  export let pickerMode: boolean = false;
+  export let pickerOptions: Array<{ id: string; title: string; kind: 'root' | 'self'; label: string; hint: string; checked: boolean }> = [];
+  export let onToggleOption: ((index: number) => void) | undefined = undefined;
+  export let onConfirmPicker: (() => void) | undefined = undefined;
+
   let menuEl: HTMLDivElement | null = null;
 
   // Normalize candidateItems or fallback to plain cards
@@ -30,7 +36,7 @@
     : (paramCardCandidates || []).map(c => ({ card: c, tier: 'current_screen' as const }))) as CandidateCardItem[];
 
   // Scroll active item into view whenever index updates
-  $: if (menuEl && (highlightedCardIndex === -1 || (highlightedCardIndex >= 0 && items.length > 0))) {
+  $: if (menuEl && (highlightedCardIndex === -1 || (highlightedCardIndex >= 0 && (items.length > 0 || pickerOptions.length > 0)))) {
     tick().then(() => {
       if (!menuEl) return;
       const activeEl = menuEl.querySelector('.dropdown-item.active') as HTMLElement;
@@ -74,7 +80,52 @@
   }
 </script>
 
-{#if items.length > 0 || (directSearchAction && directSearchAction.text.trim())}
+{#if pickerMode && pickerOptions.length > 0}
+  <!-- Two-Stage Source / Self Multi-Select Picker -->
+  <div 
+    bind:this={menuEl}
+    class="dropdown-menu card-dropdown picker-mode"
+  >
+    <div class="picker-header">
+      <span class="picker-header-title">选择关联归组</span>
+      <span class="picker-header-tip">空格 勾选 · 回车 确认</span>
+    </div>
+
+    {#each pickerOptions as opt, index}
+      <!-- svelte-ignore a11y-click-events-have-key-events -->
+      <!-- svelte-ignore a11y-no-static-element-interactions -->
+      <div 
+        class="dropdown-item picker-item"
+        class:active={index === highlightedCardIndex}
+        class:checked={opt.checked}
+        on:mousemove={() => onHighlight(index)}
+        on:mousedown|preventDefault={() => onToggleOption ? onToggleOption(index) : null}
+      >
+        <div class="checkbox-indicator" class:checked={opt.checked}>
+          {#if opt.checked}
+            ✓
+          {/if}
+        </div>
+        <div class="picker-item-content">
+          <span class="picker-icon">{opt.kind === 'root' ? '🪐' : '📄'}</span>
+          <span class="picker-label">{opt.label}</span>
+        </div>
+        <span class="picker-hint-badge {opt.kind}">
+          {opt.hint}
+        </span>
+      </div>
+    {/each}
+
+    <div class="picker-footer-bar">
+      <span class="key-hint">↑↓ 移动 · 空格 选择 · 回车 确认 · Esc 返回</span>
+      <button 
+        type="button" 
+        class="picker-confirm-btn"
+        on:mousedown|preventDefault={() => onConfirmPicker ? onConfirmPicker() : null}
+      >确认 (↵)</button>
+    </div>
+  </div>
+{:else if items.length > 0 || (directSearchAction && directSearchAction.text.trim())}
   <div 
     bind:this={menuEl}
     class="dropdown-menu card-dropdown" 
@@ -200,6 +251,143 @@
 
   .section-divider.vault .divider-text {
     color: #64748b;
+  }
+
+  /* Two-Stage Picker Styles */
+  .picker-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px 8px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    background: rgba(248, 250, 252, 0.85);
+    user-select: none;
+  }
+
+  .picker-header-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #1e293b;
+    letter-spacing: -0.01em;
+  }
+
+  .picker-header-tip {
+    font-size: 0.72rem;
+    color: #64748b;
+  }
+
+  .picker-item {
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s ease;
+  }
+
+  .picker-item.checked {
+    background: rgba(14, 165, 233, 0.05);
+  }
+
+  .picker-item.active {
+    background: rgba(14, 165, 233, 0.12) !important;
+  }
+
+  .checkbox-indicator {
+    width: 17px;
+    height: 17px;
+    border-radius: 5px;
+    border: 1.5px solid #cbd5e1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 800;
+    color: #ffffff;
+    margin-right: 12px;
+    transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    flex-shrink: 0;
+  }
+
+  .checkbox-indicator.checked {
+    background: #0ea5e9;
+    border-color: #0ea5e9;
+    box-shadow: 0 1px 4px rgba(14, 165, 233, 0.3);
+  }
+
+  .picker-item-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .picker-icon {
+    font-size: 13px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
+  .picker-label {
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: #1e293b;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .picker-hint-badge {
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    flex-shrink: 0;
+    letter-spacing: -0.01em;
+  }
+
+  .picker-hint-badge.root {
+    background: rgba(14, 165, 233, 0.12);
+    color: #0284c7;
+    border: 1px solid rgba(14, 165, 233, 0.25);
+  }
+
+  .picker-hint-badge.self {
+    background: rgba(139, 92, 246, 0.12);
+    color: #7c3aed;
+    border: 1px solid rgba(139, 92, 246, 0.25);
+  }
+
+  .picker-footer-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 14px;
+    background: rgba(248, 250, 252, 0.9);
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    font-size: 0.72rem;
+    color: #64748b;
+    margin-top: auto;
+  }
+
+  .key-hint {
+    font-size: 0.71rem;
+    color: #64748b;
+  }
+
+  .picker-confirm-btn {
+    padding: 4px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 6px;
+    background: #0ea5e9;
+    color: #ffffff;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgba(14, 165, 233, 0.35);
+    transition: all 0.15s ease;
+  }
+
+  .picker-confirm-btn:hover {
+    background: #0284c7;
   }
 
   /* Interactive Dropdown Item */

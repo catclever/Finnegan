@@ -4,7 +4,97 @@
  * Task: theme_carousel_mode_150
  */
 
-import type { CosmicCard, ThemeThread } from '../types/card';
+import type { CosmicCard, ThemeThread, ThreadRef } from '../types/card';
+export type { ThemeThread, ThreadRef } from '../types/card';
+
+export interface ThemeColorPalette {
+  name: string;
+  primary: string;
+  glow: string;
+  bgGradient: string;
+  bgSolid: string;
+  border: string;
+  text: string;
+}
+
+export const THEME_PALETTES: ThemeColorPalette[] = [
+  {
+    name: 'rose',
+    primary: '#f43f5e',
+    glow: 'rgba(244, 63, 94, 0.45)',
+    bgGradient: 'linear-gradient(135deg, rgba(244, 63, 94, 0.22), rgba(251, 113, 133, 0.14))',
+    bgSolid: 'rgba(244, 63, 94, 0.88)',
+    border: 'rgba(244, 63, 94, 0.55)',
+    text: '#e11d48'
+  },
+  {
+    name: 'amber',
+    primary: '#f59e0b',
+    glow: 'rgba(245, 158, 11, 0.45)',
+    bgGradient: 'linear-gradient(135deg, rgba(245, 158, 11, 0.22), rgba(251, 191, 36, 0.14))',
+    bgSolid: 'rgba(245, 158, 11, 0.88)',
+    border: 'rgba(245, 158, 11, 0.55)',
+    text: '#d97706'
+  },
+  {
+    name: 'emerald',
+    primary: '#10b981',
+    glow: 'rgba(16, 185, 129, 0.45)',
+    bgGradient: 'linear-gradient(135deg, rgba(16, 185, 129, 0.22), rgba(52, 211, 153, 0.14))',
+    bgSolid: 'rgba(16, 185, 129, 0.88)',
+    border: 'rgba(16, 185, 129, 0.55)',
+    text: '#059669'
+  },
+  {
+    name: 'sky',
+    primary: '#0ea5e9',
+    glow: 'rgba(14, 165, 233, 0.45)',
+    bgGradient: 'linear-gradient(135deg, rgba(14, 165, 233, 0.22), rgba(56, 189, 248, 0.14))',
+    bgSolid: 'rgba(14, 165, 233, 0.88)',
+    border: 'rgba(14, 165, 233, 0.55)',
+    text: '#0284c7'
+  },
+  {
+    name: 'violet',
+    primary: '#8b5cf6',
+    glow: 'rgba(139, 92, 246, 0.45)',
+    bgGradient: 'linear-gradient(135deg, rgba(139, 92, 246, 0.22), rgba(167, 139, 250, 0.14))',
+    bgSolid: 'rgba(139, 92, 246, 0.88)',
+    border: 'rgba(139, 92, 246, 0.55)',
+    text: '#7c3aed'
+  },
+  {
+    name: 'fuchsia',
+    primary: '#d946ef',
+    glow: 'rgba(217, 70, 239, 0.45)',
+    bgGradient: 'linear-gradient(135deg, rgba(217, 70, 239, 0.22), rgba(232, 121, 249, 0.14))',
+    bgSolid: 'rgba(217, 70, 239, 0.88)',
+    border: 'rgba(217, 70, 239, 0.55)',
+    text: '#c026d3'
+  },
+  {
+    name: 'orange',
+    primary: '#f97316',
+    glow: 'rgba(249, 115, 22, 0.45)',
+    bgGradient: 'linear-gradient(135deg, rgba(249, 115, 22, 0.22), rgba(251, 146, 60, 0.14))',
+    bgSolid: 'rgba(249, 115, 22, 0.88)',
+    border: 'rgba(249, 115, 22, 0.55)',
+    text: '#ea580c'
+  }
+];
+
+export function getThemePalette(themeId: string, index?: number): ThemeColorPalette {
+  if (typeof index === 'number' && index >= 0) {
+    return THEME_PALETTES[index % THEME_PALETTES.length];
+  }
+  let hash = 0;
+  for (let i = 0; i < (themeId || '').length; i++) {
+    hash = (hash << 5) - hash + themeId.charCodeAt(i);
+    hash |= 0;
+  }
+  const idx = Math.abs(hash) % THEME_PALETTES.length;
+  return THEME_PALETTES[idx];
+}
 
 /**
  * Extracts a numeric creation timestamp for chronological card sorting.
@@ -22,12 +112,13 @@ export function getCardTimestamp(card: CosmicCard | null | undefined): number {
 }
 
 /**
- * Given a focused card and all available cards, extracts all theme threads the card belongs to.
- * A card belongs to:
- * 1. Any theme thread explicitly declared in its own `card.threads`.
- * 2. Itself as a root theme if other cards point to this card via their `threads`.
+ * Given a focused card and all available cards, extracts all theme threads via
+ * Transitive Root Resolution (有向链式溯源归组).
  * 
- * Each ThemeThread contains `{ id, title, cards }` with cards sorted chronologically.
+ * Rules:
+ * 1. For any card X, walks up c.threads recursively until terminal roots are reached.
+ * 2. Every Root R defines a unified theme group containing R and all cards transitively reaching R.
+ * 3. Cards in each group are chronologically sorted.
  */
 export function extractCardThemes(
   card: CosmicCard | null | undefined,
@@ -44,83 +135,125 @@ export function extractCardThemes(
 
   const fullPool = Array.from(cardPoolMap.values());
 
-  // Map of themeId -> { title: string, cardIds: Set<string> }
-  const themeMap = new Map<string, { title: string; cardIds: Set<string> }>();
-
-  // 1. Check card's own threads
-  if (Array.isArray(card.threads)) {
-    for (const th of card.threads) {
-      if (!th || !th.id) continue;
-      const themeId = th.id;
-      const themeTitle = th.title || '主题';
-
-      if (!themeMap.has(themeId)) {
-        themeMap.set(themeId, {
-          title: themeTitle,
-          cardIds: new Set([card.id])
+  function getOutgoingThreads(cid: string): ThreadRef[] {
+    const c = cardPoolMap.get(cid);
+    if (!c || !Array.isArray(c.threads)) return [];
+    const res: ThreadRef[] = [];
+    for (const th of c.threads) {
+      if (!th) continue;
+      let targetCard = cardPoolMap.get(th.id);
+      if (!targetCard && th.title) {
+        targetCard = fullPool.find(p => p.title === th.title);
+      }
+      const targetId = targetCard ? targetCard.id : th.id;
+      if (targetId && targetId !== cid) {
+        res.push({
+          id: targetId,
+          title: targetCard?.title || th.title || '主题'
         });
-      } else {
-        themeMap.get(themeId)!.cardIds.add(card.id);
       }
     }
+    return res;
   }
 
-  // 2. Check other cards that point to this card or share this card's threads
-  for (const other of fullPool) {
-    if (!other || !Array.isArray(other.threads)) continue;
+  function findRootRefs(
+    cid: string,
+    visited: Set<string> = new Set()
+  ): Array<{ id: string; title: string }> {
+    if (visited.has(cid)) {
+      // Cycle break: pick the canonical node (earliest createdAt) from visited cycle
+      const cycleCards = Array.from(visited)
+        .map(id => cardPoolMap.get(id))
+        .filter(Boolean) as CosmicCard[];
+      cycleCards.sort((a, b) => {
+        const tDiff = getCardTimestamp(a) - getCardTimestamp(b);
+        if (tDiff !== 0) return tDiff;
+        return a.id.localeCompare(b.id);
+      });
+      const canonical = cycleCards[0] || cardPoolMap.get(cid);
+      const rootId = canonical ? canonical.id : cid;
+      const rootTitle = canonical?.title || '主题';
+      return [{ id: rootId, title: rootTitle }];
+    }
 
-    for (const th of other.threads) {
-      if (!th || !th.id) continue;
+    const nextVisited = new Set(visited);
+    nextVisited.add(cid);
 
-      // Case 2a: other card points to `card.id` as its theme root
-      if (th.id === card.id) {
-        const rootTitle = card.title || th.title || '主题';
-        if (!themeMap.has(card.id)) {
-          themeMap.set(card.id, {
-            title: rootTitle,
-            cardIds: new Set([card.id, other.id])
-          });
-        } else {
-          themeMap.get(card.id)!.cardIds.add(other.id);
+    const outgoing = getOutgoingThreads(cid);
+    if (outgoing.length === 0) {
+      const currentCard = cardPoolMap.get(cid);
+      return [{
+        id: cid,
+        title: currentCard?.title || '主题'
+      }];
+    }
+
+    const rootsMap = new Map<string, string>();
+    for (const th of outgoing) {
+      if (!cardPoolMap.has(th.id)) {
+        rootsMap.set(th.id, th.title || '主题');
+      } else {
+        const subRoots = findRootRefs(th.id, nextVisited);
+        for (const sr of subRoots) {
+          if (!rootsMap.has(sr.id)) {
+            rootsMap.set(sr.id, sr.title);
+          }
         }
       }
+    }
 
-      // Case 2b: other card belongs to one of `card`'s active themes
-      if (themeMap.has(th.id)) {
-        themeMap.get(th.id)!.cardIds.add(other.id);
+    return Array.from(rootsMap.entries()).map(([id, title]) => ({ id, title }));
+  }
+
+  const rootToCardsMap = new Map<string, { title: string; cardIds: Set<string> }>();
+
+  for (const c of fullPool) {
+    const hasExplicitThreads = Array.isArray(c.threads) && c.threads.length > 0;
+    if (!hasExplicitThreads) continue;
+
+    const roots = findRootRefs(c.id);
+    for (const root of roots) {
+      if (!rootToCardsMap.has(root.id)) {
+        const rootCard = cardPoolMap.get(root.id);
+        const title = rootCard?.title || root.title || '主题';
+        rootToCardsMap.set(root.id, {
+          title,
+          cardIds: new Set([c.id])
+        });
+      } else {
+        rootToCardsMap.get(root.id)!.cardIds.add(c.id);
+      }
+      if (cardPoolMap.has(root.id)) {
+        rootToCardsMap.get(root.id)!.cardIds.add(root.id);
       }
     }
   }
 
-  // 3. For any theme where themeId exists as a card in fullPool, ensure that root card is included
-  for (const [themeId, entry] of themeMap.entries()) {
-    if (cardPoolMap.has(themeId)) {
-      entry.cardIds.add(themeId);
-    }
-  }
-
-  // 4. Assemble and sort each ThemeThread chronologically
   const result: ThemeThread[] = [];
+  const cardHasExplicitThreads = Array.isArray(card.threads) && card.threads.length > 0;
 
-  for (const [themeId, entry] of themeMap.entries()) {
-    const threadCards: CosmicCard[] = [];
-    for (const cid of entry.cardIds) {
-      const c = cardPoolMap.get(cid);
-      if (c) threadCards.push(c);
+  for (const [rootId, entry] of rootToCardsMap.entries()) {
+    if (entry.cardIds.has(card.id)) {
+      if (entry.cardIds.size >= 2 || cardHasExplicitThreads) {
+        const threadCards: CosmicCard[] = [];
+        for (const cid of entry.cardIds) {
+          const c = cardPoolMap.get(cid);
+          if (c) threadCards.push(c);
+        }
+
+        threadCards.sort((a, b) => {
+          const timeDiff = getCardTimestamp(a) - getCardTimestamp(b);
+          if (timeDiff !== 0) return timeDiff;
+          return (a.id || '').localeCompare(b.id || '');
+        });
+
+        result.push({
+          id: rootId,
+          title: entry.title,
+          cards: threadCards
+        });
+      }
     }
-
-    // Sort chronologically ascending (earliest to latest)
-    threadCards.sort((a, b) => {
-      const timeDiff = getCardTimestamp(a) - getCardTimestamp(b);
-      if (timeDiff !== 0) return timeDiff;
-      return (a.id || '').localeCompare(b.id || '');
-    });
-
-    result.push({
-      id: themeId,
-      title: entry.title,
-      cards: threadCards
-    });
   }
 
   return result;
@@ -177,4 +310,59 @@ export function computeOrbitalButtonLayout(
   }
 
   return positions;
+}
+
+/**
+ * Shared Barrage Cooldown & Non-Consecutive Selection Manager
+ * Enforces a 30s cooldown per theme and prevents back-to-back duplicate bubbles.
+ */
+export const THEME_COOLDOWN_MS = 30_000;
+const themeLastEmitTime = new Map<string, number>();
+let lastEmittedThemeId: string | null = null;
+
+export function recordThemeEmit(themeId: string, now: number = Date.now()): void {
+  themeLastEmitTime.set(themeId, now);
+  lastEmittedThemeId = themeId;
+}
+
+export function clearThemeEmitHistory(): void {
+  themeLastEmitTime.clear();
+  lastEmittedThemeId = null;
+}
+
+export function getThemeCooldownRemaining(themeId: string, now: number = Date.now()): number {
+  const last = themeLastEmitTime.get(themeId) || 0;
+  return Math.max(0, THEME_COOLDOWN_MS - (now - last));
+}
+
+export function findAvailableTheme(
+  themes: Array<{ id: string; title: string; cards?: any[] }>,
+  now: number = Date.now(),
+  bypassCooldown: boolean = false
+): { id: string; title: string; cards?: any[] } | null {
+  if (!themes || themes.length === 0) return null;
+
+  // 1. Filter out themes currently within 30s cooldown window (unless bypassCooldown is true)
+  let available = bypassCooldown 
+    ? [...themes]
+    : themes.filter(t => (now - (themeLastEmitTime.get(t.id) || 0)) >= THEME_COOLDOWN_MS);
+
+  if (available.length === 0) {
+    if (bypassCooldown) {
+      available = [...themes];
+    } else {
+      return null;
+    }
+  }
+
+  // 2. If multiple available, avoid back-to-back consecutive repeats with lastEmittedThemeId
+  if (available.length > 1 && lastEmittedThemeId) {
+    const nonConsecutive = available.filter(t => t.id !== lastEmittedThemeId);
+    if (nonConsecutive.length > 0) {
+      available = nonConsecutive;
+    }
+  }
+
+  // Pick randomly among available candidates
+  return available[Math.floor(Math.random() * available.length)];
 }

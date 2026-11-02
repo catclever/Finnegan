@@ -11,7 +11,7 @@
  */
 
 import type { CosmicCard, AuraTrace } from '../types/card';
-import { stageCandidate, MACRO_TTL_MS } from './stageDecay';
+import { stageCandidate, MACRO_TTL_MS } from './stageDecay.ts';
 
 /**
  * Normalizes a tag string by stripping leading hashtags, trailing asterisks, and trimming whitespace.

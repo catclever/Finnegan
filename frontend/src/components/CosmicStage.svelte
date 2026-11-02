@@ -36,6 +36,7 @@
   import { getMaxScrollExpansion, computeClusteredChildCoords, isClusteredChildCard } from '../lib/stageCoords';
   import VirtualCardProxy from './cards/VirtualCardProxy.svelte';
   import OrbitalThemeDial from './cards/OrbitalThemeDial.svelte';
+  import ThemeBottomBubble from './cards/ThemeBottomBubble.svelte';
 
   // Props
   export let cards: CosmicCard[] = [];
@@ -62,6 +63,10 @@
   export let totalAvailableCards: number = 0;
 
   $: void isOmnibarFocused;
+
+  $: activeTheme = (activeThemeId && cardThemes.length > 0) ? (cardThemes.find(t => t.id === activeThemeId) || null) : null;
+  $: activeThemeCards = activeTheme ? activeTheme.cards : [];
+  $: currentThemeIndex = (activeTheme && focusedCardId) ? activeThemeCards.findIndex((c: any) => c.id === focusedCardId) : -1;
 
   // Callbacks
   export let onToggleFocus: ((cardId: string) => void) | undefined = undefined;
@@ -297,13 +302,18 @@
 >
   {#if focusedCardId !== null}
     <div 
-      class="nav-button nav-left" 
+      class="nav-cluster nav-left" 
       class:theme-active={activeThemeId !== null}
       on:mouseenter={() => isLeftNavHovered = true}
       on:mouseleave={() => isLeftNavHovered = false}
-      on:click={handleNavLeft}
     >
-      <svg viewBox="0 0 24 24" width="32" height="32" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+      <div 
+        class="nav-button" 
+        class:theme-active={activeThemeId !== null}
+        on:click={handleNavLeft}
+      >
+        <svg viewBox="0 0 24 24" width="32" height="32" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+      </div>
       <OrbitalThemeDial
         themes={cardThemes}
         activeThemeId={activeThemeId}
@@ -312,14 +322,20 @@
         on:toggleTheme={(e) => dispatch('toggleTheme', e.detail)}
       />
     </div>
+
     <div 
-      class="nav-button nav-right" 
+      class="nav-cluster nav-right" 
       class:theme-active={activeThemeId !== null}
       on:mouseenter={() => isRightNavHovered = true}
       on:mouseleave={() => isRightNavHovered = false}
-      on:click={handleNavRight}
     >
-      <svg viewBox="0 0 24 24" width="32" height="32" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+      <div 
+        class="nav-button" 
+        class:theme-active={activeThemeId !== null}
+        on:click={handleNavRight}
+      >
+        <svg viewBox="0 0 24 24" width="32" height="32" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+      </div>
       <OrbitalThemeDial
         themes={cardThemes}
         activeThemeId={activeThemeId}
@@ -328,6 +344,17 @@
         on:toggleTheme={(e) => dispatch('toggleTheme', e.detail)}
       />
     </div>
+  {/if}
+
+  {#if activeTheme !== null && focusedCardId !== null && currentThemeIndex !== -1}
+    <ThemeBottomBubble
+      theme={activeTheme}
+      themes={cardThemes}
+      currentIndex={currentThemeIndex}
+      totalCards={activeThemeCards.length}
+      on:switchTheme={(e) => dispatch('toggleTheme', e.detail)}
+      on:close={() => dispatch('toggleTheme', activeTheme.id)}
+    />
   {/if}
   <!-- svelte-ignore a11y-click-events-have-key-events -->
   <!-- svelte-ignore a11y-no-static-element-interactions -->
@@ -507,11 +534,27 @@
     to { opacity: 1; }
   }
 
-  /* Navigation Buttons */
-  .nav-button {
+  /* Navigation Clusters & Controls */
+  .nav-cluster {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
+    width: 56px;
+    height: 56px;
+    z-index: 600;
+  }
+
+  .nav-cluster.nav-left {
+    left: 40px;
+  }
+
+  .nav-cluster.nav-right {
+    right: 40px;
+  }
+
+  /* Navigation Buttons */
+  .nav-button {
+    position: relative;
     width: 56px;
     height: 56px;
     border-radius: 50%;
@@ -523,38 +566,33 @@
     justify-content: center;
     align-items: center;
     cursor: pointer;
-    z-index: 600;
+    z-index: 1060;
     pointer-events: auto;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
+  .nav-cluster:hover .nav-button,
   .nav-button:hover {
     background: rgba(255, 255, 255, 0.85);
     color: rgba(20, 30, 40, 0.9);
-    transform: translateY(-50%) scale(1.1);
+    transform: scale(1.1);
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
   }
 
-  /* Vibrant Theme Aurora Glow on Nav Buttons */
+  /* Toned Down Theme Nav Button Accent */
   .nav-button.theme-active {
-    background: rgba(255, 255, 255, 0.75);
-    border-color: rgba(56, 189, 248, 0.85);
+    background: rgba(255, 255, 255, 0.6);
+    border-color: rgba(56, 189, 248, 0.45);
     color: #0284c7;
-    box-shadow: 0 0 20px rgba(56, 189, 248, 0.55), 0 0 38px rgba(168, 85, 247, 0.35), 0 8px 24px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 16px rgba(56, 189, 248, 0.18), 0 2px 8px rgba(0, 0, 0, 0.06);
   }
 
+  .nav-cluster:hover .nav-button.theme-active,
   .nav-button.theme-active:hover {
-    background: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 0 28px rgba(56, 189, 248, 0.75), 0 0 54px rgba(168, 85, 247, 0.5), 0 12px 32px rgba(0, 0, 0, 0.15);
-  }
-
-  .nav-left {
-    left: 40px;
-  }
-
-  .nav-right {
-    right: 40px;
+    background: rgba(255, 255, 255, 0.9);
+    border-color: rgba(56, 189, 248, 0.7);
+    box-shadow: 0 6px 20px rgba(56, 189, 248, 0.28), 0 4px 12px rgba(0, 0, 0, 0.08);
   }
 
   /* Deep Space Pulsating Scroll Indicator */

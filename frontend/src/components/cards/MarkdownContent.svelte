@@ -1,11 +1,66 @@
 <script lang="ts">
-  import { marked } from 'marked';
+  import { Marked } from 'marked';
   import DOMPurify from 'dompurify';
 
   export let content: string = '';
   export let isFocused: boolean = false;
+  export let threads: Array<{ id: string; title: string }> | undefined = undefined;
 
-  $: parsedHtml = DOMPurify.sanitize(marked.parse(content || '', { breaks: true }) as string);
+  function createParser(activeThreads?: Array<{ id: string; title: string }>) {
+    const m = new Marked();
+    m.use({
+      breaks: true,
+      extensions: [{
+        name: 'themeMention',
+        level: 'inline',
+        start(src: string) { return src.indexOf('@'); },
+        tokenizer(src: string) {
+          if (activeThreads && activeThreads.length > 0) {
+            for (const th of activeThreads) {
+              if (!th.title) continue;
+              const prefix = '@' + th.title;
+              if (src.startsWith(prefix)) {
+                return {
+                  type: 'themeMention',
+                  raw: prefix,
+                  text: th.title,
+                };
+              }
+            }
+          }
+          const match = /^@([^\s@#,\n<>:，。！？]+)/u.exec(src);
+          if (match) {
+            return {
+              type: 'themeMention',
+              raw: match[0],
+              text: match[1],
+            };
+          }
+        },
+        renderer(token: any) {
+          return `<span class="theme-mention">@${token.text}</span>`;
+        }
+      }]
+    });
+    return m;
+  }
+
+  function stripLeadingThemeMentions(raw: string, activeThreads?: Array<{ id: string; title: string }>): string {
+    if (!raw || !activeThreads || activeThreads.length === 0) return raw;
+    let res = raw.trim();
+    for (const th of activeThreads) {
+      if (!th.title) continue;
+      const target = '@' + th.title;
+      if (res.startsWith(target)) {
+        res = res.slice(target.length).replace(/^[\s\r\n-_:，。！？,.]+/, '');
+      }
+    }
+    return res || raw;
+  }
+
+  $: sanitizedContent = stripLeadingThemeMentions(content || '', threads);
+  $: parser = createParser(threads);
+  $: parsedHtml = DOMPurify.sanitize(parser.parse(sanitizedContent) as string);
 </script>
 
 <div class="markdown-content" class:focused={isFocused}>
@@ -230,5 +285,33 @@
 
   :global(.markdown-content:not(.focused) br) {
     display: inline;
+  }
+
+  /* Inline Theme Mention styling */
+  :global(.theme-mention) {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 1px 7px 2px 6px;
+    margin: 0 2px;
+    font-size: 0.92em;
+    font-weight: 600;
+    line-height: 1.35;
+    vertical-align: baseline;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.15), rgba(168, 85, 247, 0.18));
+    border: 1px solid rgba(168, 85, 247, 0.32);
+    color: #0284c7;
+    box-shadow: 0 1px 4px rgba(56, 189, 248, 0.12);
+    user-select: text;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  :global(.theme-mention:hover) {
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(168, 85, 247, 0.28));
+    border-color: rgba(168, 85, 247, 0.5);
+    color: #0369a1;
+    transform: translateY(-0.5px);
+    box-shadow: 0 2px 8px rgba(168, 85, 247, 0.22);
   }
 </style>

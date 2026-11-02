@@ -12,7 +12,7 @@
   ======================================================================================
 -->
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onDestroy } from 'svelte';
   import type { CosmicCard } from '../../types/card';
   import { getCardDisplayTime, formatPointTime, stageTime } from '../../lib/time';
   import { getCardTags, normalizeTag } from '../../lib/tagNetwork';
@@ -69,6 +69,40 @@
 
   $: title = card?.title && card.title !== 'Thought' && card.title !== 'Card' && card.title !== 'Note' ? card.title : '';
   $: resolvedDisplayTime = displayTime || thoughtTime || babelTime || formatPointTime(card?.createdAt || card?.spawnTime, $stageTime) || getCardDisplayTime(card, $stageTime);
+
+  let threadCarouselIndex: number = 0;
+  let threadCarouselTimer: ReturnType<typeof setInterval> | null = null;
+
+  $: cardThreads = (card?.threads && Array.isArray(card.threads)) ? card.threads : [];
+  $: if (threadCarouselIndex >= cardThreads.length) {
+    threadCarouselIndex = 0;
+  }
+
+  function startThreadCarousel() {
+    if (threadCarouselTimer) return;
+    if (cardThreads.length > 1 && !isFocused) {
+      threadCarouselTimer = setInterval(() => {
+        threadCarouselIndex = (threadCarouselIndex + 1) % cardThreads.length;
+      }, 2800);
+    }
+  }
+
+  function stopThreadCarousel() {
+    if (threadCarouselTimer) {
+      clearInterval(threadCarouselTimer);
+      threadCarouselTimer = null;
+    }
+  }
+
+  $: if (cardThreads.length > 1 && !isFocused) {
+    startThreadCarousel();
+  } else {
+    stopThreadCarousel();
+  }
+
+  onDestroy(() => {
+    stopThreadCarousel();
+  });
 </script>
 
 <div class="note-card-body" class:focused={isFocused} class:hovered={isHovered}>
@@ -88,7 +122,7 @@
     </header>
 
     <div class="note-focused-body">
-      <MarkdownContent content={card?.content || ''} isFocused={true} />
+      <MarkdownContent content={card?.content || ''} threads={card?.threads} isFocused={true} />
     </div>
 
     {#if manualKeywords.length > 0}
@@ -117,7 +151,7 @@
         {/if}
       </div>
       <div class="note-snippet">
-        <MarkdownContent content={card?.content || ''} isFocused={false} />
+        <MarkdownContent content={card?.content || ''} threads={card?.threads} isFocused={false} />
       </div>
       {#if manualKeywords.length > 0}
         <div 
@@ -139,9 +173,20 @@
           {/each}
         </div>
       {/if}
-      {#if resolvedDisplayTime}
+      {#if resolvedDisplayTime || cardThreads.length > 0}
         <div class="note-footer">
-          <span class="card-time">{resolvedDisplayTime}</span>
+          {#if cardThreads.length > 0}
+            <div class="note-footer-theme" title={`主题关联: ${cardThreads[threadCarouselIndex]?.title}`}>
+              <span class="thread-symbol">🪐</span>
+              <span class="thread-name">@{cardThreads[threadCarouselIndex]?.title}</span>
+              {#if cardThreads.length > 1}
+                <span class="thread-count-badge">{threadCarouselIndex + 1}/{cardThreads.length}</span>
+              {/if}
+            </div>
+          {/if}
+          {#if resolvedDisplayTime}
+            <span class="card-time">{resolvedDisplayTime}</span>
+          {/if}
         </div>
       {/if}
     </div>
@@ -328,10 +373,48 @@
 
   .note-footer {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
     align-items: center;
     margin-top: auto;
     padding-top: 4px;
+    flex-shrink: 0;
+  }
+
+  .note-footer-theme {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    max-width: 62%;
+    padding: 1px 6px 1px 5px;
+    font-size: 9.5px;
+    font-weight: 550;
+    border-radius: 9999px;
+    background: rgba(56, 189, 248, 0.1);
+    border: 1px solid rgba(56, 189, 248, 0.22);
+    color: #0284c7;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    user-select: none;
+    transition: all 0.3s ease;
+  }
+
+  .note-footer-theme .thread-symbol {
+    font-size: 9.5px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
+  .note-footer-theme .thread-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .note-footer-theme .thread-count-badge {
+    font-size: 8.5px;
+    opacity: 0.75;
+    margin-left: 2px;
     flex-shrink: 0;
   }
 

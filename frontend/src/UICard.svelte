@@ -37,6 +37,7 @@
   export let clusteredOverride: { x: number; y: number; z: number; rotation: number; motherId: string } | null = null;
   export let themePeekRole: 'left' | 'right' | null = null;
   export let isThemeActive: boolean = false;
+  $: void isThemeActive;
 
   let lastNavDir: 'prev' | 'next' | null = null;
   $: if (!isFocused) lastNavDir = null;
@@ -371,7 +372,6 @@
   class:aura-stage-2={auraStage === 2}
   class:aura-stage-3={auraStage === 3}
   class:theme-peek={themePeekRole !== null}
-  class:theme-aura={isThemeActive}
   title={isTemporary ? '需先收集卡片才能编辑' : (isFocused ? '双击进行编辑' : '⌥ + 单击在外部编辑')}
   on:click={handleClick}
   on:dblclick={handleDoubleClick}
@@ -584,39 +584,6 @@
 
   .card.clustered-child {
     pointer-events: none !important;
-  }
-
-  /* Theme Aura: Vibrant Aurora Gradient Border Glow */
-  .card.theme-aura {
-    box-shadow: 
-      0 0 0 1.5px rgba(56, 189, 248, 0.75),
-      0 0 24px rgba(56, 189, 248, 0.45),
-      0 0 48px rgba(168, 85, 247, 0.3),
-      0 40px 100px rgba(0, 0, 0, 0.22) !important;
-  }
-
-  .card.theme-aura::after {
-    content: '';
-    position: absolute;
-    inset: -2px;
-    border-radius: inherit;
-    padding: 2px;
-    background: conic-gradient(from 0deg at 50% 50%, #38bdf8, #818cf8, #c084fc, #f472b6, #38bdf8);
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
-    opacity: 0.85;
-    animation: theme-aurora-spin 6s linear infinite;
-  }
-
-  @keyframes theme-aurora-spin {
-    from {
-      transform: rotate(0deg);
-    }
-    to {
-      transform: rotate(360deg);
-    }
   }
 
   .card.theme-peek {

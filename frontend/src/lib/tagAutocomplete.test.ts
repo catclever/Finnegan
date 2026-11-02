@@ -5,7 +5,7 @@ import {
   filterMatchedTags,
   detectTagTriggerAtCursor,
   applyTagSelectionToText,
-} from './tagAutocomplete';
+} from './tagAutocomplete.ts';
 
 describe('Tag Autocomplete Engine', () => {
   it('collectAllAvailableTags extracts and deduplicates tags from cards and localVaultPool', () => {

@@ -22,11 +22,33 @@ import (
 	"github.com/oklog/ulid/v2"
 )
 
+// StripThreadMentions strips leading @<th.Title> mentions from card body
+// so that theme associations in frontmatter do not duplicate at the beginning of the card text.
+func StripThreadMentions(text string, threads []ThreadRef) string {
+	res := strings.TrimSpace(text)
+	for _, th := range threads {
+		if th.Title == "" {
+			continue
+		}
+		targetToken := "@" + th.Title
+		if strings.HasPrefix(res, targetToken) {
+			res = strings.TrimPrefix(res, targetToken)
+			res = strings.TrimLeft(res, " \t\r\n-_:，。！？,. ")
+		}
+	}
+	trimmed := strings.TrimSpace(res)
+	if trimmed == "" {
+		return text
+	}
+	return trimmed
+}
+
 func sanitizeSlug(s string) string {
 	s = strings.ReplaceAll(s, "\r", "")
 	s = strings.ReplaceAll(s, "\n", "_")
 	s = strings.ReplaceAll(s, "\t", "_")
 	s = strings.ReplaceAll(s, " ", "_")
+	s = strings.ReplaceAll(s, "@", "")
 	s = strings.ReplaceAll(s, "/", "_")
 	s = strings.ReplaceAll(s, "\\", "_")
 	s = strings.ReplaceAll(s, ":", "_")
@@ -36,12 +58,31 @@ func sanitizeSlug(s string) string {
 	s = strings.ReplaceAll(s, "<", "_")
 	s = strings.ReplaceAll(s, ">", "_")
 	s = strings.ReplaceAll(s, "|", "_")
-	s = strings.Trim(s, "._ ")
+	s = strings.Trim(s, "._-@ ")
 	if len([]rune(s)) > 20 {
 		runes := []rune(s)
-		return strings.TrimRight(string(runes[:20]), "._ ")
+		return strings.TrimRight(string(runes[:20]), "._-@ ")
 	}
 	return s
+}
+
+func deriveCaptureSlugSource(body string, threads []ThreadRef, fallback string) string {
+	slugSource := body
+	for _, th := range threads {
+		targetToken := "@" + th.Title
+		if strings.HasPrefix(slugSource, targetToken) {
+			slugSource = strings.TrimPrefix(slugSource, targetToken)
+			slugSource = strings.TrimLeft(slugSource, " \t\r\n-_:，。！？,. ")
+		}
+	}
+	if slugSource == "" {
+		if len(threads) > 0 {
+			slugSource = threads[0].Title
+		} else {
+			slugSource = fallback
+		}
+	}
+	return slugSource
 }
 
 // StripAndExtractHashtags strips trailing/standalone hashtags completely from card body,
@@ -139,6 +180,8 @@ func (a *App) CaptureThought(text string) (string, error) {
 	cleanBody, tags := StripAndExtractHashtags(text)
 	kwProfile := keywords.RouteTagsToKeywords(tags)
 	threads := a.ExtractThreadRefs(text)
+	slugSource := deriveCaptureSlugSource(cleanBody, threads, text)
+	cleanBody = StripThreadMentions(cleanBody, threads)
 
 	home := a.Home
 	if home == "" {
@@ -154,10 +197,6 @@ func (a *App) CaptureThought(text string) (string, error) {
 	targetDir := filepath.Join(home, "Scattering")
 
 	now := time.Now()
-	slugSource := cleanBody
-	if slugSource == "" {
-		slugSource = text
-	}
 	baseName := fmt.Sprintf("%s-%s", now.Format("20060102-1504"), sanitizeSlug(slugSource))
 	var targetPath string
 
@@ -254,6 +293,8 @@ func (a *App) CaptureNote(text string) (string, error) {
 	if slugSource == "" {
 		slugSource = body
 	}
+	threads := a.ExtractThreadRefs(text)
+	slugSource = deriveCaptureSlugSource(slugSource, threads, text)
 	baseName := fmt.Sprintf("%s-%s", now.Format("20060102-1504"), sanitizeSlug(slugSource))
 	var targetPath string
 
@@ -275,7 +316,7 @@ func (a *App) CaptureNote(text string) (string, error) {
 
 	docID := ulid.Make().String()
 	tags := ExtractHashtags(text)
-	threads := a.ExtractThreadRefs(text)
+	body = StripThreadMentions(body, threads)
 
 	var sb strings.Builder
 	sb.WriteString("---\n")
@@ -459,11 +500,8 @@ func (a *App) CaptureThoughtWithImages(text string, images []ImagePayload) (stri
 	cleanBody, tags := StripAndExtractHashtags(text)
 	kwProfile := keywords.RouteTagsToKeywords(tags)
 	threads := a.ExtractThreadRefs(text)
-
-	slugSrc := cleanBody
-	if slugSrc == "" {
-		slugSrc = "thought"
-	}
+	slugSrc := deriveCaptureSlugSource(cleanBody, threads, "thought")
+	cleanBody = StripThreadMentions(cleanBody, threads)
 	baseName := fmt.Sprintf("%s-%s", now.Format("20060102-1504"), sanitizeSlug(slugSrc))
 	var targetPath string
 

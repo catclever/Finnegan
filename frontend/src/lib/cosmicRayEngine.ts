@@ -4,9 +4,9 @@
  */
 
 import type { CosmicCard } from '../types/card';
-import { computeAnimatedBeamPath, type BeamCoordinates } from './beamMath';
-import { cardHasTag, cardHasKeyword, getCardTags } from './tagNetwork';
-import { isClusteredChildCard } from './stageCoords';
+import { computeAnimatedBeamPath, type BeamCoordinates } from './beamMath.ts';
+import { cardHasTag, cardHasKeyword, getCardTags } from './tagNetwork.ts';
+import { isClusteredChildCard } from './stageCoords.ts';
 
 export interface MotherChildRayDef {
   id: string;

@@ -20,7 +20,7 @@
 
 import type { CosmicCard } from '../types/card';
 import { calculateIntrinsicTargetZ } from './tagNetwork.ts';
-import { isProtectedCard, VIP_INK_BEAM_DURATION_MS } from './stageDecay';
+import { isProtectedCard, VIP_INK_BEAM_DURATION_MS } from './stageDecay.ts';
 
 /** Default duration for search auras (15 minutes) */
 export const DEFAULT_SEARCH_AURA_DURATION = 15 * 60 * 1000;

@@ -106,20 +106,72 @@
   let atSearchDebounceTimer: any = null;
   let trackedThreads: Array<{ id: string; title: string }> = [];
 
+  // Stage 2 Source / Self Multi-Select Picker State
+  interface ThreadPickerOption {
+    id: string;
+    title: string;
+    kind: 'root' | 'self';
+    label: string;
+    hint: string;
+    checked: boolean;
+  }
+  let atPickerCard: CosmicCard | null = null;
+  let atPickerOptions: ThreadPickerOption[] = [];
+  let atPickerHighlightedIndex: number = 0;
+
   function selectAtCard(candidate: CosmicCard) {
     if (atMatchStart < 0) return;
-    const cursorPos = omnibarInputEl?.selectionStart ?? omniText.length;
-    const { newText, newCursor } = applyAtSelectionToText(omniText, atMatchStart, cursorPos, candidate.title);
-    omniText = newText;
 
-    if (!trackedThreads.some(t => t.id === candidate.id)) {
-      trackedThreads = [...trackedThreads, { id: candidate.id, title: candidate.title }];
+    // Case B: Candidate has upstream threads -> Open Stage 2 Source / Self Multi-Select Picker
+    if (Array.isArray(candidate.threads) && candidate.threads.length > 0) {
+      atPickerCard = candidate;
+      atPickerOptions = [
+        ...candidate.threads.map((th, i) => ({
+          id: th.id,
+          title: th.title,
+          kind: 'root' as const,
+          label: '源头：' + th.title,
+          hint: '归入该组',
+          checked: i === 0, // Default option 0 is checked
+        })),
+        {
+          id: candidate.id,
+          title: candidate.title,
+          kind: 'self' as const,
+          label: '本卡：' + candidate.title,
+          hint: '开启新组',
+          checked: false,
+        }
+      ];
+      atPickerHighlightedIndex = 0;
+      return;
+    }
+
+    // Case A: Candidate has no upstream threads -> Insert directly
+    confirmAtInsertion([{ id: candidate.id, title: candidate.title }]);
+  }
+
+  function confirmAtInsertion(selectedOptions: Array<{ id: string; title: string }>) {
+    if (atMatchStart < 0 || selectedOptions.length === 0) return;
+    const cursorPos = omnibarInputEl?.selectionStart ?? omniText.length;
+    const insertTokens = selectedOptions.map(opt => `@${opt.title} `).join('');
+    const before = omniText.slice(0, atMatchStart);
+    const after = omniText.slice(cursorPos);
+    omniText = before + insertTokens + after;
+    const newCursor = before.length + insertTokens.length;
+
+    for (const opt of selectedOptions) {
+      if (!trackedThreads.some(t => t.id === opt.id)) {
+        trackedThreads = [...trackedThreads, { id: opt.id, title: opt.title }];
+      }
     }
 
     atSelectMode = false;
     atQuery = "";
     atMatchStart = -1;
     atCandidateItems = [];
+    atPickerCard = null;
+    atPickerOptions = [];
 
     setTimeout(() => {
       if (omnibarInputEl) {
@@ -131,8 +183,25 @@
     }, 10);
   }
 
+  function togglePickerOption(index: number) {
+    if (index >= 0 && index < atPickerOptions.length) {
+      atPickerOptions[index].checked = !atPickerOptions[index].checked;
+      atPickerOptions = [...atPickerOptions];
+    }
+  }
+
+  function confirmPicker() {
+    let checked = atPickerOptions.filter(o => o.checked);
+    if (checked.length === 0 && atPickerHighlightedIndex >= 0 && atPickerHighlightedIndex < atPickerOptions.length) {
+      checked = [atPickerOptions[atPickerHighlightedIndex]];
+    }
+    confirmAtInsertion(checked);
+  }
+
   function searchAtCandidates(query: string) {
     if (atSearchDebounceTimer) clearTimeout(atSearchDebounceTimer);
+    atPickerCard = null;
+    atPickerOptions = [];
     const q = query.trim();
     atSearchDebounceTimer = setTimeout(async () => {
       try {
@@ -358,6 +427,11 @@
       return true;
     }
     if (atSelectMode) {
+      if (atPickerCard !== null) {
+        atPickerCard = null;
+        atPickerOptions = [];
+        return true;
+      }
       atSelectMode = false;
       atCandidateItems = [];
       return true;
@@ -631,29 +705,58 @@
     }
 
     // Card Association Dropdown Active: @
-    if (atSelectMode && atCandidateItems.length > 0) {
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        atHighlightedIndex = (atHighlightedIndex + 1) % atCandidateItems.length;
-        return;
-      }
-      if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        atHighlightedIndex = (atHighlightedIndex - 1 + atCandidateItems.length) % atCandidateItems.length;
-        return;
-      }
-      if (e.key === 'Enter' || e.key === 'Tab') {
-        e.preventDefault();
-        if (atHighlightedIndex >= 0 && atHighlightedIndex < atCandidateItems.length) {
-          selectAtCard(atCandidateItems[atHighlightedIndex].card);
+    if (atSelectMode) {
+      if (atPickerCard !== null && atPickerOptions.length > 0) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          atPickerHighlightedIndex = (atPickerHighlightedIndex + 1) % atPickerOptions.length;
+          return;
         }
-        return;
-      }
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        atSelectMode = false;
-        atCandidateItems = [];
-        return;
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          atPickerHighlightedIndex = (atPickerHighlightedIndex - 1 + atPickerOptions.length) % atPickerOptions.length;
+          return;
+        }
+        if (e.key === ' ') {
+          e.preventDefault();
+          togglePickerOption(atPickerHighlightedIndex);
+          return;
+        }
+        if (e.key === 'Enter' || e.key === 'Tab') {
+          e.preventDefault();
+          confirmPicker();
+          return;
+        }
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          atPickerCard = null;
+          atPickerOptions = [];
+          return;
+        }
+      } else if (atCandidateItems.length > 0) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          atHighlightedIndex = (atHighlightedIndex + 1) % atCandidateItems.length;
+          return;
+        }
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          atHighlightedIndex = (atHighlightedIndex - 1 + atCandidateItems.length) % atCandidateItems.length;
+          return;
+        }
+        if (e.key === 'Enter' || e.key === 'Tab') {
+          e.preventDefault();
+          if (atHighlightedIndex >= 0 && atHighlightedIndex < atCandidateItems.length) {
+            selectAtCard(atCandidateItems[atHighlightedIndex].card);
+          }
+          return;
+        }
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          atSelectMode = false;
+          atCandidateItems = [];
+          return;
+        }
       }
     }
 
@@ -1116,13 +1219,23 @@
   {/if}
 
   <!-- Dropdown: Card Association Suggestions (@) -->
-  {#if atSelectMode && atCandidateItems.length > 0}
+  {#if atSelectMode && (atCandidateItems.length > 0 || atPickerCard !== null)}
     <CardCandidateDropdown
       candidateItems={atCandidateItems}
-      highlightedCardIndex={atHighlightedIndex}
+      highlightedCardIndex={atPickerCard !== null ? atPickerHighlightedIndex : atHighlightedIndex}
       omniText={atQuery}
+      pickerMode={atPickerCard !== null}
+      pickerOptions={atPickerOptions}
+      onToggleOption={togglePickerOption}
+      onConfirmPicker={confirmPicker}
       onSelect={(cand) => selectAtCard(cand)}
-      onHighlight={(idx) => atHighlightedIndex = idx}
+      onHighlight={(idx) => {
+        if (atPickerCard !== null) {
+          atPickerHighlightedIndex = idx;
+        } else {
+          atHighlightedIndex = idx;
+        }
+      }}
     />
   {/if}
 

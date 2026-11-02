@@ -145,5 +145,5 @@ export {
   buildMotherChildRayDefs,
   buildSynapseRayDefs,
   assembleRenderedRays,
-} from './cosmicRayEngine';
+} from './cosmicRayEngine.ts';
 
