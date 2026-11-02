@@ -88,6 +88,12 @@ func TestCaptureCurio_ImageEmpty(t *testing.T) {
 }
 
 func TestCaptureCurio_ImageHappyPath(t *testing.T) {
+	// Hermetic: config.LoadConfig resolves ~/Library/Application Support/Finnegan/finnegan.yml
+	// via os.UserHomeDir and falls back to . Isolate both so the test never
+	// picks up a real key/config (which would trigger a real network call).
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("GEMINI_API_KEY", "")
+
 	app := &App{
 		ctx:  context.Background(),
 		Home: t.TempDir(),
