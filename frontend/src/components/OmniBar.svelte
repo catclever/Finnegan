@@ -1337,7 +1337,7 @@
   <!-- Dropdown: Card Type Suggestions (:) -->
   {#if typeSelectMode && matchedCardTypes.length > 0}
     <CardTypeDropdown
-      {matchedCardTypes}
+      matchedTypes={matchedCardTypes}
       highlightedIndex={highlightedTypeIndex}
       onHighlight={(idx) => highlightedTypeIndex = idx}
       onSelect={selectCardType}

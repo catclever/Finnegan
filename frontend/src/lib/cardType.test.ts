@@ -146,6 +146,14 @@ test('Card Type Options & Filtering Engine', async (t) => {
     assert.equal(opts.some(o => o.type === 'curio'), false);
   });
 
+  await t.test('core types always present with empty/null manifests', () => {
+    for (const m of [[], null, undefined] as any[]) {
+      const types = getAvailableCardTypeOptions(m).map(o => o.type);
+      for (const core of ['thought', 'note', 'chat_log']) assert.ok(types.includes(core));
+    }
+    assert.equal(filterCardTypeOptions(getAvailableCardTypeOptions([]), '').length >= 3, true);
+  });
+
   await t.test('filters options by query correctly', () => {
     const opts = getAvailableCardTypeOptions();
     const filteredCu = filterCardTypeOptions(opts, 'cu');
