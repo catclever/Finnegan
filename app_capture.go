@@ -18,6 +18,7 @@ import (
 	"Finnegan/core/config"
 	"Finnegan/core/keywords"
 	"Finnegan/core/watcher"
+	"Finnegan/modules/curio"
 
 	"github.com/oklog/ulid/v2"
 )
@@ -169,6 +170,180 @@ func (a *App) ExtractThreadRefs(text string) []ThreadRef {
 	}
 
 	return threads
+}
+
+func (a *App) CaptureCurio(text string, images []ImagePayload) (string, error) {
+	text = strings.TrimSpace(text)
+	if text == "" && len(images) == 0 {
+		return "", errors.New("empty text and images")
+	}
+
+	home := a.Home
+	if home == "" {
+		_, h, err := config.LoadConfig()
+		if err == nil {
+			home = h
+			a.Home = h
+		}
+	}
+	if home == "" {
+		return "", errors.New("home directory not configured")
+	}
+
+	docID := ulid.Make().String()
+	now := time.Now()
+	cleanBody, tags := StripAndExtractHashtags(text)
+
+	if len(images) > 0 {
+		img := images[0]
+		raw := strings.TrimSpace(img.Data)
+		if raw != "" {
+			ext := ""
+			if strings.HasPrefix(raw, "data:") {
+				idx := strings.Index(raw, ",")
+				if idx != -1 {
+					header := raw[:idx]
+					raw = raw[idx+1:]
+					if strings.HasPrefix(header, "data:image/") {
+						mimeType := strings.TrimPrefix(header, "data:image/")
+						if semi := strings.Index(mimeType, ";"); semi != -1 {
+							mimeType = mimeType[:semi]
+						}
+						switch strings.ToLower(mimeType) {
+						case "jpeg", "jpg":
+							ext = ".jpg"
+						case "png":
+							ext = ".png"
+						case "gif":
+							ext = ".gif"
+						case "webp":
+							ext = ".webp"
+						case "svg+xml", "svg":
+							ext = ".svg"
+						case "bmp":
+							ext = ".bmp"
+						case "avif":
+							ext = ".avif"
+						default:
+							ext = "." + mimeType
+						}
+					}
+				}
+			}
+			if ext == "" {
+				if img.Ext != "" {
+					ext = img.Ext
+					if !strings.HasPrefix(ext, ".") {
+						ext = "." + ext
+					}
+				} else if img.Name != "" {
+					ext = filepath.Ext(img.Name)
+				}
+				if ext == "" {
+					ext = ".png"
+				}
+			}
+
+			cleanB64 := strings.Map(func(r rune) rune {
+				if r == '\n' || r == '\r' || r == ' ' || r == '\t' {
+					return -1
+				}
+				return r
+			}, raw)
+
+			decoded, err := base64.StdEncoding.DecodeString(cleanB64)
+			if err != nil {
+				decoded, err = base64.RawStdEncoding.DecodeString(cleanB64)
+				if err != nil {
+					decoded, err = base64.URLEncoding.DecodeString(cleanB64)
+					if err != nil {
+						return "", fmt.Errorf("failed to decode base64 image: %w", err)
+					}
+				}
+			}
+
+			llmCfg := a.getLLMConfig()
+			return curio.IngestCurioPayload(a.ctx, llmCfg, decoded, ext, cleanBody, tags)
+		}
+	}
+
+	// Text-only
+	title := ""
+	lines := strings.Split(cleanBody, "\n")
+	if len(lines) > 0 {
+		title = strings.TrimSpace(lines[0])
+	}
+	if len(title) > 50 {
+		title = title[:50]
+	}
+
+	slugSrc := sanitizeSlug(title)
+	if slugSrc == "" {
+		slugSrc = docID
+	}
+	targetDir := filepath.Join(home, "Scattering")
+	baseName := fmt.Sprintf("%s-%s", now.Format("20060102-1504"), slugSrc)
+	var targetPath string
+
+	for i := 1; i <= 100; i++ {
+		suffix := ""
+		if i > 1 {
+			suffix = fmt.Sprintf("-%d", i)
+		}
+		candidate := filepath.Join(targetDir, fmt.Sprintf("%s%s.curio.md", baseName, suffix))
+		if _, err := os.Stat(candidate); os.IsNotExist(err) {
+			targetPath = candidate
+			break
+		}
+	}
+
+	if targetPath == "" {
+		return "", errors.New("could not find a unique filename")
+	}
+
+	var sb strings.Builder
+	sb.WriteString("---\n")
+	sb.WriteString(fmt.Sprintf("id: %s\n", docID))
+	sb.WriteString("type: curio\n")
+	if title != "" {
+		sb.WriteString(fmt.Sprintf("title: %s\n", title))
+	}
+	sb.WriteString("intent: wish\n")
+	sb.WriteString("availability: available\n")
+	if len(tags) > 0 {
+		sb.WriteString("tags:\n")
+		for _, t := range tags {
+			sb.WriteString(fmt.Sprintf("  - %s\n", t))
+		}
+	}
+	sb.WriteString(fmt.Sprintf("created: %s\n", now.Format(time.RFC3339)))
+	sb.WriteString(fmt.Sprintf("updated: %s\n", now.Format(time.RFC3339)))
+	sb.WriteString("source: local\n")
+	sb.WriteString("publish: false\n")
+	sb.WriteString("---\n\n")
+	if cleanBody != "" {
+		sb.WriteString(cleanBody)
+		sb.WriteString("\n")
+	}
+
+	err := watcher.GetWatcher().WriteFile(targetPath, []byte(sb.String()), "curio")
+	if err != nil {
+		return "", err
+	}
+
+	bus.GetBus().Publish(bus.Event{
+		Type: bus.EventThoughtCaptured,
+		Data: bus.EventThoughtCapturedData{
+			DocID:      docID,
+			FilePath:   targetPath,
+			Title:      title,
+			Type:       "curio",
+			CapturedAt: now,
+			Tags:       tags,
+		},
+	})
+
+	return docID, nil
 }
 
 func (a *App) CaptureThought(text string) (string, error) {
