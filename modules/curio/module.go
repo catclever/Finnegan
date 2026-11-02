@@ -31,32 +31,10 @@ func (m *CurioModule) Bindings() []interface{} {
 }
 
 func (m *CurioModule) GetCommands() []module.CommandDef {
-	return []module.CommandDef{
-		{
-			ID:          "curio:ingest",
-			Name:        "Curio Ingestion",
-			Trigger:     "curio",
-			Description: "Ingest a screenshot for Curio",
-			Namespace:   "curio",
-			IsPrimary:   true,
-			Params: []module.ParamSpec{
-				{
-					Name:        "screenshot",
-					Type:        module.ParamTypeText,
-					Description: "Screenshot path or payload",
-				},
-			},
-		},
-	}
+	return []module.CommandDef{}
 }
 
 func (m *CurioModule) ExecuteCommand(ctx context.Context, cmdID string, params map[string]interface{}) (interface{}, error) {
-	if cmdID == "curio:ingest" {
-		return map[string]interface{}{
-			"status":  "triggered",
-			"command": cmdID,
-		}, nil
-	}
 	return nil, fmt.Errorf("unknown command: %s", cmdID)
 }
 

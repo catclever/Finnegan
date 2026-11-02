@@ -10,19 +10,16 @@ func TestCurioModuleRegistration(t *testing.T) {
 	if m.Name() != "curio" {
 		t.Errorf("Expected name 'curio', got %s", m.Name())
 	}
-	if len(m.GetCommands()) != 1 {
-		t.Errorf("Expected 1 command, got %d", len(m.GetCommands()))
+	if len(m.GetCommands()) != 0 {
+		t.Errorf("Expected 0 commands, got %d", len(m.GetCommands()))
 	}
 }
 
 func TestCurioModuleExecuteCommand(t *testing.T) {
 	m := &CurioModule{}
-	res, err := m.ExecuteCommand(context.Background(), "curio:ingest", nil)
-	if err != nil {
-		t.Fatalf("Unexpected error executing curio:ingest: %v", err)
-	}
-	if resMap, ok := res.(map[string]interface{}); !ok || resMap["status"] != "triggered" {
-		t.Errorf("Unexpected result: %v", res)
+	_, err := m.ExecuteCommand(context.Background(), "curio:ingest", nil)
+	if err == nil {
+		t.Fatalf("Expected error executing curio:ingest since command is removed")
 	}
 
 	_, err = m.ExecuteCommand(context.Background(), "unknown:cmd", nil)
@@ -52,17 +49,7 @@ func TestCurioModule_GetManifest(t *testing.T) {
 func TestCurioModule_GetCommands(t *testing.T) {
 	m := &CurioModule{}
 	cmds := m.GetCommands()
-	if len(cmds) == 0 {
-		t.Errorf("Expected commands to not be empty")
-	}
-	foundIngest := false
-	for _, cmd := range cmds {
-		if cmd.ID == "curio:ingest" {
-			foundIngest = true
-			break
-		}
-	}
-	if !foundIngest {
-		t.Errorf("Expected to find command 'curio:ingest'")
+	if len(cmds) != 0 {
+		t.Errorf("Expected commands to be empty")
 	}
 }

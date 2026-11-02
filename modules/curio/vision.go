@@ -45,17 +45,23 @@ func sanitizeSlug(s string) string {
 // IngestScreenshot takes an image path, note, and tags, analyzes it using Gemini Vision,
 // extracts CurioMetadata, simulates hero cropping, saves assets, and creates a .curio.md.
 func IngestScreenshot(ctx context.Context, llmCfg module.LLMConfig, imgPath string, note string, extraTags []string) error {
-	_, home, err := config.LoadConfig()
-	if err != nil {
-		return err
-	}
-
-	// Read image
 	imgData, err := os.ReadFile(imgPath)
 	if err != nil {
 		return fmt.Errorf("failed to read screenshot: %w", err)
 	}
 	imgExt := strings.ToLower(filepath.Ext(imgPath))
+	_, err = IngestCurioPayload(ctx, llmCfg, imgData, imgExt, note, extraTags)
+	return err
+}
+
+// IngestCurioPayload takes an image payload, note, and tags, analyzes it using Gemini Vision,
+// extracts CurioMetadata, simulates hero cropping, saves assets, and creates a .curio.md.
+func IngestCurioPayload(ctx context.Context, llmCfg module.LLMConfig, imgData []byte, imgExt string, note string, extraTags []string) (string, error) {
+	_, home, err := config.LoadConfig()
+	if err != nil {
+		return "", err
+	}
+
 	mimeType := "image/jpeg"
 	if imgExt == ".png" {
 		mimeType = "image/png"
@@ -63,12 +69,12 @@ func IngestScreenshot(ctx context.Context, llmCfg module.LLMConfig, imgPath stri
 
 	// Use Gemini Vision
 	if llmCfg.APIKey == "" {
-		return fmt.Errorf("gemini api key is required for curio ingestion")
+		return "", fmt.Errorf("gemini api key is required for curio ingestion")
 	}
 
 	client, err := genai.NewClient(ctx, option.WithAPIKey(llmCfg.APIKey))
 	if err != nil {
-		return fmt.Errorf("failed to create genai client: %w", err)
+		return "", fmt.Errorf("failed to create genai client: %w", err)
 	}
 	defer client.Close()
 
@@ -95,7 +101,7 @@ func IngestScreenshot(ctx context.Context, llmCfg module.LLMConfig, imgPath stri
 	imgBlob := genai.ImageData(mimeType, imgData)
 	resp, err := model.GenerateContent(ctx, imgBlob, genai.Text(prompt))
 	if err != nil {
-		return fmt.Errorf("failed to generate content: %w", err)
+		return "", fmt.Errorf("failed to generate content: %w", err)
 	}
 
 	var meta CurioMetadata
@@ -135,7 +141,7 @@ func IngestScreenshot(ctx context.Context, llmCfg module.LLMConfig, imgPath stri
 	snapshotName := fmt.Sprintf("%s-screenshot-%s%s", timestampStr, docID, imgExt)
 	snapshotPath := filepath.Join(archivesDir, snapshotName)
 	if err := os.WriteFile(snapshotPath, imgData, 0644); err != nil {
-		return fmt.Errorf("failed to save snapshot: %w", err)
+		return "", fmt.Errorf("failed to save snapshot: %w", err)
 	}
 
 	// Simulate hero crop by just copying for now
@@ -144,7 +150,7 @@ func IngestScreenshot(ctx context.Context, llmCfg module.LLMConfig, imgPath stri
 	heroName := fmt.Sprintf("%s-hero-%s%s", timestampStr, docID, imgExt)
 	heroPath := filepath.Join(assetsDir, heroName)
 	if err := os.WriteFile(heroPath, imgData, 0644); err != nil {
-		return fmt.Errorf("failed to save hero image: %w", err)
+		return "", fmt.Errorf("failed to save hero image: %w", err)
 	}
 
 	// Generate markdown
@@ -189,7 +195,7 @@ func IngestScreenshot(ctx context.Context, llmCfg module.LLMConfig, imgPath stri
 
 	err = watcher.GetWatcher().WriteFile(cardPath, []byte(sb.String()), "curio")
 	if err != nil {
-		return fmt.Errorf("failed to write card: %w", err)
+		return "", fmt.Errorf("failed to write card: %w", err)
 	}
 
 	bus.GetBus().Publish(bus.Event{
@@ -205,5 +211,5 @@ func IngestScreenshot(ctx context.Context, llmCfg module.LLMConfig, imgPath stri
 		},
 	})
 
-	return nil
+	return docID, nil
 }
