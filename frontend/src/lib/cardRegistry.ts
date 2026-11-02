@@ -116,6 +116,17 @@ export class CardRegistry<T = any> {
   }
 
   /**
+   * Unregisters a card shape component and its metadata definition.
+   * If unregistered, looking up this type safely falls back to the default component (Thought).
+   */
+  unregister(type: string): void {
+    if (!type || typeof type !== 'string') return;
+    const cleanType = type.trim();
+    this.components.delete(cleanType);
+    this.definitions.delete(cleanType);
+  }
+
+  /**
    * Registers or updates a card type metadata definition.
    */
   registerDefinition(def: CardTypeDefinition): void {

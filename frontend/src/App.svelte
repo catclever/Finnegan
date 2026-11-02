@@ -11,9 +11,9 @@
   import WindowTitleBar from './components/WindowTitleBar.svelte';
   import { CaptureThought, CaptureThoughtWithImages, CaptureChatLog, CaptureChatLogWithImages, CaptureNote, GetTempCards, LoadLocalCards, SearchLocalCards, GetRegisteredCommands, GetModuleManifests, ExecuteModuleCommand, EvictTempCard, ReloadCard } from '../wailsjs/go/main/App.js';
   import { EventsOn } from '../wailsjs/runtime/runtime.js';
-  import type { CosmicCard, SearchSession, CommandDef } from './types/card';
+  import type { CosmicCard, SearchSession, CommandDef, ModuleManifest } from './types/card';
   import { hydrateModuleManifests, getModuleBeaconType } from './lib/promotionRegistry';
-  import { loadExternalPluginCardComponents } from './components/cards/cardRegistry';
+  import { loadExternalPluginCardComponents, syncModularCardComponents } from './components/cards/cardRegistry';
   import type { BuguSession, BuguBeacon } from './modules/bugu/types';
   import type { BskyBeacon } from './modules/atproto/types';
   import { generateAuraColor, transformSearchResults, calculateSearchRepulsion, commitUnallocatedSearchResults } from './lib/auraSearch';
@@ -82,6 +82,7 @@
   let isWindowFocused = true, isStageSleeping = false;
   let focusNavDirection: 'prev' | 'next' | null = null;
   let omniBarRef: OmniBar, availableCommands: CommandDef[] = [];
+  let availableModuleManifests: ModuleManifest[] = [];
   let searchSession: SearchSession = { isActive: false, isConfirmed: false, searchId: '', stashedCards: [], rankedResults: [], color: '' };
   let searchDebounceTimer: any = null;
   let activeBuguSession: BuguSession | null = null;
@@ -391,6 +392,28 @@
     }
   }
 
+  async function handleCaptureCurio(text: string, images?: string[]) {
+    capturePending = true;
+    try {
+      const app = (window as any).go?.main?.App;
+      if (app && typeof app.CaptureCurio === 'function') {
+        const payload = (images || []).map(img => (typeof img === 'string' ? { data: img } : img));
+        await app.CaptureCurio(text, payload);
+      } else if (images && images.length > 0) {
+        const payload = images.map(img => (typeof img === 'string' ? { data: img } : img));
+        await CaptureThoughtWithImages(`:curio ${text}`, payload as any);
+      } else {
+        await CaptureThought(`:curio ${text}`);
+      }
+      if (searchSession.isActive) finishCaptureSearch();
+    } catch (err) {
+      console.error("handleCaptureCurio error:", err);
+      throw err;
+    } finally {
+      capturePending = false;
+    }
+  }
+
   async function handleExecuteCommand(cmd: CommandDef, card?: CosmicCard | null, textQuery?: string) {
     const paramSpec = cmd.params?.[0];
     const beaconType = getModuleBeaconType(cmd.id) || getModuleBeaconType(cmd.namespace);
@@ -662,7 +685,9 @@
     if (typeof GetModuleManifests === 'function') {
       GetModuleManifests().then((manifests: any) => {
         if (Array.isArray(manifests)) {
+          availableModuleManifests = manifests;
           hydrateModuleManifests(manifests);
+          syncModularCardComponents(manifests);
           loadExternalPluginCardComponents(manifests).catch(console.warn);
         }
       }).catch(console.warn);
@@ -845,7 +870,8 @@
   <OmniBar
     bind:this={omniBarRef} {availableCommands} {searchSession} {focusedCardId} {cards} {localVaultPool} {capturePending}
     {isScrolling} scrollExpansion={$scrollExpansion}
-    bind:isOmnibarFocused onCaptureThought={handleCaptureThought} onCaptureChatLog={handleCaptureChatLog} onCaptureNote={handleCaptureNote} onFreeSearch={handleFreeSearch}
+    {availableModuleManifests}
+    bind:isOmnibarFocused onCaptureThought={handleCaptureThought} onCaptureChatLog={handleCaptureChatLog} onCaptureNote={handleCaptureNote} onCaptureCurio={handleCaptureCurio} onFreeSearch={handleFreeSearch}
     onRevertSearch={revertSearchView} onCommitSearch={confirmSearchView} onRestoreSearch={restoreConfirmedSearch}
     onExecuteCommand={handleExecuteCommand} onSearchLocalCards={SearchLocalCards}
   />

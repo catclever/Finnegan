@@ -56,6 +56,7 @@ describe('Card Type Registry & Morphology Decoupling Engine', () => {
     const MockNoteBody = { name: 'NoteCardBody' };
     const MockChatLogBody = { name: 'ChatLogCardBody' };
     const MockBabelBody = { name: 'BabelCardBody' };
+    const MockCurioBody = { name: 'CurioCardBody' };
 
     let registry: CardRegistry<any>;
 
@@ -95,7 +96,6 @@ describe('Card Type Registry & Morphology Decoupling Engine', () => {
     });
 
     it('supports dynamic registration of modular extension types (e.g. curio)', () => {
-      const MockCurioBody = { name: 'CurioCardBody' };
       assert.equal(registry.has('curio'), false);
 
       registry.register('curio', MockCurioBody, {
@@ -118,6 +118,16 @@ describe('Card Type Registry & Morphology Decoupling Engine', () => {
       registry.register('curio', CurioComponent);
       assert.equal(registry.has('curio'), true);
       assert.equal(registry.get('curio'), CurioComponent);
+    });
+
+    it('supports unregistering an extension type and gracefully falling back to default', () => {
+      registry.register('curio', MockCurioBody);
+      assert.equal(registry.has('curio'), true);
+      assert.equal(registry.get('curio'), MockCurioBody);
+
+      registry.unregister('curio');
+      assert.equal(registry.has('curio'), false);
+      assert.equal(registry.get('curio'), MockThoughtBody);
     });
 
     it('allows updating an existing registered component', () => {

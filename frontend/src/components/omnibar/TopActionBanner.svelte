@@ -14,6 +14,8 @@
   export let commandSelectMode: boolean = false;
   export let searchSession: SearchSession;
   export let isNoteFormat: boolean = false;
+  export let isCurioFormat: boolean = false;
+  export let isTypeSelectMode: boolean = false;
   export let explicitNoteTitle: string = '';
   export let isDialogueFormat: boolean = false;
   export let explicitUserTitle: string = '';
@@ -79,6 +81,23 @@
         <span class="banner-key">Esc</span>
         <span class="banner-action">{searchSession.isConfirmed ? '恢复全部' : '清除'}</span>
       </button>
+    {:else if isTypeSelectMode}
+      <span class="banner-badge type-badge">🎴 卡片形态</span>
+      <span class="banner-key">↑ ↓</span>
+      <span class="banner-action">选择</span>
+      <span class="banner-sep">·</span>
+      <span class="banner-key">↵ / Tab</span>
+      <span class="banner-action">补全</span>
+      <span class="banner-sep">·</span>
+      <span class="banner-key">Esc</span>
+      <span class="banner-action">取消</span>
+    {:else if isCurioFormat}
+      <span class="banner-badge curio-badge">🏺 奇物标本</span>
+      <span class="banner-key">↵</span>
+      <span class="banner-action">换行</span>
+      <span class="banner-sep">·</span>
+      <span class="banner-key">Cmd+↵</span>
+      <span class="banner-action">标本入库</span>
     {:else if isNoteFormat}
       <span class="banner-badge note-badge">📝 {explicitNoteTitle ? `备忘「${explicitNoteTitle}」` : '备忘'}</span>
       <span class="banner-key">↵</span>
@@ -151,6 +170,16 @@
   .banner-badge.cmd-badge {
     background: rgba(59, 130, 246, 0.12);
     color: #2563eb;
+  }
+
+  .banner-badge.type-badge {
+    background: rgba(2, 132, 199, 0.12);
+    color: #0284c7;
+  }
+
+  .banner-badge.curio-badge {
+    background: rgba(217, 119, 6, 0.12);
+    color: #d97706;
   }
 
   .banner-badge.note-badge {

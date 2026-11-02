@@ -20,10 +20,17 @@
   import CommandDropdown from './omnibar/CommandDropdown.svelte';
   import TagDropdown from './omnibar/TagDropdown.svelte';
   import CardCandidateDropdown from './omnibar/CardCandidateDropdown.svelte';
+  import CardTypeDropdown from './omnibar/CardTypeDropdown.svelte';
   import WritingPaper from './omnibar/WritingPaper.svelte';
   import { isChatLogFormat, extractHashTitle } from '../lib/chatlog';
   import { getCardDisplayTitle } from '../lib/cardTitle';
-  import { parseCardTypePrefix } from '../lib/cardType';
+  import {
+    parseCardTypePrefix,
+    detectCardTypeTrigger,
+    getAvailableCardTypeOptions,
+    filterCardTypeOptions,
+    type CardTypeOption,
+  } from '../lib/cardType';
   import { partitionCardTiers, rankSearchCandidates } from '../lib/paramCandidateEngine';
   import { filterAndRankCommands, resolveCommandInput, matchExactCommand, getCommandIcon } from '../lib/commandEngine';
   import {
@@ -38,6 +45,7 @@
 
   // Props
   export let availableCommands: CommandDef[] = [];
+  export let availableModuleManifests: any[] = [];
   export let searchSession: SearchSession;
   export let focusedCardId: string | null = null;
   export let cards: CosmicCard[] = [];
@@ -51,6 +59,7 @@
   export let onCaptureThought: ((text: string, images?: string[]) => Promise<void> | void) | undefined = undefined;
   export let onCaptureChatLog: ((text: string, images?: string[]) => Promise<void> | void) | undefined = undefined;
   export let onCaptureNote: ((text: string) => Promise<void> | void) | undefined = undefined;
+  export let onCaptureCurio: ((text: string, images?: string[]) => Promise<void> | void) | undefined = undefined;
   export let onFreeSearch: ((text: string) => void) | undefined = undefined;
   export let onRevertSearch: (() => void) | undefined = undefined;
   export let onCommitSearch: (() => void) | undefined = undefined;
@@ -334,19 +343,29 @@
     }, durationMs);
   }
 
+  // Card Type Dropdown state
+  let typeSelectMode: boolean = false;
+  let typeQuery: string = "";
+  let highlightedTypeIndex: number = 0;
+
   // Reactive expressions
   $: parsedCardType = parseCardTypePrefix(omniText);
   $: isNoteFormat = parsedCardType.hasTypePrefix && parsedCardType.type === 'note';
+  $: isCurioFormat = parsedCardType.hasTypePrefix && parsedCardType.type === 'curio';
   $: noteContent = isNoteFormat ? parsedCardType.content : '';
+  $: curioContent = isCurioFormat ? parsedCardType.content : '';
   $: noteHashInfo = extractHashTitle(noteContent);
   $: explicitNoteTitle = noteHashInfo.title;
   $: hashTitleInfo = extractHashTitle(omniText);
   $: explicitUserTitle = hashTitleInfo.title;
-  $: isDialogueFormat = !isNoteFormat && isChatLogFormat(omniText);
-  $: writingText = isNoteFormat ? noteContent : omniText;
-  $: isWritingMode = !commandSelectMode && !commandParamMode && (writingText.trim().length >= 80 || (writingText.split('\n').length >= 4 && writingText.trim().length > 10));
-  $: showTopBanner = !isWritingMode && ((omniText.trim().length > 0) || (attachedImages.length > 0) || commandParamMode || commandSelectMode || (searchSession.isActive && !searchSession.isConfirmed) || isNoteFormat);
-  $: canSubmit = (isNoteFormat ? noteContent.trim().length > 0 : omniText.trim().length > 0) || attachedImages.length > 0;
+  $: isDialogueFormat = !isNoteFormat && !isCurioFormat && isChatLogFormat(omniText);
+  $: writingText = isNoteFormat ? noteContent : (isCurioFormat ? curioContent : omniText);
+  $: isWritingMode = !commandSelectMode && !commandParamMode && !typeSelectMode && (writingText.trim().length >= 80 || (writingText.split('\n').length >= 4 && writingText.trim().length > 10));
+  $: showTopBanner = !isWritingMode && ((omniText.trim().length > 0) || (attachedImages.length > 0) || commandParamMode || commandSelectMode || typeSelectMode || (searchSession.isActive && !searchSession.isConfirmed) || isNoteFormat || isCurioFormat);
+  $: canSubmit = (isNoteFormat ? noteContent.trim().length > 0 : (isCurioFormat ? (curioContent.trim().length > 0 || attachedImages.length > 0) : omniText.trim().length > 0)) || attachedImages.length > 0;
+
+  $: cardTypeOptions = getAvailableCardTypeOptions(availableModuleManifests);
+  $: matchedCardTypes = filterCardTypeOptions(cardTypeOptions, typeQuery);
 
   $: omnibarPlaceholder = commandParamMode
     ? (selectedCommand?.params?.[0]?.description || "吾道不孤")
@@ -357,6 +376,23 @@
   $: matchedCommands = commandSelectMode 
     ? filterAndRankCommands(availableCommands, cmdQuery)
     : [];
+
+  function selectCardType(typeOpt: CardTypeOption) {
+    omniText = `${typeOpt.prefix} `;
+    typeSelectMode = false;
+    typeQuery = "";
+    if (omnibarInputEl) {
+      omnibarInputEl.focus();
+      setTimeout(() => {
+        if (omnibarInputEl) {
+          const len = omniText.length;
+          omnibarInputEl.setSelectionRange(len, len);
+          omnibarInputEl.style.height = 'auto';
+          omnibarInputEl.style.height = omnibarInputEl.scrollHeight + 'px';
+        }
+      }, 0);
+    }
+  }
 
   function selectCommand(cmd: CommandDef) {
     selectedCommand = cmd;
@@ -486,6 +522,7 @@
     isOmnibarFocused = false;
     tagSelectMode = false;
     atSelectMode = false;
+    typeSelectMode = false;
   }
 
   export function clearText(): void {
@@ -494,6 +531,7 @@
     deleteHighlightIndex = -1;
     tagSelectMode = false;
     atSelectMode = false;
+    typeSelectMode = false;
     trackedThreads = [];
     if (omnibarInputEl) {
       omnibarInputEl.style.height = 'auto';
@@ -653,6 +691,7 @@
 
     omniText = "";
     commandSelectMode = false;
+    typeSelectMode = false;
     atSelectMode = false;
     trackedThreads = [];
     deleteHighlightIndex = -1;
@@ -671,8 +710,49 @@
     }
   }
 
+  async function captureCurrentCurio(text: string) {
+    const trimmed = text.trim();
+    const imgs = [...attachedImages];
+    if (!trimmed && imgs.length === 0) return;
+    if (capturePending) return;
+
+    omniText = "";
+    attachedImages = [];
+    commandSelectMode = false;
+    typeSelectMode = false;
+    atSelectMode = false;
+    tagSelectMode = false;
+    trackedThreads = [];
+    deleteHighlightIndex = -1;
+    if (omnibarInputEl) {
+      omnibarInputEl.style.height = 'auto';
+    }
+
+    try {
+      if (onCaptureCurio) {
+        await onCaptureCurio(trimmed, imgs);
+      } else {
+        if (onCaptureThought) {
+          await onCaptureThought(`:curio ${trimmed}`, imgs);
+        }
+      }
+      showToast("已存入奇物标本库");
+      if (searchSession.isActive) {
+        if (onCommitSearch) onCommitSearch();
+        dispatch('commitSearch');
+      }
+    } catch (err: any) {
+      console.error("CaptureCurio error:", err);
+      showToast(`标本保存失败: ${err?.message || err}`);
+    }
+  }
+
   async function handleSubmit() {
     if (!canSubmit || capturePending) return;
+    if (isCurioFormat) {
+      await captureCurrentCurio(curioContent);
+      return;
+    }
     if (isNoteFormat) {
       if (noteContent.trim()) {
         await captureCurrentNote(noteContent);
@@ -687,6 +767,48 @@
       deleteHighlightIndex = -1;
     }
 
+    // Card Type Selection Dropdown Active: :
+    if (typeSelectMode && matchedCardTypes.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        highlightedTypeIndex = (highlightedTypeIndex + 1) % matchedCardTypes.length;
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        highlightedTypeIndex = (highlightedTypeIndex - 1 + matchedCardTypes.length) % matchedCardTypes.length;
+        return;
+      }
+      if (e.key === 'Tab' || e.key === 'Enter') {
+        e.preventDefault();
+        selectCardType(matchedCardTypes[highlightedTypeIndex]);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        typeSelectMode = false;
+        return;
+      }
+    }
+
+    // Curio Capture Mode: :curio <content>
+    if (isCurioFormat) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        await handleSubmit();
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        omniText = "";
+        commandSelectMode = false;
+        commandParamMode = false;
+        typeSelectMode = false;
+        if (omnibarInputEl) omnibarInputEl.style.height = 'auto';
+        return;
+      }
+    }
+
     // Note Capture Mode: :note <content>
     if (isNoteFormat) {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
@@ -699,6 +821,7 @@
         omniText = "";
         commandSelectMode = false;
         commandParamMode = false;
+        typeSelectMode = false;
         if (omnibarInputEl) omnibarInputEl.style.height = 'auto';
         return;
       }
@@ -963,31 +1086,42 @@
     target.style.height = 'auto';
     target.style.height = target.scrollHeight + 'px';
 
-    // Card Association @ Detection & Hashtag Autocomplete Detection
-    const cursorPos = target.selectionStart ?? omniText.length;
-    if (!commandParamMode && !commandSelectMode) {
-      const atTrigger = detectAtTriggerAtCursor(omniText, cursorPos);
-      if (atTrigger.isTriggered) {
-        atSelectMode = true;
-        atQuery = atTrigger.cardQuery;
-        atMatchStart = atTrigger.cardMatchStart;
-        tagSelectMode = false;
-        searchAtCandidates(atQuery);
-      } else {
-        atSelectMode = false;
-        const trigger = detectTagTriggerAtCursor(omniText, cursorPos);
-        if (trigger.isTriggered) {
-          tagSelectMode = true;
-          tagQuery = trigger.tagQuery;
-          tagMatchStart = trigger.tagMatchStart;
-          highlightedTagIndex = 0;
-        } else {
-          tagSelectMode = false;
-        }
-      }
-    } else {
+    // Card Type : Detection
+    const typeTrigger = detectCardTypeTrigger(omniText);
+    if (!commandParamMode && !commandSelectMode && !isWritingMode && typeTrigger.isTriggered) {
+      typeSelectMode = true;
+      typeQuery = typeTrigger.query;
+      highlightedTypeIndex = 0;
       tagSelectMode = false;
       atSelectMode = false;
+    } else {
+      typeSelectMode = false;
+      // Card Association @ Detection & Hashtag Autocomplete Detection
+      const cursorPos = target.selectionStart ?? omniText.length;
+      if (!commandParamMode && !commandSelectMode) {
+        const atTrigger = detectAtTriggerAtCursor(omniText, cursorPos);
+        if (atTrigger.isTriggered) {
+          atSelectMode = true;
+          atQuery = atTrigger.cardQuery;
+          atMatchStart = atTrigger.cardMatchStart;
+          tagSelectMode = false;
+          searchAtCandidates(atQuery);
+        } else {
+          atSelectMode = false;
+          const trigger = detectTagTriggerAtCursor(omniText, cursorPos);
+          if (trigger.isTriggered) {
+            tagSelectMode = true;
+            tagQuery = trigger.tagQuery;
+            tagMatchStart = trigger.tagMatchStart;
+            highlightedTagIndex = 0;
+          } else {
+            tagSelectMode = false;
+          }
+        }
+      } else {
+        tagSelectMode = false;
+        atSelectMode = false;
+      }
     }
 
     if (!commandParamMode) {
@@ -1075,6 +1209,8 @@
     {commandSelectMode}
     {searchSession}
     {isNoteFormat}
+    {isCurioFormat}
+    isTypeSelectMode={typeSelectMode}
     {explicitNoteTitle}
     {isDialogueFormat}
     {explicitUserTitle}
@@ -1196,6 +1332,16 @@
         onRemove={removeImage}
       />
     </div>
+  {/if}
+
+  <!-- Dropdown: Card Type Suggestions (:) -->
+  {#if typeSelectMode && matchedCardTypes.length > 0}
+    <CardTypeDropdown
+      {matchedCardTypes}
+      highlightedIndex={highlightedTypeIndex}
+      onHighlight={(idx) => highlightedTypeIndex = idx}
+      onSelect={selectCardType}
+    />
   {/if}
 
   <!-- Dropdown 1: Command Selection Suggestions -->

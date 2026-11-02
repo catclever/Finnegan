@@ -71,6 +71,30 @@ export function getAllCardTypeDefinitions(): CardTypeDefinition[] {
 }
 
 /**
+ * Synchronizes modular card components based on active module manifests.
+ * If curio module is present, register CurioCardBody.
+ * If curio module is absent/disabled, unregister curio so it gracefully falls back to ThoughtCardBody!
+ */
+export function syncModularCardComponents(manifests?: ModuleManifest[] | null): void {
+  if (!manifests) return;
+  const manifestList = Array.isArray(manifests) ? manifests : [];
+  const hasCurio = manifestList.some(
+    m => m?.name === 'curio' || (m?.cardTypes && m.cardTypes.some(ct => ct?.type === 'curio'))
+  );
+
+  if (hasCurio) {
+    globalCardRegistry.register('curio', CurioCardBody, {
+      type: 'curio',
+      name: '奇物标本',
+      description: '模块驱动：商品快照与恋物藏品标本盒',
+      defaultTitle: 'Curio Specimen',
+    });
+  } else {
+    globalCardRegistry.unregister('curio');
+  }
+}
+
+/**
  * Dynamically imports and registers external plugin card UI bundles declared in ModuleManifests.
  */
 export async function loadExternalPluginCardComponents(manifests?: ModuleManifest[] | null): Promise<void> {
