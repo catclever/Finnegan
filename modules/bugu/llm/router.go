@@ -57,7 +57,11 @@ func FormatKeywordsProfile(keywords map[string][]string) string {
 
 	var sb strings.Builder
 	for _, k := range keys {
-		sb.WriteString(fmt.Sprintf("- %s: %s\n", k, strings.Join(keywords[k], ", ")))
+		cleanKeywords := make([]string, len(keywords[k]))
+		for i, w := range keywords[k] {
+			cleanKeywords[i] = strings.TrimRight(strings.TrimSpace(w), "*")
+		}
+		sb.WriteString(fmt.Sprintf("- %s: %s\n", k, strings.Join(cleanKeywords, ", ")))
 	}
 	return sb.String()
 }
@@ -93,11 +97,10 @@ TARGET CATALOG:
 
 INSTRUCTIONS:
 1. Select 8 to 10 highly relevant target IDs from the catalog that match the intent and facet characteristics.
-   - Cross-Language Diversity is MANDATORY: Select a balanced mix of targets across multiple global languages (e.g. at least 2-3 English targets, 1-2 Chinese targets, and 2-4 foreign/minor language targets like ru, fr, de, ja, es if matching targets exist).
-2. Formulate 1 or 2 high-precision, natural search queries for EACH selected target's language code:
-   - For EVERY selected target, you MUST provide search queries in its primary language code (e.g. if you select a Russian target, you MUST provide "ru": ["..."] in native Russian; for French, "fr": ["..."] in native French).
-   - ALWAYS provide "en" queries as universal baseline.
-   - Use standard ISO 639-1 language codes as keys: "en", "zh", "ru", "fr", "de", "ja", "es", "it", etc.
+   - Context-Adaptive Routing: For universal tech/science/philosophy topics, select a balanced mix across global languages (en, zh, and relevant foreign targets like ru/de/fr/ja/es). For localized Chinese everyday life slices or cultural motifs, prioritize Chinese, English, and culturally resonant indie/humanities targets without forcing unrelated minor-language tech forums.
+2. Formulate search queries for the selected targets:
+   - Provide "target_queries" mapping EACH selected target ID to 1-2 queries specifically tailored to that target's domain nature, facet, and primary language. Queries for a code/doc target must focus on the object/technical terms, queries for a forum target on the motif/discussion, and queries for an indie blog/humanities target on the mood/concept, avoiding stuffing all 4 dimensions into a single query.
+   - Provide "search_queries" mapping ISO language codes ("en", "zh", "ru", "fr", etc.) as a fallback. ALWAYS provide "en" queries as universal baseline.
 3. Determine appropriate time_range values:
    - SearxNG native time_range supports "day", "week", "month", "year", or "" (empty string for unlimited/all).
    - Set "default_time_range" as the baseline time range for this search session.
@@ -106,6 +109,10 @@ INSTRUCTIONS:
 5. Output strict JSON matching this exact structure:
 {
   "selected_target_ids": ["id1", "id2"],
+  "target_queries": {
+    "id1": ["target-specific query in its native lang"],
+    "id2": ["another query tailored for id2"]
+  },
   "search_queries": {
     "ru": ["запрос 1", "запрос 2"],
     "en": ["query 1"],

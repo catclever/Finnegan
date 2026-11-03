@@ -15,6 +15,7 @@ type RadarTargets struct {
 
 type LLMSearchPlan struct {
 	SelectedTargetIDs []string            `json:"selected_target_ids"`
+	TargetQueries     map[string][]string `json:"target_queries,omitempty"`
 	SearchQueries     map[string][]string `json:"search_queries"`
 	DefaultTimeRange  string              `json:"default_time_range,omitempty"`
 	TargetTimeRanges  map[string]string   `json:"target_time_ranges,omitempty"`

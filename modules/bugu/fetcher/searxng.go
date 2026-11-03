@@ -42,10 +42,25 @@ type SearchResult struct {
 }
 
 func (s *SearxNGClient) Search(query string, target models.Target, timeRange string) ([]SearchResult, error) {
-	// e.g. "LLM vulnerabilities site:linuxfr.org"
-	finalQuery := fmt.Sprintf("%s %s", query, target.Value)
+	var finalQuery string
+	var reqURL string
 
-	reqURL := fmt.Sprintf("%s/search?q=%s&format=json", s.BaseURL, url.QueryEscape(finalQuery))
+	if strings.EqualFold(strings.TrimSpace(target.Type), "engine") {
+		finalQuery = strings.TrimSpace(query)
+		reqURL = fmt.Sprintf("%s/search?q=%s&format=json", s.BaseURL, url.QueryEscape(finalQuery))
+		reqURL = fmt.Sprintf("%s&engines=%s", reqURL, url.QueryEscape(strings.TrimSpace(target.Value)))
+	} else {
+		if target.Value != "" {
+			finalQuery = fmt.Sprintf("%s %s", query, target.Value)
+		} else {
+			finalQuery = query
+		}
+		reqURL = fmt.Sprintf("%s/search?q=%s&format=json", s.BaseURL, url.QueryEscape(finalQuery))
+		if len(target.PreferredEngines) > 0 {
+			reqURL = fmt.Sprintf("%s&engines=%s", reqURL, url.QueryEscape(strings.Join(target.PreferredEngines, ",")))
+		}
+	}
+
 	if tr := strings.TrimSpace(timeRange); tr != "" {
 		reqURL = fmt.Sprintf("%s&time_range=%s", reqURL, url.QueryEscape(tr))
 	}
