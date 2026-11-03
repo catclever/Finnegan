@@ -24,7 +24,16 @@ func (r *Router) DistillMarkdown(intent string, markdown string, url string, tar
 		modelName = dLLM.DefaultModel
 	}
 
-	kwJSON, _ := json.MarshalIndent(keywords, "", "  ")
+	sanitized := make(map[string][]string)
+	for k, vals := range keywords {
+		var cleanVals []string
+		for _, v := range vals {
+			cleanVals = append(cleanVals, strings.TrimRight(strings.TrimSpace(v), "*"))
+		}
+		sanitized[k] = cleanVals
+	}
+
+	kwJSON, _ := json.MarshalIndent(sanitized, "", "  ")
 
 	prompt := fmt.Sprintf(`You are an elite intelligence analyst. 
 Your goal is to extract the most critical, high-signal information from the provided webpage markdown, strictly based on the user's intent.
@@ -42,6 +51,9 @@ WEBPAGE MARKDOWN:
 INSTRUCTIONS:
 1. Locate the 1 to 2 most relevant paragraphs in the markdown that directly address the user's intent. Do not summarize the whole page.
 2. Evaluate if the extracted text genuinely responds to or resonates with at least one solid anchor (object, motif, mood, concept) from the CARD ANCHORS provided.
+   - ANY of the 4 dimensions (object, motif, mood, concept) is eligible to pass gating independently if it is a solid anchor hit.
+   - If matching an 'object' anchor: The extracted content MUST contain substantive experience sharing, insightful perspectives, clever usage, or meaningful discussion about that core object. Pure installation/setup manuals, navigation directories, marketing/SEO fluff, or articles that only mention a generic background word in passing without it being a core topic of discussion MUST be filtered out (set "matched_anchor" to an empty string).
+   - If CARD ANCHORS is empty/null, evaluate if the text substantively addresses the USER INTENT. If yes, set "matched_anchor" to a concise 2-4 word core topic extracted from USER INTENT.
    - If it is SEO spam, a 403 error page, or fails to hit any anchor meaningfully, set "matched_anchor" to null or an empty string.
    - Otherwise, set "matched_anchor" to the specific anchor name it hits (e.g. "伪提效", "额度焦虑"), and provide a brief one-sentence explanation in "echo_reason".
 3. Extract the exact original text into "original_text".
@@ -55,6 +67,7 @@ INSTRUCTIONS:
 6. Output strict JSON matching this exact structure:
 {
   "source_url": "%s",
+  "title": "article title or concise heading extracted from markdown (or empty string)",
   "original_text": "the exact original text extracted",
   "translated_text": "translation or empty string",
   "published_at": "publication date or empty string",
@@ -89,6 +102,9 @@ INSTRUCTIONS:
 	if strings.TrimSpace(card.TranslatedText) == strings.TrimSpace(card.OriginalText) {
 		card.TranslatedText = ""
 	}
+
+	// Strip any trailing asterisk from the matched anchor
+	card.MatchedAnchor = strings.TrimRight(strings.TrimSpace(card.MatchedAnchor), "*")
 
 	card.CreatedAt = time.Now()
 

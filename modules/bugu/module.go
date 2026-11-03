@@ -51,7 +51,7 @@ func (b *BuguModule) ConfigTarget() interface{} {
 		b.MyConfig = &BuguConfig{
 			SearxngURL:     "http://127.0.0.1:8080",
 			MaxConcurrency: 10,
-			TargetLanguage: "English",
+			TargetLanguage: "Chinese",
 			LLMID:          "default",
 		}
 

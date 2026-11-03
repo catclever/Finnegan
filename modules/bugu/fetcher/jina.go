@@ -48,10 +48,15 @@ func (j *JinaClient) Extract(targetURL string) (string, error) {
 		return "", fmt.Errorf("jina returned status %d", resp.StatusCode)
 	}
 
-	bodyBytes, err := io.ReadAll(resp.Body)
+	bodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, 256*1024))
 	if err != nil {
 		return "", err
 	}
 
-	return string(bodyBytes), nil
+	result := string(bodyBytes)
+	runes := []rune(result)
+	if len(runes) > 15000 {
+		return string(runes[:15000]), nil
+	}
+	return result, nil
 }
