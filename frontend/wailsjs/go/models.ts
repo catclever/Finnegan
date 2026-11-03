@@ -100,6 +100,7 @@ export namespace keywords {
 	
 	export class Config {
 	    enabled_dimensions: string[];
+	    jina_api_key: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Config(source);
@@ -108,11 +109,13 @@ export namespace keywords {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.enabled_dimensions = source["enabled_dimensions"];
+	        this.jina_api_key = source["jina_api_key"];
 	    }
 	}
 	export class KeywordEngine {
 	    LLMConfig: module.LLMConfig;
 	    Config: Config;
+	    HomeDir: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new KeywordEngine(source);
@@ -122,6 +125,7 @@ export namespace keywords {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.LLMConfig = this.convertValues(source["LLMConfig"], module.LLMConfig);
 	        this.Config = this.convertValues(source["Config"], Config);
+	        this.HomeDir = source["HomeDir"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -192,6 +196,8 @@ export namespace main {
 	    keywords?: Record<string, Array<string>>;
 	    tags?: string[];
 	    threads?: ThreadRef[];
+	    visualSummary?: string;
+	    linkSummary?: string;
 	    brand?: string;
 	    platform?: string;
 	    price?: string;
@@ -233,6 +239,8 @@ export namespace main {
 	        this.keywords = source["keywords"];
 	        this.tags = source["tags"];
 	        this.threads = this.convertValues(source["threads"], ThreadRef);
+	        this.visualSummary = source["visualSummary"];
+	        this.linkSummary = source["linkSummary"];
 	        this.brand = source["brand"];
 	        this.platform = source["platform"];
 	        this.price = source["price"];

@@ -21,6 +21,8 @@
   export let isRecentVIP: boolean = false;
   export let isTemporary: boolean = false;
   export let isStopped: boolean = false;
+  export let isBuguScanning: boolean = false;
+  export let isBskyScanning: boolean = false;
 
   $: void isBuguEcho;
   $: void isBskyEcho;
@@ -32,6 +34,8 @@
     isFocused,
     isRecentVIP,
     isTemporary,
+    isBuguScanning,
+    isBskyScanning,
   });
 
   $: maskBg = activeBeam

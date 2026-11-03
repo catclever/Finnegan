@@ -82,11 +82,77 @@ func ExtractKeywordsFromMarkdown(rawContent []byte) (KeywordsProfile, error) {
 	return clean, nil
 }
 
-// MergeKeywordsToMarkdown merges the given KeywordsProfile into the YAML frontmatter of rawContent.
+// ExtractSummariesFromMarkdown extracts visual_summary and link_summary from a Markdown file's YAML frontmatter.
+func ExtractSummariesFromMarkdown(rawContent []byte) (visualSummary string, linkSummary string, err error) {
+	strContent := string(rawContent)
+	if !strings.HasPrefix(strContent, "---\n") && !strings.HasPrefix(strContent, "---\r\n") {
+		return "", "", nil
+	}
+	parts := strings.SplitN(strContent, "---", 3)
+	if len(parts) < 3 {
+		return "", "", nil
+	}
+
+	var meta struct {
+		VisualSummary string `yaml:"visual_summary"`
+		LinkSummary   string `yaml:"link_summary"`
+	}
+	if err := yaml.Unmarshal([]byte(parts[1]), &meta); err != nil {
+		return "", "", fmt.Errorf("failed to unmarshal frontmatter summaries: %w", err)
+	}
+
+	return strings.TrimSpace(meta.VisualSummary), strings.TrimSpace(meta.LinkSummary), nil
+}
+
+// MergeKeywordsAndSummariesToMarkdown is a convenience helper to merge keywords, visual summary, and link summary.
+func MergeKeywordsAndSummariesToMarkdown(rawContent []byte, profile KeywordsProfile, visualSummary string, linkSummary string) ([]byte, error) {
+	return MergeKeywordsToMarkdown(rawContent, profile, visualSummary, linkSummary)
+}
+
+// setOrUpdateFrontmatterScalar inserts or updates a string scalar in the given YAML mapping node.
+func setOrUpdateFrontmatterScalar(mappingNode *yaml.Node, key, val string) {
+	val = strings.TrimSpace(val)
+	if val == "" {
+		return
+	}
+	foundIndex := -1
+	for i := 0; i < len(mappingNode.Content); i += 2 {
+		if mappingNode.Content[i].Value == key {
+			foundIndex = i
+			break
+		}
+	}
+	valNode := &yaml.Node{
+		Kind:  yaml.ScalarNode,
+		Tag:   "!!str",
+		Value: val,
+	}
+	if foundIndex != -1 {
+		mappingNode.Content[foundIndex+1] = valNode
+	} else {
+		keyNode := &yaml.Node{
+			Kind:  yaml.ScalarNode,
+			Tag:   "!!str",
+			Value: key,
+		}
+		mappingNode.Content = append(mappingNode.Content, keyNode, valNode)
+	}
+}
+
+// MergeKeywordsToMarkdown merges the given KeywordsProfile and optional summaries (visual_summary, link_summary)
+// into the YAML frontmatter of rawContent.
 // Existing frontmatter fields (id, type, created, updated, source, tags, images, etc.) and markdown
 // body are preserved losslessly.
 // AI extraction never overwrites or duplicates manual '*' entries.
-func MergeKeywordsToMarkdown(rawContent []byte, profile KeywordsProfile) ([]byte, error) {
+func MergeKeywordsToMarkdown(rawContent []byte, profile KeywordsProfile, summaries ...string) ([]byte, error) {
+	var visualSummary string
+	var linkSummary string
+	if len(summaries) >= 1 {
+		visualSummary = strings.TrimSpace(summaries[0])
+	}
+	if len(summaries) >= 2 {
+		linkSummary = strings.TrimSpace(summaries[1])
+	}
 	strContent := string(rawContent)
 	cleanProfile := CleanProfile(profile)
 
@@ -278,6 +344,13 @@ func MergeKeywordsToMarkdown(rawContent []byte, profile KeywordsProfile) ([]byte
 			Value: "keywords",
 		}
 		mappingNode.Content = append(mappingNode.Content, keyNode, kwNode)
+	}
+
+	if visualSummary != "" {
+		setOrUpdateFrontmatterScalar(mappingNode, "visual_summary", visualSummary)
+	}
+	if linkSummary != "" {
+		setOrUpdateFrontmatterScalar(mappingNode, "link_summary", linkSummary)
 	}
 
 	var buf bytes.Buffer

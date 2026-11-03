@@ -17,7 +17,7 @@ type mockLLM struct {
 	jsonResp string
 }
 
-func (m *mockLLM) GenerateJSON(ctx context.Context, modelName string, prompt string) (string, error) {
+func (m *mockLLM) GenerateJSON(ctx context.Context, modelName string, prompt string, images []keywords.ImageAttachment, webContext string) (string, error) {
 	return m.jsonResp, nil
 }
 

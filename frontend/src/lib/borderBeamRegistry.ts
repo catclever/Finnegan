@@ -23,6 +23,8 @@ export interface BorderBeamContext {
   isFocused?: boolean;
   isRecentVIP?: boolean;
   isTemporary?: boolean;
+  isBuguScanning?: boolean;
+  isBskyScanning?: boolean;
 }
 
 export interface ResolvedBorderBeam extends BorderBeamPreset {
@@ -117,8 +119,29 @@ export function resolveCardBorderBeam(card: any, ctx: BorderBeamContext = {}): R
     return null;
   }
 
-  // 3. Module Origin Traveling Beam (e.g. Bugu, Bluesky/ATProto)
-  if (card.echoOf && card.origin) {
+  // 3. Active Module Radar / Echo Scanning on Mother Card
+  if (ctx.isBuguScanning) {
+    const buguPreset = beamRegistry.get('bugu');
+    if (buguPreset) {
+      return {
+        ...buguPreset,
+        delay: animDelay,
+      };
+    }
+  }
+
+  if (ctx.isBskyScanning) {
+    const bskyPreset = beamRegistry.get('atproto') || beamRegistry.get('bsky');
+    if (bskyPreset) {
+      return {
+        ...bskyPreset,
+        delay: animDelay,
+      };
+    }
+  }
+
+  // 4. Module Origin Traveling Beam (e.g. Bugu, Bluesky/ATProto)
+  if (card.origin) {
     const originKey = String(card.origin).toLowerCase().trim();
     const preset = beamRegistry.get(originKey);
     if (preset) {
@@ -129,7 +152,7 @@ export function resolveCardBorderBeam(card: any, ctx: BorderBeamContext = {}): R
     }
   }
 
-  // 4. Recent VIP New Card Inspiration (水墨双段飞白)
+  // 5. Recent VIP New Card Inspiration (水墨双段飞白)
   if (ctx.isRecentVIP) {
     const inkPreset = beamRegistry.get('ink') || INK_BEAM_PRESET;
     return {

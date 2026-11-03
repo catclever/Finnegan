@@ -262,3 +262,83 @@ keywords:
 	}
 }
 
+func TestMergeKeywordsToMarkdown_WithVisualAndLinkSummaries(t *testing.T) {
+	origMD := `---
+id: 01M6DCE56C1PRN7Y26EREPM61W
+type: thought
+created: 2026-11-02T13:41:40+08:00
+updated: 2026-11-02T13:41:40+08:00
+source: local
+publish: false
+images:
+  - 1793598100675-sample.png
+---
+
+gemini是懂梗的~
+`
+
+	profile := KeywordsProfile{
+		DimensionObject: {"Gemini", "表情包"},
+		DimensionMood:   {"戏谑", "会心一笑"},
+	}
+
+	visualSummary := "两张截图展示了 Gemini 与用户的对话，幽默地用表情包和梗图进行互动。"
+	linkSummary := "GitHub 仓库探讨了 super-agent 的存算分离架构。"
+
+	mergedBytes, err := MergeKeywordsToMarkdown([]byte(origMD), profile, visualSummary, linkSummary)
+	if err != nil {
+		t.Fatalf("MergeKeywordsToMarkdown failed: %v", err)
+	}
+
+	mergedStr := string(mergedBytes)
+
+	// Verify existing frontmatter fields are intact
+	if !strings.Contains(mergedStr, "id: 01M6DCE56C1PRN7Y26EREPM61W") {
+		t.Errorf("Expected id to be preserved")
+	}
+	if !strings.Contains(mergedStr, "1793598100675-sample.png") {
+		t.Errorf("Expected image to be preserved")
+	}
+	if !strings.Contains(mergedStr, "gemini是懂梗的~") {
+		t.Errorf("Expected body to be preserved")
+	}
+
+	// Verify keywords, visual_summary, and link_summary are present
+	if !strings.Contains(mergedStr, "keywords:") || !strings.Contains(mergedStr, "Gemini") {
+		t.Errorf("Expected keywords in frontmatter")
+	}
+	if !strings.Contains(mergedStr, "visual_summary:") || !strings.Contains(mergedStr, visualSummary) {
+		t.Errorf("Expected visual_summary in frontmatter: %s", mergedStr)
+	}
+	if !strings.Contains(mergedStr, "link_summary:") || !strings.Contains(mergedStr, linkSummary) {
+		t.Errorf("Expected link_summary in frontmatter: %s", mergedStr)
+	}
+
+	// Verify ExtractSummariesFromMarkdown
+	extractedVS, extractedLS, err := ExtractSummariesFromMarkdown(mergedBytes)
+	if err != nil {
+		t.Fatalf("ExtractSummariesFromMarkdown failed: %v", err)
+	}
+	if extractedVS != visualSummary {
+		t.Errorf("ExtractSummariesFromMarkdown visualSummary = %q, expected %q", extractedVS, visualSummary)
+	}
+	if extractedLS != linkSummary {
+		t.Errorf("ExtractSummariesFromMarkdown linkSummary = %q, expected %q", extractedLS, linkSummary)
+	}
+
+	// Test update summaries
+	updatedVS := "更新后的视觉总结"
+	updatedMerged, err := MergeKeywordsToMarkdown(mergedBytes, profile, updatedVS, linkSummary)
+	if err != nil {
+		t.Fatalf("Failed to update visual summary: %v", err)
+	}
+	gotVS, gotLS, _ := ExtractSummariesFromMarkdown(updatedMerged)
+	if gotVS != updatedVS {
+		t.Errorf("Expected updated visual summary %q, got %q", updatedVS, gotVS)
+	}
+	if gotLS != linkSummary {
+		t.Errorf("Expected link summary %q preserved, got %q", linkSummary, gotLS)
+	}
+}
+
+

@@ -14,15 +14,35 @@ import (
 
 // mockLLMClient simulates Gemini response for testing gating and extraction.
 type mockLLMClient struct {
-	responseJSON string
-	lastPrompt   string
-	lastModel    string
+	responseJSON   string
+	lastPrompt     string
+	lastModel      string
+	lastImages     []ImageAttachment
+	lastWebContext string
 }
 
-func (m *mockLLMClient) GenerateJSON(ctx context.Context, modelName string, prompt string) (string, error) {
+func (m *mockLLMClient) GenerateJSON(ctx context.Context, modelName string, prompt string, images []ImageAttachment, webContext string) (string, error) {
 	m.lastModel = modelName
 	m.lastPrompt = prompt
+	m.lastImages = images
+	m.lastWebContext = webContext
 	return m.responseJSON, nil
+}
+
+type mockLinkFetcher struct {
+	content string
+	err     error
+	urls    []string
+}
+
+func (m *mockLinkFetcher) Fetch(ctx context.Context, url string) (string, error) {
+	m.urls = append(m.urls, url)
+	return m.content, m.err
+}
+
+func (m *mockLinkFetcher) FetchAll(ctx context.Context, urls []string) string {
+	m.urls = append(m.urls, urls...)
+	return m.content
 }
 
 func TestExtractKeywords_4AnchorsAndSalienceGating(t *testing.T) {
@@ -273,5 +293,189 @@ Exploring CRDT and local-first architecture trade-offs.
 	}
 	if !strings.Contains(updatedStr, "Exploring CRDT and local-first architecture trade-offs.") {
 		t.Errorf("Original body lost in updated file: %s", updatedStr)
+	}
+}
+
+func TestExtractKeywordsWithContext_MultimodalAndLinkSummaries(t *testing.T) {
+	mockResp := `{
+  "keywords": {
+    "object": ["Gemini", "存算分离"],
+    "motif": ["吐槽模型"],
+    "mood": ["戏谑"],
+    "concept": ["智能代理"]
+  },
+  "visual_summary": "画面中展示了两只可爱的猫猫表情包，配文戏谑幽默。",
+  "link_summary": "Dalembert GitHub 仓库展示了 super-agent 的存算分离实现方案。"
+}`
+
+	mock := &mockLLMClient{responseJSON: mockResp}
+	cfg := DefaultConfig()
+	llmCfg := module.LLMConfig{DefaultModel: "gemini-3.8-flash", APIKey: "test-key"}
+	engine := NewKeywordEngine(llmCfg, cfg).WithClient(mock)
+
+	images := []ImageAttachment{
+		{MIME: "image/png", Data: []byte("fake-image-bytes-1")},
+		{MIME: "image/jpeg", Data: []byte("fake-image-bytes-2")},
+	}
+	webContext := "[URL: https://github.com/dalembert/super-agent]\nSuper agent compute-storage decoupling repo."
+
+	res, err := engine.ExtractKeywordsWithContext(context.Background(), "gemini是懂梗的~", images, webContext)
+	if err != nil {
+		t.Fatalf("ExtractKeywordsWithContext failed: %v", err)
+	}
+
+	// 1. Verify LLM received images and webContext
+	if len(mock.lastImages) != 2 {
+		t.Errorf("Expected 2 images passed to LLMClient, got %d", len(mock.lastImages))
+	}
+	if mock.lastWebContext != webContext {
+		t.Errorf("Expected webContext passed to LLMClient, got %q", mock.lastWebContext)
+	}
+
+	// 2. Verify prompt contains multimodal and web content instructions
+	if !strings.Contains(mock.lastPrompt, "MULTIMODAL IMAGE ANALYSIS") {
+		t.Errorf("Prompt missing multimodal instructions: %s", mock.lastPrompt)
+	}
+	if !strings.Contains(mock.lastPrompt, "REFERENCED WEB CONTENT ANALYSIS") {
+		t.Errorf("Prompt missing web content instructions: %s", mock.lastPrompt)
+	}
+	if !strings.Contains(mock.lastPrompt, "REFERENCED WEB CONTENT:") {
+		t.Errorf("Prompt missing referenced web content section: %s", mock.lastPrompt)
+	}
+
+	// 3. Verify extracted profile and summaries
+	if len(res.Keywords["object"]) != 2 || res.Keywords["object"][0] != "Gemini" {
+		t.Errorf("Expected object keywords, got %v", res.Keywords["object"])
+	}
+	if res.VisualSummary != "画面中展示了两只可爱的猫猫表情包，配文戏谑幽默。" {
+		t.Errorf("Unexpected visual summary: %s", res.VisualSummary)
+	}
+	if res.LinkSummary != "Dalembert GitHub 仓库展示了 super-agent 的存算分离实现方案。" {
+		t.Errorf("Unexpected link summary: %s", res.LinkSummary)
+	}
+}
+
+func TestExtractKeywordsWithContext_FallbackFlatFormat(t *testing.T) {
+	// Simulate legacy model response with flat top-level keys
+	mockResp := `{
+  "object": ["Claude", "Colab"],
+  "mood": ["通透"],
+  "visual_summary": "Legacy flat visual summary",
+  "link_summary": "Legacy flat link summary"
+}`
+
+	mock := &mockLLMClient{responseJSON: mockResp}
+	cfg := DefaultConfig()
+	llmCfg := module.LLMConfig{DefaultModel: "gemini-3.8-flash", APIKey: "test-key"}
+	engine := NewKeywordEngine(llmCfg, cfg).WithClient(mock)
+
+	res, err := engine.ExtractKeywordsWithContext(context.Background(), "今天体验了新工具", nil, "")
+	if err != nil {
+		t.Fatalf("ExtractKeywordsWithContext failed on flat format: %v", err)
+	}
+
+	if len(res.Keywords["object"]) != 2 {
+		t.Errorf("Expected 2 object keywords from flat format, got %v", res.Keywords["object"])
+	}
+	if res.VisualSummary != "Legacy flat visual summary" {
+		t.Errorf("Expected visual summary from flat format, got %s", res.VisualSummary)
+	}
+	if res.LinkSummary != "Legacy flat link summary" {
+		t.Errorf("Expected link summary from flat format, got %s", res.LinkSummary)
+	}
+}
+
+func TestProcessCardSync_MultimodalAndLinkContextIntegration(t *testing.T) {
+	tempHome := t.TempDir()
+	assetsDir := filepath.Join(tempHome, "assets")
+	if err := os.MkdirAll(assetsDir, 0755); err != nil {
+		t.Fatalf("Failed to create temp assets dir: %v", err)
+	}
+
+	// Create test image in assets
+	imgName := "test-image.png"
+	imgBytes := []byte{0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A, 0x00}
+	if err := os.WriteFile(filepath.Join(assetsDir, imgName), imgBytes, 0644); err != nil {
+		t.Fatalf("Failed to create test image: %v", err)
+	}
+
+	// Create card with image and URL
+	cardFile := filepath.Join(tempHome, "20261102-test-multimodal.epiphany.md")
+	docID := "01M6TESTCARD0000000001"
+	cardContent := `---
+id: 01M6TESTCARD0000000001
+type: thought
+created: 2026-11-02T14:33:00+08:00
+updated: 2026-11-02T14:33:00+08:00
+source: local
+images:
+  - test-image.png
+---
+
+来看看 Dalembert 仓库 https://github.com/dalembert/super-agent，很有启发！
+`
+	if err := os.WriteFile(cardFile, []byte(cardContent), 0644); err != nil {
+		t.Fatalf("Failed to write test card: %v", err)
+	}
+
+	mockResp := `{
+  "keywords": {
+    "object": ["Dalembert", "super-agent"],
+    "motif": ["架构探索"],
+    "mood": ["启发感"],
+    "concept": ["存算分离"]
+  },
+  "visual_summary": "测试生成的视觉总结：图片展示了系统架构图与测试截图。",
+  "link_summary": "测试生成的链接总结：Dalembert 探索了去中心化存算分离架构。"
+}`
+	mockLLM := &mockLLMClient{responseJSON: mockResp}
+	mockFetcher := &mockLinkFetcher{
+		content: "# Dalembert Super Agent\nDecentralized compute and storage architecture.",
+	}
+
+	cfg := DefaultConfig()
+	llmCfg := module.LLMConfig{DefaultModel: "gemini-3.8-flash", APIKey: "test-key"}
+	engine := NewKeywordEngine(llmCfg, cfg).
+		WithClient(mockLLM).
+		WithLinkFetcher(mockFetcher).
+		WithHomeDir(tempHome)
+
+	// Run ProcessCardSync
+	err := engine.ProcessCardSync(context.Background(), cardFile, docID, "")
+	if err != nil {
+		t.Fatalf("ProcessCardSync failed: %v", err)
+	}
+
+	// 1. Verify image attachment was loaded and passed to LLM
+	if len(mockLLM.lastImages) != 1 {
+		t.Fatalf("Expected 1 image passed to LLM, got %d", len(mockLLM.lastImages))
+	}
+	if mockLLM.lastImages[0].MIME != "image/png" {
+		t.Errorf("Expected image/png MIME, got %s", mockLLM.lastImages[0].MIME)
+	}
+
+	// 2. Verify link fetcher sniffed the URL
+	if len(mockFetcher.urls) == 0 || mockFetcher.urls[0] != "https://github.com/dalembert/super-agent" {
+		t.Errorf("Expected sniffed URL https://github.com/dalembert/super-agent, got %v", mockFetcher.urls)
+	}
+
+	// 3. Verify updated file frontmatter contains keywords, visual_summary, and link_summary
+	updatedData, err := os.ReadFile(cardFile)
+	if err != nil {
+		t.Fatalf("Failed to read updated file: %v", err)
+	}
+	updatedStr := string(updatedData)
+
+	if !strings.Contains(updatedStr, "keywords:") || !strings.Contains(updatedStr, "Dalembert") {
+		t.Errorf("Updated file missing keywords: %s", updatedStr)
+	}
+	if !strings.Contains(updatedStr, "visual_summary:") || !strings.Contains(updatedStr, "测试生成的视觉总结") {
+		t.Errorf("Updated file missing visual_summary: %s", updatedStr)
+	}
+	if !strings.Contains(updatedStr, "link_summary:") || !strings.Contains(updatedStr, "测试生成的链接总结") {
+		t.Errorf("Updated file missing link_summary: %s", updatedStr)
+	}
+	if !strings.Contains(updatedStr, "来看看 Dalembert 仓库") {
+		t.Errorf("Card body lost in updated file: %s", updatedStr)
 	}
 }

@@ -16,7 +16,7 @@ import (
 
 type mockLLMUnify struct{}
 
-func (m *mockLLMUnify) GenerateJSON(ctx context.Context, modelName string, prompt string) (string, error) {
+func (m *mockLLMUnify) GenerateJSON(ctx context.Context, modelName string, prompt string, images []keywords.ImageAttachment, webContext string) (string, error) {
 	// AI extraction generates overlapping keywords (WebKitGTK 4.1) and new ones (Tauri v2)
 	return `{
   "keywords": {

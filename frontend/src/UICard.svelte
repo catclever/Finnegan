@@ -37,6 +37,8 @@
   export let clusteredOverride: { x: number; y: number; z: number; rotation: number; motherId: string } | null = null;
   export let themePeekRole: 'left' | 'right' | null = null;
   export let isThemeActive: boolean = false;
+  export let isBuguScanning: boolean = false;
+  export let isBskyScanning: boolean = false;
   $: void isThemeActive;
 
   let lastNavDir: 'prev' | 'next' | null = null;
@@ -135,6 +137,8 @@
     !hasAura &&
     !isBuguEcho &&
     !isBskyEcho &&
+    !isBuguScanning &&
+    !isBskyScanning &&
     ($stageTime - (card.spawnTime || (card.createdAt ? new Date(card.createdAt).getTime() : 0)) < VIP_INK_BEAM_DURATION_MS)
   );
 
@@ -362,6 +366,8 @@
   class:constellation-dimmed={isConstellationDimmed && !themePeekRole}
   class:bugu-echo={isBuguEcho}
   class:bsky-echo={isBskyEcho}
+  class:bugu-scanning={isBuguScanning}
+  class:bsky-scanning={isBskyScanning}
   class:temporary={isTemporary}
   class:clustered-child={clusteredOverride !== null}
   class:focused={isFocused}
@@ -397,7 +403,7 @@
     {!isVisible ? 'visibility: hidden; pointer-events: none;' : ''}
   "
 >
-  <CardAuraGlow {card} {hasAura} {auraStage} {conicGradient} {isBuguEcho} {isBskyEcho} isStopped={isSearchStopped} {isFocused} isRecentVIP={isRecentVIP && !isFocused} {isTemporary} />
+  <CardAuraGlow {card} {hasAura} {auraStage} {conicGradient} {isBuguEcho} {isBskyEcho} isStopped={isSearchStopped} {isFocused} isRecentVIP={isRecentVIP && !isFocused} {isTemporary} {isBuguScanning} {isBskyScanning} />
 
   {#if isTemporary}
     <CardCollectControl
@@ -508,7 +514,9 @@
   }
 
   .card.bugu-echo:not(.focused),
-  .card.bsky-echo:not(.focused) {
+  .card.bsky-echo:not(.focused),
+  .card.bugu-scanning:not(.focused),
+  .card.bsky-scanning:not(.focused) {
     border: 1px solid transparent !important;
   }
 
@@ -538,7 +546,9 @@
 
   .card.has-aura.temporary::before,
   .card.bugu-echo.temporary::before,
-  .card.bsky-echo.temporary::before {
+  .card.bsky-echo.temporary::before,
+  .card.bugu-scanning.temporary::before,
+  .card.bsky-scanning.temporary::before {
     display: none;
   }
 

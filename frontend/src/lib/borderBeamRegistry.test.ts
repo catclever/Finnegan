@@ -92,7 +92,47 @@ describe('Border Beam Registry & Morphic Dispatch Engine', () => {
     });
     assert.strictEqual(focusedBeam, null);
 
-    // Priority 3: Module Origin Traveling Beam (Bugu)
+    // Priority 3: Active Bugu Scanning on mother card overrides isRecentVIP (resolves to amber gold bugu beam!)
+    const motherCardUnderBuguRadar = {
+      id: 'mother-card-1',
+      origin: 'local',
+      isVIP: true
+    };
+    const radarBeam = resolveCardBorderBeam(motherCardUnderBuguRadar, {
+      isBuguScanning: true,
+      isRecentVIP: true,
+      isFocused: false,
+      hasAura: false
+    });
+    assert.ok(radarBeam);
+    assert.strictEqual(radarBeam.id, 'bugu', 'Card actively searched by Bugu must wear amber gold bugu beam, NOT ink wash');
+    assert.strictEqual(radarBeam.duration, '4.6s');
+    assert.strictEqual(radarBeam.surfaceScan, false);
+
+    // Active Bluesky Scanning on mother card overrides isRecentVIP
+    const radarBskyBeam = resolveCardBorderBeam(motherCardUnderBuguRadar, {
+      isBskyScanning: true,
+      isRecentVIP: true,
+      isFocused: false,
+      hasAura: false
+    });
+    assert.ok(radarBskyBeam);
+    assert.strictEqual(radarBskyBeam.id, 'atproto', 'Card actively searched by Bluesky must wear ice blue beam');
+
+    // Priority 4: Module Origin Traveling Beam (Bugu card, even without echoOf)
+    const standaloneBuguCard = {
+      id: 'bugu-free-1',
+      origin: 'bugu'
+    };
+    const standaloneBuguBeam = resolveCardBorderBeam(standaloneBuguCard, {
+      isFocused: false,
+      hasAura: false
+    });
+    assert.ok(standaloneBuguBeam);
+    assert.strictEqual(standaloneBuguBeam.id, 'bugu');
+    assert.strictEqual(standaloneBuguBeam.surfaceScan, false);
+    assert.strictEqual(standaloneBuguBeam.duration, '4.6s');
+
     const buguBeam = resolveCardBorderBeam(card, {
       isFocused: false,
       hasAura: false
@@ -116,7 +156,7 @@ describe('Border Beam Registry & Morphic Dispatch Engine', () => {
     assert.strictEqual(bskyBeam.id, 'atproto');
     assert.strictEqual(bskyBeam.surfaceScan, false);
 
-    // Priority 4: Recent VIP Card (水墨飞白)
+    // Priority 5: Recent VIP Card (水墨飞白)
     const vipCard = {
       id: 'card-vip',
       origin: 'local',

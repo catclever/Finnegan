@@ -61,6 +61,8 @@ type Card struct {
 	Keywords       map[string][]string `json:"keywords,omitempty"`
 	Tags           []string            `json:"tags,omitempty"`
 	Threads        []ThreadRef         `json:"threads,omitempty" yaml:"threads,omitempty"`
+	VisualSummary  string              `json:"visualSummary,omitempty"`
+	LinkSummary    string              `json:"linkSummary,omitempty"`
 
 	// Curio Fields
 	Brand          string              `json:"brand,omitempty"`

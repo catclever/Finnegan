@@ -9,6 +9,8 @@ export function CaptureChatLog(arg1:string):Promise<main.ChatLogCaptureResult>;
 
 export function CaptureChatLogWithImages(arg1:string,arg2:Array<main.ImagePayload>):Promise<main.ChatLogCaptureResult>;
 
+export function CaptureCurio(arg1:string,arg2:Array<main.ImagePayload>):Promise<string>;
+
 export function CaptureNote(arg1:string):Promise<string>;
 
 export function CaptureThought(arg1:string):Promise<string>;

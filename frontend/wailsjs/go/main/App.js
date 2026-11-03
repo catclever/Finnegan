@@ -10,6 +10,10 @@ export function CaptureChatLogWithImages(arg1, arg2) {
   return window['go']['main']['App']['CaptureChatLogWithImages'](arg1, arg2);
 }
 
+export function CaptureCurio(arg1, arg2) {
+  return window['go']['main']['App']['CaptureCurio'](arg1, arg2);
+}
+
 export function CaptureNote(arg1) {
   return window['go']['main']['App']['CaptureNote'](arg1);
 }

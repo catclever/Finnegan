@@ -36,9 +36,23 @@ type DimensionDef struct {
 // KeywordsProfile represents extracted keywords mapped by dimension ID.
 type KeywordsProfile map[string][]string
 
+// ImageAttachment represents an in-memory binary image attachment with MIME type.
+type ImageAttachment struct {
+	MIME string `json:"mime"`
+	Data []byte `json:"data"`
+}
+
+// ExtractionResult contains the extracted keywords profile, visual summary, and link summary.
+type ExtractionResult struct {
+	Keywords      KeywordsProfile `json:"keywords"`
+	VisualSummary string          `json:"visual_summary,omitempty"`
+	LinkSummary   string          `json:"link_summary,omitempty"`
+}
+
 // Config defines the configuration for the keyword engine.
 type Config struct {
 	EnabledDimensions []string `yaml:"enabled_dimensions" json:"enabled_dimensions"`
+	JinaAPIKey        string   `yaml:"jina_api_key" json:"jina_api_key"`
 }
 
 // DefaultDimensions defines the 4 concrete anchor dimensions enabled by default.

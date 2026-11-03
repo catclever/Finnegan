@@ -418,6 +418,8 @@
         {activeConstellationTags}
         {activeConstellationTag}
         isSearchStopped={isSearchStopped}
+        isBuguScanning={buguBeacon ? (buguBeacon.sourceCardId === card.id && buguBeacon.status === 'scanning') : false}
+        isBskyScanning={bskyBeacon ? (bskyBeacon.sourceCardId === card.id && bskyBeacon.status === 'scanning') : false}
         hasAnyFocused={focusedCardId !== null}
         focusNavDirection={focusedCardId === card.id ? focusNavDirection : null}
         hoveredMotherId={hoveredMotherId}
