@@ -121,13 +121,14 @@ test('Card Type Dropdown Trigger Detection', async (t) => {
 });
 
 test('Card Type Options & Filtering Engine', async (t) => {
-  await t.test('provides core types and curio by default', () => {
+  await t.test('provides selectable types (note and curio) by default, excluding default thought and parser-driven chat_log', () => {
     const opts = getAvailableCardTypeOptions();
     const types = opts.map(o => o.type);
-    assert.ok(types.includes('thought'));
     assert.ok(types.includes('note'));
-    assert.ok(types.includes('chat_log'));
     assert.ok(types.includes('curio'));
+    assert.equal(types.includes('thought'), false);
+    assert.equal(types.includes('chat_log'), false);
+    assert.equal(types.includes('babel'), false);
   });
 
   await t.test('includes curio when module manifest includes curio', () => {
@@ -144,14 +145,28 @@ test('Card Type Options & Filtering Engine', async (t) => {
     ];
     const opts = getAvailableCardTypeOptions(manifests);
     assert.equal(opts.some(o => o.type === 'curio'), false);
+    assert.deepEqual(opts.map(o => o.type), ['note']);
   });
 
-  await t.test('core types always present with empty/null manifests', () => {
+  await t.test('note is always present as the selectable core type with empty/null manifests', () => {
     for (const m of [[], null, undefined] as any[]) {
       const types = getAvailableCardTypeOptions(m).map(o => o.type);
-      for (const core of ['thought', 'note', 'chat_log']) assert.ok(types.includes(core));
+      assert.ok(types.includes('note'));
+      assert.equal(types.includes('thought'), false);
+      assert.equal(types.includes('chat_log'), false);
     }
-    assert.equal(filterCardTypeOptions(getAvailableCardTypeOptions([]), '').length >= 3, true);
+  });
+
+  await t.test('supports custom registry definitions directly with selectable filtering', () => {
+    const customDefs: any[] = [
+      { type: 'thought', name: '灵感', selectable: false },
+      { type: 'note', name: '长文', selectable: true, prefix: ':note', icon: '📝' },
+      { type: 'chat_log', name: '对话', selectable: false },
+      { type: 'curio', name: '奇物', selectable: true, prefix: ':curio', icon: '🏺' }
+    ];
+    const customOpts = getAvailableCardTypeOptions(null, customDefs);
+    assert.equal(customOpts.length, 2);
+    assert.deepEqual(customOpts.map(o => o.type), ['note', 'curio']);
   });
 
   await t.test('filters options by query correctly', () => {
@@ -160,7 +175,7 @@ test('Card Type Options & Filtering Engine', async (t) => {
     assert.equal(filteredCu.length, 1);
     assert.equal(filteredCu[0].type, 'curio');
 
-    const filteredNote = filterCardTypeOptions(opts, '备忘');
+    const filteredNote = filterCardTypeOptions(opts, '长文');
     assert.equal(filteredNote.length, 1);
     assert.equal(filteredNote[0].type, 'note');
   });

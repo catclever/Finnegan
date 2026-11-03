@@ -28,7 +28,15 @@ globalCardRegistry.register('thought', ThoughtCardBody);
 globalCardRegistry.register('note', NoteCardBody);
 globalCardRegistry.register('chat_log', ChatLogCardBody);
 globalCardRegistry.register('babel', BabelCardBody);
-globalCardRegistry.register('curio', CurioCardBody);
+globalCardRegistry.register('curio', CurioCardBody, {
+  type: 'curio',
+  name: '奇物标本',
+  description: '模块驱动：商品快照与恋物藏品标本盒',
+  defaultTitle: 'Curio Specimen',
+  icon: '🏺',
+  prefix: ':curio',
+  selectable: true,
+});
 
 /**
  * Retrieves the Svelte component for a given card type.
@@ -71,6 +79,13 @@ export function getAllCardTypeDefinitions(): CardTypeDefinition[] {
 }
 
 /**
+ * Returns only the card type definitions that are selectable in OmniBar.
+ */
+export function getSelectableCardTypeDefinitions(): CardTypeDefinition[] {
+  return globalCardRegistry.getSelectableDefinitions();
+}
+
+/**
  * Synchronizes modular card components based on active module manifests.
  * If curio module is present, register CurioCardBody.
  * If curio module is absent/disabled, unregister curio so it gracefully falls back to ThoughtCardBody!
@@ -88,6 +103,9 @@ export function syncModularCardComponents(manifests?: ModuleManifest[] | null): 
       name: '奇物标本',
       description: '模块驱动：商品快照与恋物藏品标本盒',
       defaultTitle: 'Curio Specimen',
+      icon: '🏺',
+      prefix: ':curio',
+      selectable: true,
     });
   } else {
     globalCardRegistry.unregister('curio');

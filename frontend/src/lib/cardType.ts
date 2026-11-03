@@ -6,7 +6,8 @@
  * Also provides card type dropdown trigger detection and dynamic option listing.
  */
 
-import type { ModuleManifest } from '../types/card';
+import type { CardTypeDefinition, ModuleManifest } from '../types/card';
+import { BUILTIN_CARD_DEFINITIONS, isCoreCardType } from './cardRegistry.ts';
 
 export interface ParsedCardType {
   hasTypePrefix: boolean;
@@ -69,53 +70,47 @@ export function detectCardTypeTrigger(text: string): CardTypeTrigger {
 }
 
 /**
- * Returns available card type options based on core types and active module manifests.
+ * Converts a CardTypeDefinition into a UI CardTypeOption for dropdown display.
  */
-export function getAvailableCardTypeOptions(activeManifests?: ModuleManifest[] | null): CardTypeOption[] {
-  const options: CardTypeOption[] = [
-    {
-      type: 'thought',
-      prefix: ':thought',
-      label: '灵感碎片',
-      description: '即时思考与散落意识流 (默认底座)',
-      icon: '💡',
-      isCore: true,
-    },
-    {
-      type: 'note',
-      prefix: ':note',
-      label: '结构长文',
-      description: '代码备忘、清单与结构化长文',
-      icon: '📝',
-      isCore: true,
-    },
-    {
-      type: 'chat_log',
-      prefix: ':chat_log',
-      label: '对话录',
-      description: '剧本式双人对话与多轮交谈',
-      icon: '💬',
-      isCore: true,
-    },
-  ];
+export function definitionToCardTypeOption(def: CardTypeDefinition): CardTypeOption {
+  return {
+    type: def.type,
+    prefix: def.prefix || `:${def.type}`,
+    label: def.name || def.type,
+    description: def.description || '',
+    icon: def.icon || '📄',
+    isCore: isCoreCardType(def.type),
+  };
+}
 
-  // If activeManifests is provided, check for modular extensions (like curio)
-  if (Array.isArray(activeManifests)) {
-    const hasCurio = activeManifests.some(
-      m => m?.name === 'curio' || (m?.cardTypes && m.cardTypes.some(ct => ct?.type === 'curio'))
-    );
-    if (hasCurio) {
-      options.push({
-        type: 'curio',
-        prefix: ':curio',
-        label: '奇物标本',
-        description: '商品网页快照与恋物藏品 (Curio 模块驱动)',
-        icon: '🏺',
-        isCore: false,
-      });
-    }
-  } else {
-    // Default fallback when manifests have not yet loaded
+/**
+ * Returns available card type options based on selectable registry definitions and active module manifests.
+ * Default thought cards (handled with zero-prefix) and format-driven chat_log cards are NOT selectable in the dropdown.
+ */
+export function getAvailableCardTypeOptions(
+  activeManifests?: ModuleManifest[] | null,
+  customDefinitions?: CardTypeDefinition[]
+): CardTypeOption[] {
+  // If explicit definitions are provided, use only selectable ones
+  if (Array.isArray(customDefinitions) && customDefinitions.length > 0) {
+    return customDefinitions
+      .filter(def => def.selectable === true)
+      .map(definitionToCardTypeOption);
+  }
+
+  // Derive base selectable options from built-in card registry definitions
+  const options: CardTypeOption[] = Object.values(BUILTIN_CARD_DEFINITIONS)
+    .filter(def => def.selectable === true)
+    .map(definitionToCardTypeOption);
+
+  // Modular extension: curio
+  const hasCurio = Array.isArray(activeManifests)
+    ? activeManifests.some(
+        m => m?.name === 'curio' || (m?.cardTypes && m.cardTypes.some(ct => ct?.type === 'curio'))
+      )
+    : true; // Default fallback before manifests load
+
+  if (hasCurio) {
     options.push({
       type: 'curio',
       prefix: ':curio',

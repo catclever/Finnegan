@@ -25,6 +25,15 @@ describe('Card Type Registry & Morphology Decoupling Engine', () => {
       assert.equal(BUILTIN_CARD_DEFINITIONS.babel.defaultTitle, 'Babel Echo');
       assert.equal(BUILTIN_CARD_DEFINITIONS.babel.name, '巴别塔');
     });
+
+    it('defines selectable flags correctly for built-in card definitions', () => {
+      assert.equal(BUILTIN_CARD_DEFINITIONS.thought.selectable, false);
+      assert.equal(BUILTIN_CARD_DEFINITIONS.chat_log.selectable, false);
+      assert.equal(BUILTIN_CARD_DEFINITIONS.babel.selectable, false);
+      assert.equal(BUILTIN_CARD_DEFINITIONS.note.selectable, true);
+      assert.equal(BUILTIN_CARD_DEFINITIONS.note.prefix, ':note');
+      assert.equal(BUILTIN_CARD_DEFINITIONS.note.icon, '📝');
+    });
   });
 
   describe('Card Type Normalization & Title Helpers', () => {
@@ -158,6 +167,36 @@ describe('Card Type Registry & Morphology Decoupling Engine', () => {
       assert.equal(registry.has('custom_temp'), false);
       assert.equal(registry.has('thought'), false); // components cleared
       assert.equal(registry.getAllDefinitions().length, 4); // definitions restored
+    });
+
+    it('retrieves only selectable definitions and updates dynamically when extensions register/unregister', () => {
+      const selectableBefore = registry.getSelectableDefinitions();
+      assert.equal(selectableBefore.length, 1);
+      assert.equal(selectableBefore[0].type, 'note');
+
+      // Register non-selectable extension
+      registry.register('audit_log', { name: 'AuditLog' }, {
+        name: '审计日志',
+        selectable: false
+      });
+      assert.equal(registry.getSelectableDefinitions().length, 1);
+
+      // Register selectable extension (e.g. curio)
+      registry.register('curio', MockCurioBody, {
+        name: '奇物标本',
+        prefix: ':curio',
+        selectable: true
+      });
+      const selectableAfter = registry.getSelectableDefinitions();
+      assert.equal(selectableAfter.length, 2);
+      assert.ok(selectableAfter.some(d => d.type === 'note'));
+      assert.ok(selectableAfter.some(d => d.type === 'curio'));
+
+      // Unregister curio
+      registry.unregister('curio');
+      const selectableAfterUnreg = registry.getSelectableDefinitions();
+      assert.equal(selectableAfterUnreg.length, 1);
+      assert.equal(selectableAfterUnreg[0].type, 'note');
     });
   });
 });

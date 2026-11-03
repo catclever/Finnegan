@@ -27,6 +27,8 @@ export interface CardTypeDefinition {
   isDefault?: boolean;
   defaultTitle?: string;
   icon?: string;
+  prefix?: string;
+  selectable?: boolean;
 }
 
 export interface DialogueTurn {

@@ -20,27 +20,36 @@ export const BUILTIN_CARD_DEFINITIONS: Record<string, CardTypeDefinition> = {
   thought: {
     type: 'thought',
     name: '灵感',
-    description: '核心底座：随手捕获的灵感与意识流卡片',
+    description: '核心底座：随手捕获的灵感与意识流卡片 (默认底座，无需前缀)',
     isDefault: true,
-    defaultTitle: 'Thought'
+    defaultTitle: 'Thought',
+    icon: '💡',
+    selectable: false
   },
   note: {
     type: 'note',
-    name: '备忘',
-    description: '核心底座：确定性事实备忘、清单与代码速记卡片',
-    defaultTitle: 'Note'
+    name: '结构长文',
+    description: '确定性事实备忘、清单与代码长文',
+    defaultTitle: 'Note',
+    icon: '📝',
+    prefix: ':note',
+    selectable: true
   },
   chat_log: {
     type: 'chat_log',
     name: '对话录',
-    description: '核心底座：人机多轮对话与对话剧本卡片',
-    defaultTitle: 'Chat Log'
+    description: '核心底座：人机多轮对话与对话剧本卡片 (格式驱动)',
+    defaultTitle: 'Chat Log',
+    icon: '💬',
+    selectable: false
   },
   babel: {
     type: 'babel',
     name: '巴别塔',
-    description: '通用共享：跨语种双语情报与溯源回声卡片',
-    defaultTitle: 'Babel Echo'
+    description: '通用共享：跨语种双语情报与溯源回声卡片 (回声驱动)',
+    defaultTitle: 'Babel Echo',
+    icon: '🗼',
+    selectable: false
   }
 };
 
@@ -175,6 +184,13 @@ export class CardRegistry<T = any> {
    */
   getAllDefinitions(): CardTypeDefinition[] {
     return Array.from(this.definitions.values());
+  }
+
+  /**
+   * Retrieves only the card type definitions that are explicitly marked as selectable in UI.
+   */
+  getSelectableDefinitions(): CardTypeDefinition[] {
+    return Array.from(this.definitions.values()).filter(def => def.selectable === true);
   }
 
   /**
