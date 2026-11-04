@@ -3,11 +3,13 @@ package api
 import (
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 
+	"Finnegan/core/babel"
 	"Finnegan/core/bus"
 	coreconfig "Finnegan/core/config"
 	"Finnegan/core/keywords"
@@ -198,7 +200,48 @@ func ExtractKeywordsForDoc(docID string) map[string][]string {
 	if err != nil || len(profile) == 0 {
 		return nil
 	}
-	return map[string][]string(profile)
+
+	sanitized := make(map[string][]string)
+	for k, vals := range profile {
+		var cleanVals []string
+		for _, v := range vals {
+			cleanVals = append(cleanVals, strings.TrimSpace(strings.TrimRight(strings.TrimSpace(v), "*")))
+		}
+		sanitized[k] = cleanVals
+	}
+
+	return sanitized
+}
+
+// EnrichIntentWithSummaries retrieves visual_summary and link_summary from a doc's frontmatter
+// and appends them to the intent if they are not already present.
+func EnrichIntentWithSummaries(docID string, intent string) string {
+	if docID == "" {
+		return intent
+	}
+	path := FindCardFilePath(docID)
+	if path == "" {
+		return intent
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return intent
+	}
+
+	visualSummary, linkSummary, err := keywords.ExtractSummariesFromMarkdown(data)
+	if err != nil {
+		return intent
+	}
+
+	enrichedIntent := intent
+	if visualSummary != "" && !strings.Contains(enrichedIntent, visualSummary) {
+		enrichedIntent += "\n[Image Context]: " + visualSummary
+	}
+	if linkSummary != "" && !strings.Contains(enrichedIntent, linkSummary) {
+		enrichedIntent += "\n[Link Context]: " + linkSummary
+	}
+
+	return enrichedIntent
 }
 
 func ExecuteRadar(cfg *config.Config, router *llm.Router, searxURL, jinaKey string, maxConcurrency int, intent string, targetLanguage string, docID string, keywordsOpt ...map[string][]string) RadarResponse {
@@ -226,6 +269,10 @@ func ExecuteRadar(cfg *config.Config, router *llm.Router, searxURL, jinaKey stri
 			}
 		}
 		kw = ExtractKeywordsForDoc(docID)
+	}
+
+	if docID != "" {
+		intent = EnrichIntentWithSummaries(docID, intent)
 	}
 
 	log.Printf("[Bugu Module] Processing intent: %s (docID: %s, keywords count: %d)\n", intent, docID, len(kw))
@@ -264,6 +311,7 @@ func ExecuteRadar(cfg *config.Config, router *llm.Router, searxURL, jinaKey stri
 	itemChan := make(chan fetcher.SearchResult, 100)
 	var seenMu sync.Mutex
 	seenURLs := make(map[string]bool)
+	domainSpawns := make(map[string]int)
 
 	// Smooth concurrency semaphore for SearxNG queries (max 3 concurrent) to prevent queue exhaustion
 	searxSem := make(chan struct{}, 3)
@@ -282,7 +330,7 @@ func ExecuteRadar(cfg *config.Config, router *llm.Router, searxURL, jinaKey stri
 
 		timeRange := plan.DefaultTimeRange
 		if plan.TargetTimeRanges != nil {
-			if tr, ok := plan.TargetTimeRanges[target.ID]; ok && tr != "" {
+			if tr, ok := plan.TargetTimeRanges[target.ID]; ok {
 				timeRange = tr
 			}
 		}
@@ -303,13 +351,40 @@ func ExecuteRadar(cfg *config.Config, router *llm.Router, searxURL, jinaKey stri
 					if item.URL == "" {
 						continue
 					}
+
+					parsedURL, err := url.Parse(item.URL)
+					if err != nil {
+						continue
+					}
+
+					// Normalize URL
+					parsedURL.Fragment = ""
+					qParams := parsedURL.Query()
+					for k := range qParams {
+						if strings.HasPrefix(k, "utm_") {
+							qParams.Del(k)
+						}
+					}
+					parsedURL.RawQuery = qParams.Encode()
+					normURL := strings.TrimRight(parsedURL.String(), "/")
+					host := parsedURL.Hostname()
+
 					seenMu.Lock()
-					if seenURLs[item.URL] {
+					if seenURLs[normURL] {
 						seenMu.Unlock()
 						continue
 					}
-					seenURLs[item.URL] = true
+
+					if domainSpawns[host] >= 2 {
+						seenMu.Unlock()
+						continue
+					}
+
+					seenURLs[normURL] = true
+					domainSpawns[host]++
 					seenMu.Unlock()
+
+					item.URL = normURL // Pass the normalized URL down
 					itemChan <- item
 				}
 			}(query, target, timeRange)
@@ -338,7 +413,6 @@ func ExecuteRadar(cfg *config.Config, router *llm.Router, searxURL, jinaKey stri
 			for item := range itemChan {
 				var md string
 				var jinaErr error
-				usedSearchSnippet := false
 
 				// Primary path: Extract full markdown via Jina Reader API
 				log.Printf("[Jina Reader] Extracting -> %s", item.URL)
@@ -357,13 +431,12 @@ func ExecuteRadar(cfg *config.Config, router *llm.Router, searxURL, jinaKey stri
 
 				// Tier 2 Fallback: If still failed or low quality, fall back to SearxNG search snippet
 				if jinaErr != nil || isBlockedOrLowQualityMarkdown(md) {
-					log.Printf("[Extraction Fallback] URL %s blocked or low quality (err: %v, len: %d). Falling back to search snippet.", item.URL, jinaErr, len(md))
-					if strings.TrimSpace(item.Content) != "" || strings.TrimSpace(item.Title) != "" {
+					if len([]rune(strings.TrimSpace(item.Content))) >= 80 {
+						log.Printf("[Extraction Fallback] URL %s blocked or low quality (err: %v, len: %d). Falling back to search snippet.", item.URL, jinaErr, len(md))
 						md = fmt.Sprintf("# %s\n\n%s", item.Title, item.Content)
-						usedSearchSnippet = true
 					} else {
-						// Both primary/secondary extraction and search snippet empty -> skip completely
-						log.Printf("[Bugu Module] Skipping %s: extraction failed and empty search snippet", item.URL)
+						// Extraction failed and search snippet too short -> skip completely
+						log.Printf("[Bugu Module] Skipping %s: extraction failed and search snippet < 80 runes", item.URL)
 						continue
 					}
 				}
@@ -376,20 +449,18 @@ func ExecuteRadar(cfg *config.Config, router *llm.Router, searxURL, jinaKey stri
 					continue
 				}
 
-				// If rejected by gating (nil returned) and we haven't used the search snippet yet, retry with snippet.
-				if card == nil && !usedSearchSnippet {
-					if strings.TrimSpace(item.Content) != "" {
-						log.Printf("[Distiller Fallback] LLM rejected Jina markdown (no anchor hit or empty text). Retrying with search snippet for %s", item.URL)
-						snippetMD := fmt.Sprintf("# %s\n\n%s", item.Title, item.Content)
-						if retryCard, retryErr := router.DistillMarkdown(intent, snippetMD, item.URL, targetLanguage, kw); retryErr == nil {
-							card = retryCard
-						}
-					}
-				}
-
 				// Final check: If still nil or empty, DO NOT show this card
 				if card == nil || (strings.TrimSpace(card.OriginalText) == "" && strings.TrimSpace(card.TranslatedText) == "") {
 					log.Printf("[Bugu Module] Discarding empty/rejected card for %s", item.URL)
+					continue
+				}
+
+				if strings.TrimSpace(card.Title) == "" && strings.TrimSpace(item.Title) != "" {
+					card.Title = strings.TrimSpace(item.Title)
+				}
+
+				if isSpam, reason := babel.UniversalSpamFilter(card.OriginalText); isSpam {
+					log.Printf("[Bugu Module] Discarding spam card for %s (reason: %s)", item.URL, reason)
 					continue
 				}
 

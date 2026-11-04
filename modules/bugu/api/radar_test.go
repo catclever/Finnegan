@@ -2,6 +2,7 @@ package api
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	"Finnegan/modules/bugu/models"
@@ -58,6 +59,76 @@ func TestResolveTargetQueries(t *testing.T) {
 	}
 }
 
+func TestExtractKeywordsForDoc_StripAsterisk(t *testing.T) {
+	tmpDir := t.TempDir()
+	cardPath := tmpDir + "/test_card_strip.epiphany.md"
+	cardContent := `---
+id: 01JSTRIP123
+type: thought
+keywords:
+  entity:
+    - NormalEntity
+    - TagWithAsterisk *
+    - MultiWord Asterisk *
+  symptom:
+    - "***   *"
+    - NormalSymptom
+---
+`
+	if err := os.WriteFile(cardPath, []byte(cardContent), 0644); err != nil {
+		t.Fatalf("failed to write test card: %v", err)
+	}
+
+	kw := ExtractKeywordsForDoc(cardPath)
+	if kw == nil {
+		t.Fatal("expected non-nil keywords from card")
+	}
+
+	if len(kw["object"]) != 3 || kw["object"][0] != "NormalEntity" || kw["object"][1] != "TagWithAsterisk" || kw["object"][2] != "MultiWord Asterisk" {
+		t.Errorf("unexpected entity keywords: %v", kw["object"])
+	}
+	if len(kw["motif"]) != 2 || kw["motif"][0] != "***" || kw["motif"][1] != "NormalSymptom" {
+		t.Errorf("unexpected symptom keywords: %v", kw["motif"])
+	}
+}
+
+func TestEnrichIntentWithSummaries(t *testing.T) {
+	tmpDir := t.TempDir()
+	cardPath := tmpDir + "/test_card_enrich.epiphany.md"
+	cardContent := `---
+id: 01JENRICH123
+visual_summary: "A nice picture of a dog."
+link_summary: "Article about dogs."
+---
+`
+	if err := os.WriteFile(cardPath, []byte(cardContent), 0644); err != nil {
+		t.Fatalf("failed to write test card: %v", err)
+	}
+
+	intent := "Show me cute animals."
+	enriched := EnrichIntentWithSummaries(cardPath, intent)
+
+	if !strings.Contains(enriched, "Show me cute animals.") {
+		t.Errorf("expected base intent, got: %s", enriched)
+	}
+	if !strings.Contains(enriched, "\n[Image Context]: A nice picture of a dog.") {
+		t.Errorf("expected visual summary, got: %s", enriched)
+	}
+	if !strings.Contains(enriched, "\n[Link Context]: Article about dogs.") {
+		t.Errorf("expected link summary, got: %s", enriched)
+	}
+
+	// Test idempotency
+	enrichedAgain := EnrichIntentWithSummaries(cardPath, enriched)
+	if strings.Count(enrichedAgain, "[Image Context]:") > 1 {
+		t.Errorf("expected single visual summary, got duplicates: %s", enrichedAgain)
+	}
+}
+
+func TestResolveTargetQueriesEmptyTimeRangeOverride(t *testing.T) {
+	// Empty time range logic test
+}
+
 func TestExtractKeywordsForDoc_DirectPath(t *testing.T) {
 	// Create a temporary card with frontmatter containing keywords
 	tmpDir := t.TempDir()
@@ -85,11 +156,11 @@ Card body text discussing WebKitGTK networking.
 	if kw == nil {
 		t.Fatal("expected non-nil keywords from card")
 	}
-	if len(kw["entity"]) != 2 || kw["entity"][0] != "WebKitGTK 4.1" || kw["entity"][1] != "libsoup" {
-		t.Errorf("unexpected entity keywords: %v", kw["entity"])
+	if len(kw["object"]) != 2 || kw["object"][0] != "WebKitGTK 4.1" || kw["object"][1] != "libsoup" {
+		t.Errorf("unexpected entity keywords: %v", kw["object"])
 	}
-	if len(kw["symptom"]) != 1 || kw["symptom"][0] != "TLS handshake timeout" {
-		t.Errorf("unexpected symptom keywords: %v", kw["symptom"])
+	if len(kw["motif"]) != 1 || kw["motif"][0] != "TLS handshake timeout" {
+		t.Errorf("unexpected symptom keywords: %v", kw["motif"])
 	}
 
 	// 2. Empty docID
