@@ -128,3 +128,58 @@ func TestSearxNGClient_Search_ErrorStatus(t *testing.T) {
 		t.Errorf("expected error message to mention 500, got: %v", err)
 	}
 }
+
+
+func TestSearxNGClient_Search_TargetTypeEngine(t *testing.T) {
+	client := NewSearxNGClient("http://mock-searxng.local")
+	var recordedURL string
+	client.Client.Transport = roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+		recordedURL = req.URL.String()
+		body := `{"results":[]}`
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewBufferString(body)),
+			Header:     make(http.Header),
+		}, nil
+	})
+
+	target := models.Target{
+		Type:  "engine",
+		Value: "github",
+	}
+
+	_, _ = client.Search("golang test", target, "")
+
+	if !strings.Contains(recordedURL, "engines=github") {
+		t.Errorf("expected URL to contain 'engines=github', got %s", recordedURL)
+	}
+	if strings.Contains(recordedURL, "golang+test+github") || strings.Contains(recordedURL, "golang test github") {
+		t.Errorf("expected target value NOT to be in the query, got %s", recordedURL)
+	}
+}
+
+func TestSearxNGClient_Search_PreferredEngines(t *testing.T) {
+	client := NewSearxNGClient("http://mock-searxng.local")
+	var recordedURL string
+	client.Client.Transport = roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+		recordedURL = req.URL.String()
+		body := `{"results":[]}`
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewBufferString(body)),
+			Header:     make(http.Header),
+		}, nil
+	})
+
+	target := models.Target{
+		Type:             "site",
+		Value:            "site:example.com",
+		PreferredEngines: []string{"duckduckgo", "google"},
+	}
+
+	_, _ = client.Search("golang test", target, "")
+
+	if !strings.Contains(recordedURL, "engines=duckduckgo%2Cgoogle") {
+		t.Errorf("expected URL to contain 'engines=duckduckgo%%2Cgoogle', got %s", recordedURL)
+	}
+}

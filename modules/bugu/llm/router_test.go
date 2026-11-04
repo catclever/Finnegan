@@ -213,3 +213,37 @@ func TestParseSearchPlanJSON_InvalidJSON(t *testing.T) {
 		t.Fatal("expected error on malformed JSON, got nil")
 	}
 }
+
+func TestFormatKeywordsProfile_StripTrailingStar(t *testing.T) {
+	keywords := map[string][]string{
+		"test": {"word1*", "word2 *", "word3* "},
+	}
+	formatted := FormatKeywordsProfile(keywords)
+	expected := "- test: word1, word2 , word3\n"
+	if formatted != expected {
+		t.Errorf("Expected %q, got %q", expected, formatted)
+	}
+}
+
+func TestParseSearchPlanJSON_WithTargetQueries(t *testing.T) {
+	rawJSON := `{
+		"selected_target_ids": ["t1", "t2"],
+		"target_queries": {
+			"t1": ["query t1"],
+			"t2": ["query t2"]
+		},
+		"search_queries": {
+			"en": ["query en"]
+		}
+	}`
+	plan, err := ParseSearchPlanJSON(rawJSON)
+	if err != nil {
+		t.Fatalf("Failed to parse JSON: %v", err)
+	}
+	if len(plan.TargetQueries) != 2 {
+		t.Errorf("Expected 2 target queries, got %d", len(plan.TargetQueries))
+	}
+	if plan.TargetQueries["t1"][0] != "query t1" {
+		t.Errorf("Expected 'query t1', got %s", plan.TargetQueries["t1"][0])
+	}
+}

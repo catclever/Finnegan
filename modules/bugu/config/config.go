@@ -89,15 +89,30 @@ func LoadConfig(path string) (*Config, error) {
 	}
 
 	targetMap := make(map[string]models.Target)
+	var dedupedTargets []models.Target
+	seen := make(map[string]bool)
+
 	for _, t := range root.Targets {
+		// All targets get registered in TargetMap by ID
 		targetMap[t.ID] = t
+
+		val := strings.TrimSpace(t.Value)
+		// Deduplicate in Targets slice by Type + Value, keeping the first occurrence
+		if val != "" {
+			key := fmt.Sprintf("%s:%s", t.Type, val)
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+		}
+		dedupedTargets = append(dedupedTargets, t)
 	}
 
 	i18nPath := filepath.Join(filepath.Dir(path), "tags_i18n.json")
 	_ = LoadCustomTranslations(i18nPath)
 
 	return &Config{
-		Targets:      root.Targets,
+		Targets:      dedupedTargets,
 		TargetMap:    targetMap,
 		ConfigPath:   path,
 		I18nFilePath: i18nPath,
