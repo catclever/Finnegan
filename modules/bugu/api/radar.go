@@ -322,7 +322,12 @@ func ExecuteRadar(cfg *config.Config, router *llm.Router, searxURL, jinaKey stri
 			continue
 		}
 
-		queries := resolveTargetQueries(target, plan.SearchQueries)
+		var queries []string
+		if plan.TargetQueries != nil && len(plan.TargetQueries[target.ID]) > 0 {
+			queries = plan.TargetQueries[target.ID]
+		} else {
+			queries = resolveTargetQueries(target, plan.SearchQueries)
+		}
 		if len(queries) == 0 {
 			log.Printf("[Bugu Module] Skipping target %s: no compatible queries for languages %v", target.ID, target.Languages)
 			continue
@@ -375,7 +380,7 @@ func ExecuteRadar(cfg *config.Config, router *llm.Router, searxURL, jinaKey stri
 						continue
 					}
 
-					if domainSpawns[host] >= 2 {
+					if domainSpawns[host] >= 3 {
 						seenMu.Unlock()
 						continue
 					}
@@ -399,6 +404,8 @@ func ExecuteRadar(cfg *config.Config, router *llm.Router, searxURL, jinaKey stri
 	// 3. Extract Markdown & Distill concurrently, with fallback to Search Snippet and discarding empty cards
 	var wgJina sync.WaitGroup
 	resultChan := make(chan string, 100)
+	var spawnMu sync.Mutex
+	spawnedDomains := make(map[string]int)
 
 	if maxConcurrency <= 0 {
 		maxConcurrency = 4
@@ -463,6 +470,22 @@ func ExecuteRadar(cfg *config.Config, router *llm.Router, searxURL, jinaKey stri
 					log.Printf("[Bugu Module] Discarding spam card for %s (reason: %s)", item.URL, reason)
 					continue
 				}
+
+				// Enforce spawned domain cap (max 2 spawned cards per domain)
+				var host string
+				if u, err := url.Parse(card.SourceURL); err == nil {
+					host = u.Hostname()
+				}
+				spawnMu.Lock()
+				if host != "" && spawnedDomains[host] >= 2 {
+					spawnMu.Unlock()
+					log.Printf("[Bugu Module] Domain cap reached for %s, discarding", host)
+					continue
+				}
+				if host != "" {
+					spawnedDomains[host]++
+				}
+				spawnMu.Unlock()
 
 				card.EchoOf = docID
 

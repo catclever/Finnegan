@@ -59,6 +59,32 @@ func TestResolveTargetQueries(t *testing.T) {
 	}
 }
 
+func TestTargetQueriesPriority(t *testing.T) {
+	plan := models.LLMSearchPlan{
+		TargetQueries: map[string][]string{
+			"site_hn": {"Tailored HN Query"},
+		},
+		SearchQueries: map[string][]string{
+			"en": {"Generic EN Query"},
+		},
+	}
+	target := models.Target{
+		ID:        "site_hn",
+		Languages: []string{"en"},
+	}
+
+	var queries []string
+	if plan.TargetQueries != nil && len(plan.TargetQueries[target.ID]) > 0 {
+		queries = plan.TargetQueries[target.ID]
+	} else {
+		queries = resolveTargetQueries(target, plan.SearchQueries)
+	}
+
+	if len(queries) != 1 || queries[0] != "Tailored HN Query" {
+		t.Fatalf("expected TargetQueries to take precedence, got %v", queries)
+	}
+}
+
 func TestExtractKeywordsForDoc_StripAsterisk(t *testing.T) {
 	tmpDir := t.TempDir()
 	cardPath := tmpDir + "/test_card_strip.epiphany.md"
