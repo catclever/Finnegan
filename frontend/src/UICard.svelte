@@ -378,6 +378,7 @@
   class:aura-stage-2={auraStage === 2}
   class:aura-stage-3={auraStage === 3}
   class:theme-peek={themePeekRole !== null}
+  class:diary-parchment={card.type === 'diary'}
   title={isTemporary ? '需先收集卡片才能编辑' : (isFocused ? '双击进行编辑' : '⌥ + 单击在外部编辑')}
   on:click={handleClick}
   on:dblclick={handleDoubleClick}
@@ -609,5 +610,20 @@
       0 0 32px rgba(56, 189, 248, 0.6),
       0 0 60px rgba(168, 85, 247, 0.35),
       0 20px 60px rgba(0, 0, 0, 0.2) !important;
+  }
+
+  .card.diary-parchment {
+    background: linear-gradient(165deg, #fbf3df 0%, #f3e4c2 52%, #ead5a7 100%) !important;
+    border-top: 4px solid #8b5a2b !important;
+    border-bottom: 4px solid #8b5a2b !important;
+    border-left: 1px solid rgba(139, 90, 43, 0.4) !important;
+    border-right: 1px solid rgba(139, 90, 43, 0.4) !important;
+    box-shadow: inset 0 2px 8px rgba(255, 255, 255, 0.6), 0 6px 16px rgba(139, 90, 43, 0.2) !important;
+  }
+
+  .card.diary-parchment.focused {
+    box-shadow: 0 40px 100px rgba(62, 39, 35, 0.3), inset 0 2px 8px rgba(255, 255, 255, 0.6) !important;
+    border-top: 8px solid #8b5a2b !important;
+    border-bottom: 8px solid #8b5a2b !important;
   }
 </style>

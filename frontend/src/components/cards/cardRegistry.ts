@@ -17,6 +17,7 @@ import NoteCardBody from './NoteCardBody.svelte';
 import ChatLogCardBody from './ChatLogCardBody.svelte';
 import BabelCardBody from './BabelCardBody.svelte';
 import CurioCardBody from './CurioCardBody.svelte';
+import DiaryCardBody from './DiaryCardBody.svelte';
 import { CardRegistry } from '../../lib/cardRegistry';
 import type { CardTypeDefinition, ModuleManifest } from '../../types/card';
 
@@ -28,6 +29,15 @@ globalCardRegistry.register('thought', ThoughtCardBody);
 globalCardRegistry.register('note', NoteCardBody);
 globalCardRegistry.register('chat_log', ChatLogCardBody);
 globalCardRegistry.register('babel', BabelCardBody);
+globalCardRegistry.register('diary', DiaryCardBody, {
+  type: 'diary',
+  name: '羊皮卷日记',
+  description: '羊皮卷手记',
+  defaultTitle: 'Diary',
+  icon: '📜',
+  prefix: ':diary',
+  selectable: true,
+});
 globalCardRegistry.register('curio', CurioCardBody, {
   type: 'curio',
   name: '奇物标本',
@@ -110,6 +120,17 @@ export function syncModularCardComponents(manifests?: ModuleManifest[] | null): 
   } else {
     globalCardRegistry.unregister('curio');
   }
+
+  // Always register diary
+  globalCardRegistry.register('diary', DiaryCardBody, {
+    type: 'diary',
+    name: '羊皮卷日记',
+    description: '羊皮卷手记',
+    defaultTitle: 'Diary',
+    icon: '📜',
+    prefix: ':diary',
+    selectable: true,
+  });
 }
 
 /**
