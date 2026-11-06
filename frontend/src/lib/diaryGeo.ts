@@ -1,5 +1,5 @@
 import type { DiaryWeather } from '../types/card';
-import { ExecuteModuleAction } from '../../wailsjs/go/main/App';
+import { ExecuteModuleAction } from '../../wailsjs/go/main/App.js';
 
 export interface TimeWeatherEmblemData {
   descriptor: string;
@@ -20,13 +20,13 @@ function getWeatherType(weather?: DiaryWeather | null): TimeWeatherEmblemData['w
   if (!weather || !weather.condition) return 'unknown';
   const condition = weather.condition.toLowerCase();
 
-  if (condition.includes('rain') || condition.includes('drizzle') || condition.includes('shower')) return 'rain';
-  if (condition.includes('storm') || condition.includes('thunder')) return 'storm';
-  if (condition.includes('snow') || condition.includes('ice') || condition.includes('sleet')) return 'snow';
-  if (condition.includes('fog') || condition.includes('mist') || condition.includes('haze')) return 'fog';
-  if (condition.includes('wind') || condition.includes('breeze') || condition.includes('gale')) return 'wind';
-  if (condition.includes('cloud') || condition.includes('overcast')) return 'cloudy';
-  if (condition.includes('clear') || condition.includes('sunny')) return 'clear';
+  if (condition.includes('storm') || condition.includes('thunder') || condition.includes('雷')) return 'storm';
+  if (condition.includes('rain') || condition.includes('drizzle') || condition.includes('shower') || condition.includes('雨')) return 'rain';
+  if (condition.includes('snow') || condition.includes('ice') || condition.includes('sleet') || condition.includes('雪')) return 'snow';
+  if (condition.includes('fog') || condition.includes('mist') || condition.includes('haze') || condition.includes('雾') || condition.includes('霾')) return 'fog';
+  if (condition.includes('wind') || condition.includes('breeze') || condition.includes('gale') || condition.includes('风')) return 'wind';
+  if (condition.includes('cloud') || condition.includes('overcast') || condition.includes('云') || condition.includes('阴')) return 'cloudy';
+  if (condition.includes('clear') || condition.includes('sunny') || condition.includes('晴')) return 'clear';
 
   return 'unknown';
 }
@@ -92,21 +92,29 @@ export async function checkGeoPermissionForDiary(): Promise<boolean> {
       console.warn('Wails backend binding not available for geo module. Returning true for mock.');
       return true;
     }
-    const result = await ExecuteModuleAction('geo', 'check_permission', { context: 'diary' });
-    return result?.granted === true;
+    const result = await ExecuteModuleAction('geo', 'check_permission', { module: 'diary', context: 'diary' });
+    return Boolean(result?.allowed ?? result?.granted);
   } catch (error) {
     console.error('Error checking geo permission:', error);
     return false;
   }
 }
 
-export async function resolveDiaryGeoContext(lat: number, lng: number, timestamp: number): Promise<any> {
+export async function resolveDiaryGeoContext(lat: number, lng: number, timestamp: number | string | Date): Promise<any> {
   try {
     if (typeof window === 'undefined' || !(window as any).go || !(window as any).go.main || !(window as any).go.main.App || !(window as any).go.main.App.ExecuteModuleAction) {
       console.warn('Wails backend binding not available for geo module. Returning mock geo context.');
       return { places: [], landmarks: [], weather: null };
     }
-    const result = await ExecuteModuleAction('geo', 'resolve_diary_context', { lat, lng, timestamp });
+    const isoTimestamp = timestamp instanceof Date
+      ? timestamp.toISOString()
+      : (typeof timestamp === 'number' ? new Date(timestamp).toISOString() : timestamp);
+    const result = await ExecuteModuleAction('geo', 'resolve_context', {
+      module: 'diary',
+      lat,
+      lng,
+      timestamp: isoTimestamp,
+    });
     return result || { places: [], landmarks: [], weather: null };
   } catch (error) {
     console.error('Error resolving diary geo context:', error);
@@ -120,7 +128,7 @@ export async function createNamedPlace(name: string, lat: number, lng: number, l
       console.warn('Wails backend binding not available for geo module. Returning mock place.');
       return { id: 'mock-place-id', name, lat, lng, landmark };
     }
-    const result = await ExecuteModuleAction('geo', 'create_named_place', { name, lat, lng, landmark });
+    const result = await ExecuteModuleAction('geo', 'create_place', { name, lat, lng, landmark: landmark || '' });
     return result || { id: 'mock-place-id', name, lat, lng, landmark };
   } catch (error) {
     console.error('Error creating named place:', error);

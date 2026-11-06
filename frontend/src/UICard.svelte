@@ -19,6 +19,7 @@
   const dispatch = createEventDispatcher();
 
   export let card: any;
+  export let allCards: any[] = [];
 
   export let globalTilt: { rx: number, ry: number } = { rx: 0, ry: 0 };
   export let scrollExpansion: number = 0;
@@ -420,6 +421,7 @@
   <svelte:component
     this={getCardComponent(card.type)}
     {card}
+    {allCards}
     z={card.z}
     {isFocused}
     {isHovered}

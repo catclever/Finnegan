@@ -7,12 +7,9 @@
 
   export let card: DiaryCard;
   export let isFocused: boolean = false;
+  export let allCards: DiaryCard[] = [];
 
-  // Assume allCards is accessible through window.go.main.App.GetCards or similar
-  // For the sake of this component, we simulate having allCards. In a real scenario,
-  // we would fetch from a store or window API.
-  let allCards: DiaryCard[] = [];
-
+  let vaultCards: DiaryCard[] = [];
   let availableDateMap = new Map<string, number>();
   let selectedDateKey = '';
   let sameDayCards: DiaryCard[] = [];
@@ -21,35 +18,56 @@
   declare const window: any;
   const OpenCardInEditor = window?.go?.main?.App?.OpenCardInEditor || (async () => {});
 
-  $: if (card) {
+  $: if (card && !selectedDateKey) {
     selectedDateKey = getDiaryDateKey(card);
   }
 
-  // A mock to load all cards if needed, this can be adapted to actual data source.
-  onMount(async () => {
-    try {
-      if (window?.go?.main?.App?.GetCards) {
-        const res = await window.go.main.App.GetCards();
-        if (res && res.cards) {
-          allCards = res.cards;
-        }
-      } else {
-        // Fallback for isolated UI tests, include the current card at least
-        allCards = [card];
-      }
-      availableDateMap = getAvailableDiaryDateMap(allCards);
-      updateSameDayCards();
-    } catch (e) {
-      console.warn("Failed to load all cards", e);
-      allCards = [card];
-      availableDateMap = getAvailableDiaryDateMap(allCards);
-      updateSameDayCards();
+  $: if (card && !isFocused) {
+    selectedDateKey = getDiaryDateKey(card);
+  }
+
+  $: mergedDiaryPool = [
+    ...(Array.isArray(allCards) ? allCards : []),
+    ...(Array.isArray(vaultCards) ? vaultCards : []),
+    ...(card ? [card] : []),
+  ];
+
+  $: {
+    availableDateMap = getAvailableDiaryDateMap(mergedDiaryPool);
+    if (selectedDateKey) {
+      sameDayCards = getSameDayDiaryCards(selectedDateKey, mergedDiaryPool);
     }
+  }
+
+  async function refreshVaultCards() {
+    try {
+      if (window?.go?.main?.App?.LoadLocalCards) {
+        const loaded = await window.go.main.App.LoadLocalCards();
+        if (Array.isArray(loaded)) {
+          vaultCards = loaded;
+        }
+      } else if (window?.go?.main?.App?.GetCards) {
+        const res = await window.go.main.App.GetCards();
+        if (res && Array.isArray(res.cards)) {
+          vaultCards = res.cards;
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to load local vault cards for diary scroll", e);
+    }
+  }
+
+  onMount(() => {
+    refreshVaultCards();
   });
+
+  $: if (isFocused) {
+    refreshVaultCards();
+  }
 
   function updateSameDayCards() {
     if (selectedDateKey) {
-      sameDayCards = getSameDayDiaryCards(selectedDateKey, allCards);
+      sameDayCards = getSameDayDiaryCards(selectedDateKey, mergedDiaryPool);
     }
   }
 

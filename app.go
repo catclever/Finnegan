@@ -15,6 +15,8 @@ import (
 	_ "Finnegan/modules/atproto"
 	_ "Finnegan/modules/bugu"
 	_ "Finnegan/modules/curio"
+	_ "Finnegan/modules/diary"
+	_ "Finnegan/modules/geo"
 	"path/filepath"
 )
 
@@ -51,8 +53,10 @@ func NewApp() *App {
 			if node, exists := cfg.RawModules["keywords"]; exists {
 				_ = node.Decode(&kwCfg)
 			}
+			a.KeywordEngine = keywords.NewKeywordEngine(llmCfg, kwCfg, cfg.Jina)
+		} else {
+			a.KeywordEngine = keywords.NewKeywordEngine(llmCfg, kwCfg)
 		}
-		a.KeywordEngine = keywords.NewKeywordEngine(llmCfg, kwCfg)
 	}
 	return a
 }
@@ -118,10 +122,17 @@ func (a *App) startup(ctx context.Context) {
 		}
 	}
 	if a.KeywordEngine == nil {
-		a.KeywordEngine = keywords.NewKeywordEngine(llmCfg, kwCfg)
+		if cfg != nil {
+			a.KeywordEngine = keywords.NewKeywordEngine(llmCfg, kwCfg, cfg.Jina)
+		} else {
+			a.KeywordEngine = keywords.NewKeywordEngine(llmCfg, kwCfg)
+		}
 	} else {
 		a.KeywordEngine.LLMConfig = llmCfg
 		a.KeywordEngine.Config = kwCfg
+		if cfg != nil {
+			a.KeywordEngine.JinaConfig = cfg.Jina
+		}
 	}
 
 	a.setupEventSubscriptions()

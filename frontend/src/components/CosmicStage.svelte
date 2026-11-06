@@ -412,6 +412,7 @@
       {@const isCardThemeActive = activeThemeId !== null && (focusedCardId === card.id || card.id === leftPeekCardId || card.id === rightPeekCardId)}
       <UICard 
         {card}
+        allCards={cards}
 
         {globalTilt}
         {scrollExpansion}
