@@ -11,6 +11,8 @@ import (
 	goRuntime "runtime"
 	"sort"
 	"strings"
+	"time"
+	"Finnegan/modules/diary"
 
 	"Finnegan/core/module"
 	"Finnegan/core/search"
@@ -275,6 +277,11 @@ func openFileWithEditor(filePath string) error {
 
 // SearchLocalCards loads local cards and temporary cards, runs fuzzy search, and returns sorted results.
 func (a *App) SearchLocalCards(query string) []Card {
+	if strings.HasPrefix(query, ":diary ") || strings.HasPrefix(query, "/diary ") {
+		q := query[7:]
+		return a.SearchDiaryCards(q)
+	}
+
 	var rawCards []Card
 	rawCards = append(rawCards, a.LoadLocalCards()...)
 	rawCards = append(rawCards, a.GetTempCards()...)
@@ -437,4 +444,64 @@ func (a *App) ExecuteModuleCommand(cmdID string, params map[string]interface{}) 
 		}
 	}
 	return nil, fmt.Errorf("command not found: %s", cmdID)
+}
+
+type searchCardAdapter struct {
+	card *Card
+}
+func (s *searchCardAdapter) GetID() string { return s.card.ID }
+func (s *searchCardAdapter) GetCreatedAt() time.Time { return s.card.CreatedAt }
+func (s *searchCardAdapter) GetObservedHour() string {
+	if s.card.Weather != nil {
+		return s.card.Weather.ObservedHour
+	}
+	return ""
+}
+func (s *searchCardAdapter) GetContent() string { return s.card.Content }
+func (s *searchCardAdapter) GetTitle() string { return s.card.Title }
+func (s *searchCardAdapter) GetTags() []string { return s.card.Tags }
+func (s *searchCardAdapter) GetLocationName() string {
+	if s.card.Location != nil {
+		return s.card.Location.Name
+	}
+	return ""
+}
+func (s *searchCardAdapter) GetLocationLandmark() string {
+	if s.card.Location != nil {
+		return s.card.Location.Landmark
+	}
+	return ""
+}
+
+func (a *App) SearchDiaryCards(query string) []Card {
+	var diaryCards []Card
+	for _, c := range a.LoadLocalCards() {
+		if c.Type == CardTypeDiary {
+			diaryCards = append(diaryCards, c)
+		}
+	}
+
+	var adapters []diary.SearchableDiaryCard
+	for i := range diaryCards {
+		adapters = append(adapters, &searchCardAdapter{card: &diaryCards[i]})
+	}
+
+	matchedIDs := diary.FilterDiaryCards(adapters, query, time.Now())
+	if len(matchedIDs) == 0 {
+		return []Card{}
+	}
+
+	idSet := make(map[string]bool)
+	for _, id := range matchedIDs {
+		idSet[id] = true
+	}
+
+	var result []Card
+	for _, c := range diaryCards {
+		if idSet[c.ID] {
+			result = append(result, c)
+		}
+	}
+
+	return result
 }

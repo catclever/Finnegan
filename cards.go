@@ -24,12 +24,30 @@ const (
 	CardTypeChatLog CardType = "chat_log"
 	CardTypeNote    CardType = "note"
 	CardTypeCurio   CardType = "curio"
+	CardTypeDiary   CardType = "diary"
 )
 
 // ThreadRef defines a reference to another card in a theme thread
 type ThreadRef struct {
 	ID    string `json:"id" yaml:"id"`
 	Title string `json:"title" yaml:"title"`
+}
+
+type DiaryLocation struct {
+	PlaceID  string  `json:"placeId,omitempty" yaml:"place_id,omitempty"`
+	Name     string  `json:"name,omitempty" yaml:"name,omitempty"`
+	Landmark string  `json:"landmark,omitempty" yaml:"landmark,omitempty"`
+	Lat      float64 `json:"lat,omitempty" yaml:"lat,omitempty"`
+	Lng      float64 `json:"lng,omitempty" yaml:"lng,omitempty"`
+}
+
+type DiaryWeather struct {
+	Condition    string  `json:"condition,omitempty" yaml:"condition,omitempty"`
+	WMOCode      int     `json:"wmoCode,omitempty" yaml:"wmo_code,omitempty"`
+	Icon         string  `json:"icon,omitempty" yaml:"icon,omitempty"`
+	TempC        float64 `json:"tempC,omitempty" yaml:"temp_c,omitempty"`
+	ObservedHour string  `json:"observedHour,omitempty" yaml:"observed_hour,omitempty"`
+	IsDay        bool    `json:"isDay,omitempty" yaml:"is_day,omitempty"`
 }
 
 // Card defines the core data model for a consciousness stream piece
@@ -63,6 +81,9 @@ type Card struct {
 	Threads        []ThreadRef         `json:"threads,omitempty" yaml:"threads,omitempty"`
 	VisualSummary  string              `json:"visualSummary,omitempty"`
 	LinkSummary    string              `json:"linkSummary,omitempty"`
+
+	Location *DiaryLocation `json:"location,omitempty"`
+	Weather  *DiaryWeather  `json:"weather,omitempty"`
 
 	// Curio Fields
 	Brand          string              `json:"brand,omitempty"`
