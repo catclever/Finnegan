@@ -72,6 +72,8 @@ func ParseCardFile(filePath string) (*Card, error) {
 				Availability   string              `yaml:"availability"`
 				SnapshotPath   string              `yaml:"snapshotPath"`
 				ScreenshotPath string              `yaml:"screenshotPath"`
+				Location       *DiaryLocation      `yaml:"location,omitempty"`
+				Weather        *DiaryWeather       `yaml:"weather,omitempty"`
 			}
 			if err := yaml.Unmarshal([]byte(parts[1]), &fm); err == nil {
 				if fm.ID != "" {
@@ -180,6 +182,12 @@ func ParseCardFile(filePath string) (*Card, error) {
 				if fm.ScreenshotPath != "" {
 					card.ScreenshotPath = fm.ScreenshotPath
 				}
+				if fm.Location != nil {
+					card.Location = fm.Location
+				}
+				if fm.Weather != nil {
+					card.Weather = fm.Weather
+				}
 			} else {
 				var rawMeta map[string]any
 				if err := yaml.Unmarshal([]byte(parts[1]), &rawMeta); err == nil {
@@ -190,6 +198,12 @@ func ParseCardFile(filePath string) (*Card, error) {
 							}
 						}
 					}
+				}
+				if fm.Location != nil {
+					card.Location = fm.Location
+				}
+				if fm.Weather != nil {
+					card.Weather = fm.Weather
 				}
 			}
 		}

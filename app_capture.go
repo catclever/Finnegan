@@ -12,6 +12,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"Finnegan/core/module"
+	"context"
 
 	"Finnegan/core/bus"
 	"Finnegan/core/chatlog"
@@ -749,4 +751,99 @@ func (a *App) CaptureThoughtWithImages(text string, images []ImagePayload) (stri
 	})
 
 	return docID, nil
+}
+
+func (a *App) CaptureDiary(text string, images []ImagePayload, meta map[string]interface{}) (string, error) {
+	createdAt := time.Now()
+	if ts, ok := meta["timestamp"].(string); ok && ts != "" {
+		if parsed, err := time.Parse(time.RFC3339, ts); err == nil {
+			createdAt = parsed
+		}
+	} else if ca, ok := meta["createdAt"].(string); ok && ca != "" {
+		if parsed, err := time.Parse(time.RFC3339, ca); err == nil {
+			createdAt = parsed
+		}
+	}
+
+	if createdAt.After(time.Now()) {
+		return "", errors.New("cannot capture diary with future timestamp")
+	}
+
+	if meta["location"] == nil || meta["weather"] == nil {
+		reg := module.GetRegistry()
+		if geoMod, ok := reg["geo"]; ok {
+			if ap, ok := geoMod.(module.ActionProvider); ok {
+				res, err := ap.ExecuteAction(context.Background(), "resolve_context", map[string]interface{}{
+					"module": "diary",
+				})
+				if err == nil && res != nil {
+					if rMap, ok := res.(map[string]interface{}); ok {
+						if meta["location"] == nil && rMap["location"] != nil {
+							meta["location"] = rMap["location"]
+						}
+						if meta["weather"] == nil && rMap["weather"] != nil {
+							meta["weather"] = rMap["weather"]
+						}
+					}
+				}
+			}
+		}
+	}
+
+	id := ulid.Make().String()
+	filename := fmt.Sprintf("%s-%s.diary.md", createdAt.Format("20060102-1504"), id)
+
+	homeDir, _ := os.UserHomeDir()
+	saveDir := filepath.Join(homeDir, "Scattering")
+	os.MkdirAll(saveDir, 0755)
+	filePath := filepath.Join(saveDir, filename)
+
+	var builder strings.Builder
+	builder.WriteString("---\n")
+	builder.WriteString(fmt.Sprintf("id: %s\n", id))
+	builder.WriteString("type: diary\n")
+	builder.WriteString(fmt.Sprintf("created_at: \"%s\"\n", createdAt.Format(time.RFC3339)))
+
+	if meta["location"] != nil {
+		if lm, ok := meta["location"].(map[string]interface{}); ok {
+			builder.WriteString("location:\n")
+			if v, ok := lm["placeId"]; ok && v != "" { builder.WriteString(fmt.Sprintf("  place_id: %s\n", v)) }
+			if v, ok := lm["name"]; ok && v != "" { builder.WriteString(fmt.Sprintf("  name: %s\n", v)) }
+			if v, ok := lm["landmark"]; ok && v != "" { builder.WriteString(fmt.Sprintf("  landmark: %s\n", v)) }
+			if v, ok := lm["lat"]; ok { builder.WriteString(fmt.Sprintf("  lat: %v\n", v)) }
+			if v, ok := lm["lng"]; ok { builder.WriteString(fmt.Sprintf("  lng: %v\n", v)) }
+		}
+	}
+	if meta["weather"] != nil {
+		if wm, ok := meta["weather"].(map[string]interface{}); ok {
+			builder.WriteString("weather:\n")
+			if v, ok := wm["condition"]; ok && v != "" { builder.WriteString(fmt.Sprintf("  condition: %s\n", v)) }
+			if v, ok := wm["wmoCode"]; ok { builder.WriteString(fmt.Sprintf("  wmo_code: %v\n", v)) }
+			if v, ok := wm["icon"]; ok && v != "" { builder.WriteString(fmt.Sprintf("  icon: %s\n", v)) }
+			if v, ok := wm["tempC"]; ok { builder.WriteString(fmt.Sprintf("  temp_c: %v\n", v)) }
+			if v, ok := wm["observedHour"]; ok && v != "" { builder.WriteString(fmt.Sprintf("  observed_hour: %s\n", v)) }
+			if v, ok := wm["isDay"]; ok { builder.WriteString(fmt.Sprintf("  is_day: %v\n", v)) }
+		}
+	}
+
+	if len(images) > 0 {
+		builder.WriteString("images:\n")
+		for _, img := range images {
+			builder.WriteString(fmt.Sprintf("  - %s\n", img.Name))
+		}
+	}
+
+	builder.WriteString("---\n\n")
+	builder.WriteString(text)
+
+	if err := watcher.GetWatcher().WriteFile(filePath, []byte(builder.String()), "capture"); err != nil {
+		return "", err
+	}
+
+	bus.GetBus().Publish(bus.Event{
+		Type: bus.EventThoughtCaptured,
+		Data: id,
+	})
+
+	return id, nil
 }
