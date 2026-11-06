@@ -121,6 +121,23 @@ export function getAvailableCardTypeOptions(
     });
   }
 
+  const hasDiary = Array.isArray(activeManifests)
+    ? activeManifests.some(
+        m => m?.name === 'diary' || (m?.cardTypes && m.cardTypes.some(ct => ct?.type === 'diary'))
+      )
+    : true; // Default fallback before manifests load
+
+  if (hasDiary) {
+    options.push({
+      type: 'diary',
+      label: '羊皮卷日记',
+      icon: '📜',
+      description: '流年手账：时辰天象与地理印记',
+      prefix: ':diary',
+      isCore: false,
+    });
+  }
+
   return options;
 }
 

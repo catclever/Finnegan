@@ -3,6 +3,23 @@
  * Task: frontend_logic_refactor_011
  */
 
+export interface DiaryLocation {
+  placeId?: string;
+  name?: string;
+  landmark?: string;
+  lat?: number;
+  lng?: number;
+}
+
+export interface DiaryWeather {
+  condition?: string;
+  wmoCode?: number;
+  icon?: string;
+  tempC?: number;
+  observedHour?: string;
+  isDay?: boolean;
+}
+
 export interface AuraTrace {
   searchId: string;
   color: string;
@@ -18,7 +35,7 @@ export interface CardResurgenceState {
   searchId: string;
 }
 
-export type CardType = 'thought' | 'babel' | 'chat_log' | 'local' | 'note' | 'curio' | string;
+export type CardType = 'thought' | 'babel' | 'chat_log' | 'local' | 'note' | 'curio' | 'diary' | string;
 
 export interface CardTypeDefinition {
   type: string;
@@ -92,6 +109,9 @@ export interface CosmicCard {
   snapshotPath?: string;
   screenshotPath?: string;
   threads?: Array<{ id: string; title: string }>;
+
+  location?: DiaryLocation;
+  weather?: DiaryWeather;
 }
 
 export interface ThreadRef {

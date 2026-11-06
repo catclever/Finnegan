@@ -22,6 +22,7 @@
   import CardCandidateDropdown from './omnibar/CardCandidateDropdown.svelte';
   import CardTypeDropdown from './omnibar/CardTypeDropdown.svelte';
   import WritingPaper from './omnibar/WritingPaper.svelte';
+  import DiarySpatiotemporalBar from './omnibar/DiarySpatiotemporalBar.svelte';
   import { isChatLogFormat, extractHashTitle } from '../lib/chatlog';
   import { getCardDisplayTitle } from '../lib/cardTitle';
   import {
@@ -60,6 +61,7 @@
   export let onCaptureChatLog: ((text: string, images?: string[]) => Promise<void> | void) | undefined = undefined;
   export let onCaptureNote: ((text: string) => Promise<void> | void) | undefined = undefined;
   export let onCaptureCurio: ((text: string, images?: string[]) => Promise<void> | void) | undefined = undefined;
+  export let onCaptureDiary: ((text: string, images?: string[], options?: any) => Promise<void> | void) | undefined = undefined;
   export let onFreeSearch: ((text: string) => void) | undefined = undefined;
   export let onRevertSearch: (() => void) | undefined = undefined;
   export let onCommitSearch: (() => void) | undefined = undefined;
@@ -331,6 +333,10 @@
   let vaultLimit: number = 20;
   let hasMoreVault: boolean = false;
 
+  let diaryTime: Date = new Date();
+  let diaryLocation: any = undefined;
+  let diaryWeather: any = undefined;
+
   // Toast feedback state
   let toastMessage: string | null = null;
   let toastTimer: any = null;
@@ -352,17 +358,19 @@
   $: parsedCardType = parseCardTypePrefix(omniText);
   $: isNoteFormat = parsedCardType.hasTypePrefix && parsedCardType.type === 'note';
   $: isCurioFormat = parsedCardType.hasTypePrefix && parsedCardType.type === 'curio';
+  $: isDiaryFormat = parsedCardType.hasTypePrefix && parsedCardType.type === 'diary';
   $: noteContent = isNoteFormat ? parsedCardType.content : '';
   $: curioContent = isCurioFormat ? parsedCardType.content : '';
+  $: diaryContent = isDiaryFormat ? parsedCardType.content : '';
   $: noteHashInfo = extractHashTitle(noteContent);
   $: explicitNoteTitle = noteHashInfo.title;
   $: hashTitleInfo = extractHashTitle(omniText);
   $: explicitUserTitle = hashTitleInfo.title;
-  $: isDialogueFormat = !isNoteFormat && !isCurioFormat && isChatLogFormat(omniText);
-  $: writingText = isNoteFormat ? noteContent : (isCurioFormat ? curioContent : omniText);
-  $: isWritingMode = !commandSelectMode && !commandParamMode && !typeSelectMode && (writingText.trim().length >= 80 || (writingText.split('\n').length >= 4 && writingText.trim().length > 10));
-  $: showTopBanner = !isWritingMode && ((omniText.trim().length > 0) || (attachedImages.length > 0) || commandParamMode || commandSelectMode || typeSelectMode || (searchSession.isActive && !searchSession.isConfirmed) || isNoteFormat || isCurioFormat);
-  $: canSubmit = (isNoteFormat ? noteContent.trim().length > 0 : (isCurioFormat ? (curioContent.trim().length > 0 || attachedImages.length > 0) : omniText.trim().length > 0)) || attachedImages.length > 0;
+  $: isDialogueFormat = !isNoteFormat && !isCurioFormat && !isDiaryFormat && isChatLogFormat(omniText);
+  $: writingText = isNoteFormat ? noteContent : (isCurioFormat ? curioContent : (isDiaryFormat ? diaryContent : omniText));
+  $: isWritingMode = !commandSelectMode && !commandParamMode && !typeSelectMode && (writingText.trim().length >= 80 || (writingText.split('\n').length >= 4 && writingText.trim().length > 10) || isDiaryFormat);
+  $: showTopBanner = !isWritingMode && ((omniText.trim().length > 0) || (attachedImages.length > 0) || commandParamMode || commandSelectMode || typeSelectMode || (searchSession.isActive && !searchSession.isConfirmed) || isNoteFormat || isCurioFormat || isDiaryFormat);
+  $: canSubmit = (isNoteFormat ? noteContent.trim().length > 0 : (isCurioFormat ? (curioContent.trim().length > 0 || attachedImages.length > 0) : (isDiaryFormat ? (diaryContent.trim().length > 0 || attachedImages.length > 0) : omniText.trim().length > 0))) || attachedImages.length > 0;
 
   $: cardTypeOptions = getAvailableCardTypeOptions(availableModuleManifests);
   $: matchedCardTypes = filterCardTypeOptions(cardTypeOptions, typeQuery);
@@ -747,10 +755,54 @@
     }
   }
 
+  async function captureCurrentDiary(text: string) {
+    const trimmed = text.trim();
+    const imgs = [...attachedImages];
+    if (!trimmed && imgs.length === 0) return;
+    if (capturePending) return;
+
+    omniText = "";
+    attachedImages = [];
+    commandSelectMode = false;
+    typeSelectMode = false;
+    atSelectMode = false;
+    trackedThreads = [];
+    deleteHighlightIndex = -1;
+    if (omnibarInputEl) {
+      omnibarInputEl.style.height = 'auto';
+    }
+
+    try {
+      if (onCaptureDiary) {
+        await onCaptureDiary(trimmed, imgs, {
+          createdAt: diaryTime.getTime(),
+          location: diaryLocation,
+          weather: diaryWeather
+        });
+      } else {
+        if (onCaptureThought) {
+          await onCaptureThought(`:diary ${trimmed}`, imgs);
+        }
+      }
+      showToast("已封存流年手账");
+      if (searchSession.isActive) {
+        if (onCommitSearch) onCommitSearch();
+        dispatch('commitSearch');
+      }
+    } catch (err: any) {
+      console.error("CaptureDiary error:", err);
+      showToast(`手账保存失败: ${err?.message || err}`);
+    }
+  }
+
   async function handleSubmit() {
     if (!canSubmit || capturePending) return;
     if (isCurioFormat) {
       await captureCurrentCurio(curioContent);
+      return;
+    }
+    if (isDiaryFormat) {
+      await captureCurrentDiary(diaryContent);
       return;
     }
     if (isNoteFormat) {
@@ -793,6 +845,23 @@
 
     // Curio Capture Mode: :curio <content>
     if (isCurioFormat) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        await handleSubmit();
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        omniText = "";
+        commandSelectMode = false;
+        commandParamMode = false;
+        typeSelectMode = false;
+        if (omnibarInputEl) omnibarInputEl.style.height = 'auto';
+        return;
+      }
+    }
+
+    if (isDiaryFormat) {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault();
         await handleSubmit();
@@ -1220,6 +1289,14 @@
     onRevertSearch={handleRevertSearch}
     onRestoreSearch={handleRestoreSearch}
   />
+
+  {#if isDiaryFormat}
+    <DiarySpatiotemporalBar
+      bind:diaryTime
+      bind:diaryLocation
+      bind:diaryWeather
+    />
+  {/if}
 
   {#if isWritingMode}
     <WritingPaper
