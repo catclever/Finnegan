@@ -17,12 +17,13 @@ import (
 )
 
 // ExternalModule wraps an external out-of-process plugin executable (either a directory plugin or a standalone .plugin binary)
-// and implements Module, CommandProvider, ManifestProvider, and ActionProvider.
+// and implements Module, CommandProvider, ManifestProvider, ActionProvider, and CaptureProvider.
 type ExternalModule struct {
 	manifest  ModuleManifest
 	execPath  string
 	pluginDir string
 	uiFile    string
+	homeDir   string
 	ctx       *Context
 	rawConfig map[string]interface{}
 }
@@ -32,6 +33,7 @@ var (
 	_ CommandProvider  = (*ExternalModule)(nil)
 	_ ManifestProvider = (*ExternalModule)(nil)
 	_ ActionProvider   = (*ExternalModule)(nil)
+	_ CaptureProvider  = (*ExternalModule)(nil)
 )
 
 func (e *ExternalModule) Name() string {
@@ -70,6 +72,103 @@ func (e *ExternalModule) ExecuteAction(ctx context.Context, actionID string, pay
 	return e.invokeSubprocess(ctx, "execute_action", actionID, payload)
 }
 
+// CaptureCard delegates card capture to the external plugin subprocess using method "capture_card".
+func (e *ExternalModule) CaptureCard(ctx context.Context, req CaptureRequest) (*CaptureResult, error) {
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal capture request: %w", err)
+	}
+	var params map[string]interface{}
+	if err := json.Unmarshal(reqBytes, &params); err != nil {
+		return nil, fmt.Errorf("failed to decode capture params: %w", err)
+	}
+
+	res, err := e.invokeSubprocess(ctx, "capture_card", req.CardType, params)
+	if err != nil {
+		return nil, err
+	}
+
+	resMap, ok := res.(map[string]interface{})
+	if !ok {
+		return &CaptureResult{}, nil
+	}
+	if errMsg, hasErr := resMap["error"].(string); hasErr && errMsg != "" {
+		return nil, fmt.Errorf("plugin %s capture_card error: %s", e.manifest.Name, errMsg)
+	}
+
+	targetMap := resMap
+	if inner, ok := resMap["result"].(map[string]interface{}); ok {
+		targetMap = inner
+	}
+
+	b, err := json.Marshal(targetMap)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal capture result: %w", err)
+	}
+	var capRes CaptureResult
+	if err := json.Unmarshal(b, &capRes); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal capture result: %w", err)
+	}
+	if capRes.DocID == "" {
+		if v, ok := targetMap["doc_id"].(string); ok {
+			capRes.DocID = v
+		}
+	}
+	if capRes.FilePath == "" {
+		if v, ok := targetMap["file_path"].(string); ok {
+			capRes.FilePath = v
+		}
+	}
+	if capRes.FileExt == "" {
+		if v, ok := targetMap["file_ext"].(string); ok {
+			capRes.FileExt = v
+		}
+	}
+	return &capRes, nil
+}
+
+func (e *ExternalModule) resolveHomeDir() string {
+	if e.ctx != nil && e.ctx.HomeDir != "" {
+		return e.ctx.HomeDir
+	}
+	if e.homeDir != "" {
+		return e.homeDir
+	}
+	return deriveHomeFromPluginsDir(filepath.Dir(e.execPath))
+}
+
+func deriveHomeFromPluginsDir(pluginsDir string) string {
+	clean := filepath.Clean(pluginsDir)
+	if filepath.Base(clean) == "plugins" && filepath.Base(filepath.Dir(clean)) == ".finnegan" {
+		return filepath.Dir(filepath.Dir(clean))
+	}
+	if filepath.Base(filepath.Dir(clean)) == "plugins" && filepath.Base(filepath.Dir(filepath.Dir(clean))) == ".finnegan" {
+		return filepath.Dir(filepath.Dir(filepath.Dir(clean)))
+	}
+	return ""
+}
+
+func buildPluginEnv(homeDir, pluginName string) []string {
+	env := os.Environ()
+	if homeDir == "" {
+		return env
+	}
+	filtered := make([]string, 0, len(env)+2)
+	for _, kv := range env {
+		if strings.HasPrefix(kv, "FINNEGAN_HOME=") || strings.HasPrefix(kv, "FINNEGAN_PLUGIN_DATA_DIR=") {
+			continue
+		}
+		filtered = append(filtered, kv)
+	}
+	filtered = append(filtered, "FINNEGAN_HOME="+homeDir)
+	if pluginName != "" {
+		dataDir := filepath.Join(homeDir, ".finnegan", "data", pluginName)
+		_ = os.MkdirAll(dataDir, 0755)
+		filtered = append(filtered, "FINNEGAN_PLUGIN_DATA_DIR="+dataDir)
+	}
+	return filtered
+}
+
 // GetUIBundle returns the JavaScript ESM bundle for this external plugin's custom card UI.
 func (e *ExternalModule) GetUIBundle() ([]byte, error) {
 	if e.uiFile != "" {
@@ -86,6 +185,7 @@ func (e *ExternalModule) GetUIBundle() ([]byte, error) {
 	if e.pluginDir != "" {
 		cmd.Dir = e.pluginDir
 	}
+	cmd.Env = buildPluginEnv(e.resolveHomeDir(), e.manifest.Name)
 	out, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract UI bundle from plugin %s: %w", e.manifest.Name, err)
@@ -122,6 +222,7 @@ func (e *ExternalModule) invokeSubprocess(ctx context.Context, method string, id
 	if e.pluginDir != "" {
 		cmd.Dir = e.pluginDir
 	}
+	cmd.Env = buildPluginEnv(e.resolveHomeDir(), e.manifest.Name)
 	cmd.Stdin = bytes.NewReader(append(reqBytes, '\n'))
 
 	stdoutPipe, err := cmd.StdoutPipe()
@@ -268,20 +369,31 @@ func LoadExternalPlugins(pluginsDir string) ([]Module, error) {
 		return nil, err
 	}
 
+	homeDir := deriveHomeFromPluginsDir(pluginsDir)
+	if homeDir == "" {
+		homeDir = os.Getenv("FINNEGAN_HOME")
+	}
+
 	var loaded []Module
 	for _, entry := range entries {
 		fullPath := filepath.Join(pluginsDir, entry.Name())
 		if entry.IsDir() {
-			extMod, err := loadDirectoryPlugin(fullPath)
+			extMod, err := loadDirectoryPlugin(fullPath, homeDir)
 			if err != nil || extMod == nil {
 				continue
+			}
+			if homeDir != "" {
+				_ = os.MkdirAll(filepath.Join(homeDir, ".finnegan", "data", extMod.manifest.Name), 0755)
 			}
 			Register(extMod)
 			loaded = append(loaded, extMod)
 		} else if strings.HasSuffix(entry.Name(), ".plugin") {
-			extMod, err := loadSingleBinaryPlugin(fullPath)
+			extMod, err := loadSingleBinaryPlugin(fullPath, homeDir)
 			if err != nil || extMod == nil {
 				continue
+			}
+			if homeDir != "" {
+				_ = os.MkdirAll(filepath.Join(homeDir, ".finnegan", "data", extMod.manifest.Name), 0755)
 			}
 			Register(extMod)
 			loaded = append(loaded, extMod)
@@ -291,7 +403,7 @@ func LoadExternalPlugins(pluginsDir string) ([]Module, error) {
 	return loaded, nil
 }
 
-func loadDirectoryPlugin(dirPath string) (*ExternalModule, error) {
+func loadDirectoryPlugin(dirPath string, homeDir string) (*ExternalModule, error) {
 	manifestCandidates := []string{
 		filepath.Join(dirPath, "plugin.yml"),
 		filepath.Join(dirPath, "plugin.yaml"),
@@ -354,15 +466,18 @@ func loadDirectoryPlugin(dirPath string) (*ExternalModule, error) {
 		execPath:  execPath,
 		pluginDir: dirPath,
 		uiFile:    uiFile,
+		homeDir:   homeDir,
 	}, nil
 }
 
-func loadSingleBinaryPlugin(binPath string) (*ExternalModule, error) {
+func loadSingleBinaryPlugin(binPath string, homeDir string) (*ExternalModule, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	initialName := strings.TrimSuffix(filepath.Base(binPath), ".plugin")
 	cmd := exec.CommandContext(ctx, binPath, "--finnegan-manifest")
 	cmd.Dir = filepath.Dir(binPath)
+	cmd.Env = buildPluginEnv(homeDir, initialName)
 	out, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("failed to query --finnegan-manifest from %s: %w", binPath, err)
@@ -381,8 +496,7 @@ func loadSingleBinaryPlugin(binPath string) (*ExternalModule, error) {
 	}
 
 	if manifest.Name == "" {
-		base := filepath.Base(binPath)
-		manifest.Name = strings.TrimSuffix(base, ".plugin")
+		manifest.Name = initialName
 	}
 	manifest.IsExternal = true
 
@@ -390,5 +504,6 @@ func loadSingleBinaryPlugin(binPath string) (*ExternalModule, error) {
 		manifest:  manifest,
 		execPath:  binPath,
 		pluginDir: filepath.Dir(binPath),
+		homeDir:   homeDir,
 	}, nil
 }

@@ -1,6 +1,10 @@
 package keywords
 
-import "strings"
+import (
+	"strings"
+
+	"Finnegan/core/config"
+)
 
 // 4 Concrete Anchor Dimension Constants
 const (
@@ -51,8 +55,11 @@ type ExtractionResult struct {
 
 // Config defines the configuration for the keyword engine.
 type Config struct {
-	EnabledDimensions []string `yaml:"enabled_dimensions" json:"enabled_dimensions"`
-	JinaAPIKey        string   `yaml:"jina_api_key" json:"jina_api_key"`
+	LLMID             string            `yaml:"llm_id" json:"llm_id"`
+	EnabledDimensions []string          `yaml:"enabled_dimensions" json:"enabled_dimensions"`
+	JinaAPIKey        string            `yaml:"jina_api_key" json:"jina_api_key"`
+	JinaBaseURL       string            `yaml:"jina_base_url" json:"jina_base_url"`
+	Jina              config.JinaConfig `yaml:"jina" json:"jina"`
 }
 
 // DefaultDimensions defines the 4 concrete anchor dimensions enabled by default.

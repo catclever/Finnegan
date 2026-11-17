@@ -6,6 +6,8 @@
  */
 
 import type { DialogueTurn } from '../types/card';
+import { Marked } from 'marked';
+import DOMPurify from 'dompurify';
 
 const reWeChatDate = /^(\d{4})年(\d{1,2})月(\d{1,2})日\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/;
 const reStandardDate = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/;
@@ -117,10 +119,42 @@ export function isChatLogFormat(text: string): boolean {
   return colonMatches >= 2;
 }
 
+const NON_SPEAKER_WORDS = new Set([
+  '想一下', '注意', '提示', '例如', '比如', '总结', '分析', '说明', '备注', 'ps', 'todo', '参考', '补充', '重点'
+]);
+
+function isSpeakerCandidate(cand: string, rawLine: string, validParticipants?: string[] | null): boolean {
+  if (!cand) return false;
+  const cleanCand = cand.trim();
+  const lower = cleanCand.toLowerCase();
+  if (validParticipants && validParticipants.length > 0) {
+    return validParticipants.includes(lower);
+  }
+  // Reject markdown list items: "1. ", "2) ", "* ", "- ", "+ "
+  if (/^\s*(?:\d+[\.\)]|[\*\-\+])\s+/.test(rawLine)) return false;
+  // Reject headings, blockquotes, tables
+  if (/^\s*#{1,6}\s+/.test(rawLine)) return false;
+  if (/^\s*>/.test(rawLine)) return false;
+  if (/^\s*\|/.test(rawLine)) return false;
+  // Reject URLs
+  if (cleanCand.startsWith('http://') || cleanCand.startsWith('https://')) return false;
+  // Reject inline code
+  if (cleanCand.includes('`')) return false;
+  // Reject sentence punctuation
+  if (/[，。！？；、“”‘’（）《》【】]/.test(cleanCand)) return false;
+  // Reject overly long candidates (names are almost never > 20 chars)
+  if (cleanCand.length > 20) return false;
+  // Reject common prose markers
+  if (NON_SPEAKER_WORDS.has(lower)) return false;
+  return true;
+}
+
 /**
  * Parses dialogue text into structured speaker turns.
+ * When knownParticipants is provided (e.g. ['User', 'Gemini']), turn boundaries strictly match those speakers,
+ * preventing embedded colons (like list items or prompt explanations) from splitting the conversation.
  */
-export function parseDialogue(text: string): DialogueTurn[] {
+export function parseDialogue(text: string, knownParticipants?: string[]): DialogueTurn[] {
   if (!text) return [];
   const { cleanText } = extractHashTitle(text);
   const clean = cleanText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
@@ -131,6 +165,10 @@ export function parseDialogue(text: string): DialogueTurn[] {
 
   const colonRegex = /^([^\n:：]{1,60})[:：]\s*(.*)$/;
   const timestampRegex = /^(\d{4}[年\-\/].+|\d{1,2}月\d{1,2}日.+|\d{1,2}:\d{2}(?::\d{2})?)/;
+
+  const validParticipants = Array.isArray(knownParticipants) && knownParticipants.length > 0
+    ? knownParticipants.map(p => p.trim().toLowerCase()).filter(Boolean)
+    : null;
 
   for (let i = 0; i < lines.length; i++) {
     const rawLine = lines[i];
@@ -147,7 +185,7 @@ export function parseDialogue(text: string): DialogueTurn[] {
 
     // Check if line is Speaker: or Speaker: Content
     const colonMatch = line.match(colonRegex);
-    if (colonMatch && !line.startsWith('http://') && !line.startsWith('https://')) {
+    if (colonMatch && isSpeakerCandidate(colonMatch[1].trim(), rawLine, validParticipants)) {
       const speaker = colonMatch[1].trim();
       const firstLine = colonMatch[2].trim();
 
@@ -163,7 +201,7 @@ export function parseDialogue(text: string): DialogueTurn[] {
     if (
       i + 1 < lines.length &&
       timestampRegex.test(lines[i + 1].trim()) &&
-      line.length <= 60 &&
+      isSpeakerCandidate(line, rawLine, validParticipants) &&
       !line.startsWith('#') &&
       !line.startsWith('---')
     ) {
@@ -233,3 +271,90 @@ export function formatChatLogTime(startedAt?: string, endedAt?: string): string 
   const min = pad(d.getMinutes());
   return `${m}/${day} ${h}:${min}`;
 }
+
+/**
+ * Creates an inline-only Marked parser that supports inline markdown syntax (bold, italic, code, del, links)
+ * and optional @theme mentions, avoiding block-level headers/tables from breaking screenplay layout.
+ */
+export function createInlineDialogueParser(activeThreads?: Array<{ id: string; title: string }>): Marked {
+  const m = new Marked();
+  m.use({
+    extensions: [{
+      name: 'themeMention',
+      level: 'inline',
+      start(src: string) { return src.indexOf('@'); },
+      tokenizer(src: string) {
+        if (activeThreads && activeThreads.length > 0) {
+          for (const th of activeThreads) {
+            if (!th.title) continue;
+            const prefix = '@' + th.title;
+            if (src.startsWith(prefix)) {
+              return {
+                type: 'themeMention',
+                raw: prefix,
+                text: th.title,
+              };
+            }
+          }
+        }
+        const match = /^@([^\s@#,\n<>:，。！？]+)/u.exec(src);
+        if (match) {
+          return {
+            type: 'themeMention',
+            raw: match[0],
+            text: match[1],
+          };
+        }
+      },
+      renderer(token: any) {
+        return `<span class="theme-mention">@${token.text}</span>`;
+      }
+    }]
+  });
+  return m;
+}
+
+/**
+ * Heuristically corrects common LLM markdown formatting flaws like:
+ * - Quotes followed by bold delimiters: “xxx”** -> “**xxx**”
+ * - Unbalanced bold delimiters within a single dialogue line
+ */
+export function fixMalformedBold(text: string): string {
+  if (!text) return '';
+  let s = text;
+  // Turn “xxx”** into “**xxx**”
+  s = s.replace(/(?<!\*\*)“([^”\n]+)”\*\*/g, '“**$1**”');
+  s = s.replace(/(?<!\*\*)「([^」\n]+)」\*\*/g, '「**$1**」');
+  s = s.replace(/(?<!\*\*)《([^》\n]+)》\*\*/g, '《**$1**》');
+  // Turn **“xxx” into “**xxx**” if unclosed
+  s = s.replace(/\*\*“([^”\n]+)”(?!\*\*)/g, '“**$1**”');
+
+  // Balance odd count of **
+  const matches = s.match(/\*\*/g);
+  if (matches && matches.length % 2 !== 0) {
+    if (/[。！？；]$/.test(s)) {
+      s = s.slice(0, -1) + '**' + s.slice(-1);
+    } else {
+      s = s + '**';
+    }
+  }
+  return s;
+}
+
+/**
+ * Renders a single line of dialogue into sanitized inline HTML.
+ */
+export function renderInlineDialogue(text: string, parser?: Marked): string {
+  if (!text) return '';
+  const p = parser || createInlineDialogueParser();
+  try {
+    const cleaned = fixMalformedBold(text);
+    const parsed = p.parseInline(cleaned) as string;
+    return typeof DOMPurify !== 'undefined' && typeof (DOMPurify as any).sanitize === 'function'
+      ? (DOMPurify as any).sanitize(parsed)
+      : parsed;
+  } catch {
+    return text;
+  }
+}
+

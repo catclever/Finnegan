@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 
+	coreConfig "Finnegan/core/config"
 	"Finnegan/core/module"
 	"Finnegan/modules/bugu/api"
 	"Finnegan/modules/bugu/config"
@@ -64,6 +65,11 @@ func (b *BuguModule) ConfigTarget() interface{} {
 		}
 		if envJina := os.Getenv("JINA_API_KEY"); envJina != "" {
 			b.MyConfig.JinaAPIKey = envJina
+		} else {
+			globalCfg, _, err := coreConfig.LoadConfig()
+			if err == nil && globalCfg != nil && globalCfg.Jina.APIKey != "" {
+				b.MyConfig.JinaAPIKey = globalCfg.Jina.APIKey
+			}
 		}
 
 		// Tier 2: Module Local Config
@@ -100,6 +106,15 @@ func (b *BuguModule) Init(ctx *module.Context) error {
 
 	if b.MyConfig == nil {
 		b.ConfigTarget()
+	} else if b.MyConfig.JinaAPIKey == "" {
+		if envJina := os.Getenv("JINA_API_KEY"); envJina != "" {
+			b.MyConfig.JinaAPIKey = envJina
+		} else {
+			globalCfg, _, err := coreConfig.LoadConfig()
+			if err == nil && globalCfg != nil && globalCfg.Jina.APIKey != "" {
+				b.MyConfig.JinaAPIKey = globalCfg.Jina.APIKey
+			}
+		}
 	}
 
 	// Set models on cfg if specifically configured

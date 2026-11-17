@@ -221,9 +221,13 @@ export function mergeCapturedThought(params: MergeCapturedThoughtParams) {
 
   const cardId = data.DocID || ('thought_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7));
   const images = data.Images || data.images;
-  const isChat = data.Type === 'chat_log' || isChatLogFormat(data.Text);
-  const isNote = data.Type === 'note';
+  const rawType = data.Type || data.type;
+  const isNote = rawType === 'note';
+  const isBook = rawType === 'book';
+  const isChat = rawType === 'chat_log' || (!isNote && !isBook && rawType !== 'diary' && rawType !== 'curio' && isChatLogFormat(data.Text));
   const cardTitle = data.Title || data.title;
+  const bookTitle = data.bookTitle || data.BookTitle || data.book_title || '';
+  const bookAuthor = data.bookAuthor || data.BookAuthor || data.book_author || '';
 
   if (isNote) {
     const noteCard = toCosmicCard({
@@ -231,10 +235,12 @@ export function mergeCapturedThought(params: MergeCapturedThoughtParams) {
       title: cardTitle || (data.Text ? (data.Text.length > 20 ? data.Text.slice(0, 20) + '...' : data.Text) : 'Note'),
       type: 'note',
       content: data.Text,
+      sourceUrl: data.SourceURL || data.sourceUrl,
       createdAt: data.CapturedAt || Date.now(),
       tags: data.Tags || data.tags,
       keywords: data.Keywords || data.keywords,
       threads: data.Threads || data.threads,
+      meta: data.Meta ?? data.meta,
     }, 'note', 'manual');
 
     const existingCard = cards.find(c => c.id === cardId);
@@ -249,20 +255,27 @@ export function mergeCapturedThought(params: MergeCapturedThoughtParams) {
       );
       const finalCard = {
         ...stagedCard,
+        sourceUrl: data.SourceURL || data.sourceUrl || stagedCard.sourceUrl,
         threads: data.Threads || data.threads || stagedCard.threads,
+        isVIP: true,
+        decayDuration: 12 * 3600 * 1000,
+        z: stagedCard.z ?? 3,
+        elevatedAt: Date.now(),
       };
       return {
         cards: [...updatedActiveCards.filter(c => c.id !== stagedCard.id), finalCard],
         memoryPool: updatedMemoryPool || memoryPool,
         localVaultPool: [finalCard, ...localVaultPool.filter(c => c.id !== cardId)],
-        latestManualCardId,
+        latestManualCardId: cardId,
       };
     } else {
       const updatedExisting = {
         ...existingCard,
+        sourceUrl: data.SourceURL || data.sourceUrl || existingCard.sourceUrl,
         tags: data.Tags || data.tags || existingCard.tags,
         keywords: data.Keywords || data.keywords || existingCard.keywords,
         threads: data.Threads || data.threads || existingCard.threads,
+        meta: data.Meta ?? data.meta ?? existingCard.meta,
       };
       return {
         cards: cards.map(c => c.id === cardId ? updatedExisting : c),
@@ -282,8 +295,10 @@ export function mergeCapturedThought(params: MergeCapturedThoughtParams) {
           ...c,
           id: cardId,
           title: cardTitle || (c.title === '正在提炼主题...' ? cardTitle || c.title : c.title),
-          type: isChat ? 'chat_log' : c.type,
+          type: isChat ? 'chat_log' : (rawType || c.type),
           content: data.Text || c.content,
+          bookTitle: bookTitle || c.bookTitle,
+          bookAuthor: bookAuthor || c.bookAuthor,
           images: images || c.images,
           participants: data.Participants || data.participants || c.participants,
           startedAt: data.StartedAt || data.startedAt || c.startedAt,
@@ -291,6 +306,7 @@ export function mergeCapturedThought(params: MergeCapturedThoughtParams) {
           tags: data.Tags || data.tags || c.tags,
           keywords: data.Keywords || data.keywords || c.keywords,
           threads: data.Threads || data.threads || c.threads,
+          meta: data.Meta ?? data.meta ?? c.meta,
           isEnriching: false,
         };
       }
@@ -317,11 +333,16 @@ export function mergeCapturedThought(params: MergeCapturedThoughtParams) {
     }
   }
   latestManualCardId = cardId;
+  const resolvedType = isBook ? 'book' : (isChat ? 'chat_log' : (rawType || 'thought'));
   const baseCard = toCosmicCard({
     id: cardId,
-    title: cardTitle,
-    type: isChat ? 'chat_log' : 'thought',
+    title: cardTitle || (isBook ? (bookTitle || 'Reading Note') : undefined),
+    type: resolvedType,
     content: data.Text,
+    bookTitle,
+    bookAuthor,
+    createdAt: data.CapturedAt || data.createdAt || Date.now(),
+    sourceUrl: data.SourceURL || data.sourceUrl,
     images,
     participants: data.Participants || data.participants,
     startedAt: data.StartedAt || data.startedAt,
@@ -329,7 +350,8 @@ export function mergeCapturedThought(params: MergeCapturedThoughtParams) {
     tags: data.Tags || data.tags,
     keywords: data.Keywords || data.keywords,
     threads: data.Threads || data.threads,
-  }, isChat ? 'chat_log' : 'thought', 'manual');
+    meta: data.Meta ?? data.meta,
+  }, resolvedType, 'manual');
 
   const { stagedCard, updatedActiveCards, updatedMemoryPool } = stageCandidate(
     baseCard,
@@ -431,10 +453,13 @@ export function updateCardInPools(
         content: updated.content,
         originalText: updated.originalText,
         translatedText: updated.translatedText,
+        bookTitle: updated.bookTitle || existing.bookTitle,
+        bookAuthor: updated.bookAuthor || existing.bookAuthor,
         images: updated.images,
         keywords: updated.keywords || existing.keywords,
         type: updated.type || existing.type,
         filePath: updated.filePath || existing.filePath,
+        meta: updated.meta ?? existing.meta,
       };
     }
     return existing;
@@ -448,10 +473,13 @@ export function updateCardInPools(
         ...existing,
         title: updated.title,
         content: updated.content,
+        bookTitle: updated.bookTitle || existing.bookTitle,
+        bookAuthor: updated.bookAuthor || existing.bookAuthor,
         images: updated.images,
         keywords: updated.keywords || existing.keywords,
         type: updated.type || existing.type,
         filePath: updated.filePath || existing.filePath,
+        meta: updated.meta ?? existing.meta,
       };
     }
     return existing;

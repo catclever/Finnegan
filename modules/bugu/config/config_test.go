@@ -1,7 +1,10 @@
 package config
 
 import (
+	"os"
 	"testing"
+
+	coreConfig "Finnegan/core/config"
 )
 
 func TestBuguConfig_ModelFallback(t *testing.T) {
@@ -91,5 +94,41 @@ func TestBuguConfig_ModelFallback(t *testing.T) {
 	}
 	if cfgWithLLMIDs.RouterLLMID != "deepseek_local" || cfgWithLLMIDs.DistillerLLMID != "gemini_flash" {
 		t.Errorf("unexpected LLMIDs: router=%q, distiller=%q", cfgWithLLMIDs.RouterLLMID, cfgWithLLMIDs.DistillerLLMID)
+	}
+}
+
+func TestBuguConfig_JinaFallback(t *testing.T) {
+	// 1. Explicit JinaAPIKey in BuguConfig takes precedence
+	cfgExplicit := &BuguConfig{
+		JinaAPIKey: "bugu-explicit-key",
+	}
+	globalJina := coreConfig.JinaConfig{
+		APIKey:  "global-jina-key",
+		BaseURL: "https://global.jina.ai/",
+	}
+	if key := cfgExplicit.GetJinaAPIKey(globalJina); key != "bugu-explicit-key" {
+		t.Errorf("expected explicit key 'bugu-explicit-key', got %q", key)
+	}
+
+	// 2. Empty BuguConfig falls back to global JinaConfig
+	cfgEmpty := &BuguConfig{}
+	if key := cfgEmpty.GetJinaAPIKey(globalJina); key != "global-jina-key" {
+		t.Errorf("expected fallback key 'global-jina-key', got %q", key)
+	}
+	if baseURL := cfgEmpty.GetJinaBaseURL(globalJina); baseURL != "https://global.jina.ai/" {
+		t.Errorf("expected fallback baseURL 'https://global.jina.ai/', got %q", baseURL)
+	}
+
+	// 3. Fallback to JINA_API_KEY environment variable if global is not provided
+	origEnv := os.Getenv("JINA_API_KEY")
+	os.Setenv("JINA_API_KEY", "env-jina-12345")
+	defer os.Setenv("JINA_API_KEY", origEnv)
+
+	cfgEnv := &BuguConfig{}
+	if key := cfgEnv.GetJinaAPIKey(); key != "env-jina-12345" {
+		t.Errorf("expected env fallback key 'env-jina-12345', got %q", key)
+	}
+	if baseURL := cfgEnv.GetJinaBaseURL(); baseURL != "https://r.jina.ai/" {
+		t.Errorf("expected default baseURL 'https://r.jina.ai/', got %q", baseURL)
 	}
 }

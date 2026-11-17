@@ -9,7 +9,7 @@
   import OmniBar from './components/OmniBar.svelte';
   import CosmicStage from './components/CosmicStage.svelte';
   import WindowTitleBar from './components/WindowTitleBar.svelte';
-  import { CaptureThought, CaptureThoughtWithImages, CaptureChatLog, CaptureChatLogWithImages, CaptureNote, GetTempCards, LoadLocalCards, SearchLocalCards, GetRegisteredCommands, GetModuleManifests, ExecuteModuleCommand, EvictTempCard, ReloadCard } from '../wailsjs/go/main/App.js';
+  import { CaptureThought, CaptureThoughtWithImages, CaptureChatLog, CaptureChatLogWithImages, CaptureNote, CaptureURL, CaptureModuleCard, GetTempCards, LoadLocalCards, SearchLocalCards, GetRegisteredCommands, GetModuleManifests, ExecuteModuleCommand, EvictTempCard, ReloadCard } from '../wailsjs/go/main/App.js';
   import { EventsOn } from '../wailsjs/runtime/runtime.js';
   import type { CosmicCard, SearchSession, CommandDef, ModuleManifest } from './types/card';
   import { hydrateModuleManifests, getModuleBeaconType } from './lib/promotionRegistry';
@@ -392,25 +392,115 @@
     }
   }
 
-  async function handleCaptureCurio(text: string, images?: string[]) {
+  async function handleCaptureModuleCard(cardType: string, text: string, images?: any[]) {
     capturePending = true;
     try {
-      const app = (window as any).go?.main?.App;
-      if (app && typeof app.CaptureCurio === 'function') {
-        const payload = (images || []).map(img => (typeof img === 'string' ? { data: img } : img));
-        await app.CaptureCurio(text, payload);
-      } else if (images && images.length > 0) {
-        const payload = images.map(img => (typeof img === 'string' ? { data: img } : img));
-        await CaptureThoughtWithImages(`:curio ${text}`, payload as any);
-      } else {
-        await CaptureThought(`:curio ${text}`);
-      }
+      const payload = (images || []).map(img => (typeof img === 'string' ? { data: img } : img));
+      await CaptureModuleCard(cardType, text, payload as any, {});
       if (searchSession.isActive) finishCaptureSearch();
     } catch (err) {
-      console.error("handleCaptureCurio error:", err);
+      console.error(`handleCaptureModuleCard(${cardType}) error:`, err);
       throw err;
     } finally {
       capturePending = false;
+    }
+  }
+
+  async function handleCaptureDiary(text: string, images?: string[], options?: any) {
+    capturePending = true;
+    try {
+      const app = (window as any).go?.main?.App;
+      const payload = (images || []).map(img => (typeof img === 'string' ? { data: img } : img));
+      const meta: Record<string, any> = {};
+      if (options?.createdAt) {
+        meta.createdAt = new Date(options.createdAt).toISOString();
+      }
+      if (options?.location) {
+        meta.location = options.location;
+      }
+      if (options?.weather) {
+        meta.weather = options.weather;
+      }
+      if (app && typeof app.CaptureDiary === 'function') {
+        await app.CaptureDiary(text, payload, meta);
+      } else if (images && images.length > 0) {
+        await CaptureThoughtWithImages(`:diary ${text}`, payload as any);
+      } else {
+        await CaptureThought(`:diary ${text}`);
+      }
+      if (searchSession.isActive) finishCaptureSearch();
+    } catch (err) {
+      console.error("handleCaptureDiary error:", err);
+      throw err;
+    } finally {
+      capturePending = false;
+    }
+  }
+
+  async function handleCaptureBook(text: string, images?: string[], options?: { bookTitle?: string; bookAuthor?: string }) {
+    capturePending = true;
+    try {
+      const app = (window as any).go?.main?.App;
+      const payload = (images || []).map(img => (typeof img === 'string' ? { data: img } : img));
+      const bookTitle = options?.bookTitle?.trim() || '';
+      const bookAuthor = options?.bookAuthor?.trim() || '';
+      if (app && typeof app.CaptureBook === 'function') {
+        await app.CaptureBook(text, payload, bookTitle, bookAuthor);
+      } else {
+        const metaHeader = [
+          bookTitle ? `《${bookTitle}》` : '',
+          bookAuthor ? `by ${bookAuthor}` : ''
+        ].filter(Boolean).join(' ');
+        const fallbackBody = metaHeader ? `:book ${metaHeader}\n${text}` : `:book ${text}`;
+        if (images && images.length > 0) {
+          await CaptureThoughtWithImages(fallbackBody, payload as any);
+        } else {
+          await CaptureThought(fallbackBody);
+        }
+      }
+      if (searchSession.isActive) finishCaptureSearch();
+    } catch (err) {
+      console.error("handleCaptureBook error:", err);
+      throw err;
+    } finally {
+      capturePending = false;
+    }
+  }
+
+  async function handleCaptureURL(url: string) {
+    try {
+      const result: any = await CaptureURL(url);
+      const docId = result?.id || result?.ID;
+      if (docId && !cards.some(c => c.id === docId) && !localVaultPool.some(c => c.id === docId)) {
+        const merged = mergeCapturedThought({
+          data: {
+            DocID: docId,
+            Title: result.title || result.Title,
+            Text: result.content || result.Content,
+            Type: result.type || result.Type,
+            SourceURL: result.sourceUrl || result.SourceURL || url,
+            Participants: result.participants || result.Participants,
+            StartedAt: result.startedAt || result.StartedAt,
+            EndedAt: result.endedAt || result.EndedAt,
+            CapturedAt: result.createdAt || result.CreatedAt,
+          },
+          cards,
+          memoryPool,
+          localVaultPool,
+          scrollExpansion: $scrollExpansion,
+          sourceCardId: activeBuguBeacon?.sourceCardId,
+          latestManualCardId,
+        });
+        cards = merged.cards;
+        memoryPool = merged.memoryPool;
+        localVaultPool = merged.localVaultPool;
+        latestManualCardId = merged.latestManualCardId;
+      }
+      if (searchSession.isActive) finishCaptureSearch();
+      return result;
+    } catch (err) {
+      console.error("handleCaptureURL error:", err);
+      throw err;
     }
   }
 
@@ -440,13 +530,21 @@
     } else if (beaconType === 'butterfly' || cmd.id === 'atproto:echo') {
       bskyController.startEcho(card?.id || null);
     }
-    await ExecuteModuleCommand(cmd.id, {
+    const res = await ExecuteModuleCommand(cmd.id, {
       cardId: card?.id,
       card: card || undefined,
       content: textQuery || card?.content || card?.title,
       id: card?.id,
       text: textQuery || card?.content || card?.title,
     });
+    if (cmd.id === 'system:reload_plugins') {
+      const nextManifests = Array.isArray((res as any)?.manifests)
+        ? (res as any).manifests
+        : await GetModuleManifests().catch(() => null);
+      if (Array.isArray(nextManifests)) {
+        await applyModuleManifests(nextManifests, Date.now());
+      }
+    }
   }
 
   // --- Tag Association & Resurgence Recall Engine (Multi-tag Union Support) ---
@@ -680,15 +778,28 @@
     localVaultPool = res.localVaultPool;
   }
 
+  async function applyModuleManifests(manifests: any, cacheBust?: number) {
+    if (!Array.isArray(manifests)) return;
+    availableModuleManifests = manifests;
+    hydrateModuleManifests(manifests);
+    syncModularCardComponents(manifests);
+    await loadExternalPluginCardComponents(manifests, cacheBust);
+    try {
+      const cmds = await GetRegisteredCommands();
+      if (Array.isArray(cmds)) {
+        availableCommands = cmds;
+      }
+    } catch (err) {
+      console.warn("GetRegisteredCommands refresh failed:", err);
+    }
+  }
+
   onMount(() => {
     GetRegisteredCommands().then(cmds => { if (Array.isArray(cmds)) availableCommands = cmds; }).catch(console.warn);
     if (typeof GetModuleManifests === 'function') {
       GetModuleManifests().then((manifests: any) => {
         if (Array.isArray(manifests)) {
-          availableModuleManifests = manifests;
-          hydrateModuleManifests(manifests);
-          syncModularCardComponents(manifests);
-          loadExternalPluginCardComponents(manifests).catch(console.warn);
+          applyModuleManifests(manifests).catch(console.warn);
         }
       }).catch(console.warn);
     }
@@ -750,6 +861,15 @@
       memoryPool = res.memoryPool;
       localVaultPool = res.localVaultPool;
       focusedCardId = res.focusedCardId;
+    });
+
+    EventsOn("modules:reloaded", async (manifests: any) => {
+      const nextManifests = Array.isArray(manifests)
+        ? manifests
+        : await GetModuleManifests().catch(() => null);
+      if (Array.isArray(nextManifests)) {
+        await applyModuleManifests(nextManifests, Date.now());
+      }
     });
 
     const handleWindowFocus = () => {
@@ -871,7 +991,7 @@
     bind:this={omniBarRef} {availableCommands} {searchSession} {focusedCardId} {cards} {localVaultPool} {capturePending}
     {isScrolling} scrollExpansion={$scrollExpansion}
     {availableModuleManifests}
-    bind:isOmnibarFocused onCaptureThought={handleCaptureThought} onCaptureChatLog={handleCaptureChatLog} onCaptureNote={handleCaptureNote} onCaptureCurio={handleCaptureCurio} onFreeSearch={handleFreeSearch}
+    bind:isOmnibarFocused onCaptureThought={handleCaptureThought} onCaptureChatLog={handleCaptureChatLog} onCaptureNote={handleCaptureNote} onCaptureModuleCard={handleCaptureModuleCard} onCaptureDiary={handleCaptureDiary} onCaptureBook={handleCaptureBook} onCaptureURL={handleCaptureURL} onFreeSearch={handleFreeSearch}
     onRevertSearch={revertSearchView} onCommitSearch={confirmSearchView} onRestoreSearch={restoreConfirmedSearch}
     onExecuteCommand={handleExecuteCommand} onSearchLocalCards={SearchLocalCards}
   />

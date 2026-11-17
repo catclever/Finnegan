@@ -9,7 +9,7 @@
  * - Safe fallback to thought for missing, null, empty, or unknown types.
  */
 
-import type { CardTypeDefinition } from '../types/card';
+import type { CardTypeDefinition, CardTypeSpec, ModuleManifest } from '../types/card';
 
 export const DEFAULT_CARD_TYPE = 'thought';
 
@@ -50,6 +50,15 @@ export const BUILTIN_CARD_DEFINITIONS: Record<string, CardTypeDefinition> = {
     defaultTitle: 'Babel Echo',
     icon: '🗼',
     selectable: false
+  },
+  book: {
+    type: 'book',
+    name: '读书笔记',
+    description: '藏书票书摘：原文引文与个人批注',
+    defaultTitle: 'Reading Note',
+    icon: '📖',
+    prefix: ':book',
+    selectable: true
   }
 };
 
@@ -170,6 +179,14 @@ export class CardRegistry<T = any> {
   }
 
   /**
+   * Checks whether a specific card type has an explicit metadata definition.
+   */
+  hasDefinition(type?: string | null): boolean {
+    if (!type || typeof type !== 'string') return false;
+    return this.definitions.has(type.trim());
+  }
+
+  /**
    * Gets metadata definition for a card type.
    */
   getDefinition(type?: string | null): CardTypeDefinition {
@@ -218,4 +235,121 @@ export class CardRegistry<T = any> {
  */
 export function createCardRegistry<T = any>(defaultComponent?: T, defaultType: string = DEFAULT_CARD_TYPE): CardRegistry<T> {
   return new CardRegistry<T>(defaultComponent, defaultType);
+}
+
+/**
+ * Appends a cache-busting query parameter (?t=... or &t=...) when cacheBust is provided.
+ */
+export function appendCacheBust(url: string, cacheBust?: number): string {
+  if (!url || !cacheBust) return url;
+  const sep = url.includes('?') ? '&' : '?';
+  return `${url}${sep}t=${cacheBust}`;
+}
+
+/**
+ * Builds a normalized CardTypeDefinition from a ModuleManifest CardTypeSpec,
+ * preserving existing metadata fields when spec omits them.
+ */
+export function buildCardTypeDefinitionFromSpec(
+  spec: CardTypeSpec,
+  manifest: ModuleManifest,
+  existing?: CardTypeDefinition
+): CardTypeDefinition {
+  const cleanType = spec.type.trim();
+  const baseName = existing?.name || spec.name || cleanType;
+  return {
+    ...(existing || {}),
+    type: cleanType,
+    name: spec.name || baseName,
+    defaultTitle: existing?.defaultTitle || spec.name || cleanType,
+    description: spec.description ?? existing?.description ?? manifest.description,
+    icon: spec.icon ?? existing?.icon,
+    prefix: spec.prefix ?? existing?.prefix,
+    submitLabel: spec.submitLabel ?? existing?.submitLabel,
+    badgeColor: spec.badgeColor ?? existing?.badgeColor ?? manifest.themeColor,
+    selectable: spec.selectable !== undefined ? spec.selectable : existing?.selectable,
+    customElementTag: spec.customElementTag ?? existing?.customElementTag,
+    shellStyle: spec.shellStyle ?? existing?.shellStyle,
+    moduleName: spec.moduleName ?? manifest.name ?? existing?.moduleName,
+  };
+}
+
+export interface ExternalCardSpecEntry {
+  manifest: ModuleManifest;
+  spec: CardTypeSpec;
+}
+
+export interface ReconcileExternalResult {
+  removedUITypes: string[];
+  removedDefTypes: string[];
+  activeUISpecs: ExternalCardSpecEntry[];
+}
+
+/**
+ * Pure reconciliation of external card definitions and UI specs against active manifests.
+ * Unregisters any previously tracked external types absent from manifests so cards fall back to ThoughtCardBody.
+ */
+export function reconcileExternalCardTypes(
+  registry: CardRegistry<any>,
+  manifests?: ModuleManifest[] | null,
+  externalRegisteredTypes?: Set<string>,
+  externalDefinitionTypes?: Set<string>
+): ReconcileExternalResult {
+  const manifestList = Array.isArray(manifests) ? manifests : [];
+  const nextUITypes = new Set<string>();
+  const nextManifestTypes = new Set<string>();
+  const activeUISpecs: ExternalCardSpecEntry[] = [];
+
+  for (const m of manifestList) {
+    if (!m?.cardTypes || !Array.isArray(m.cardTypes)) continue;
+    for (const spec of m.cardTypes) {
+      if (!spec?.type || typeof spec.type !== 'string') continue;
+      const cleanType = spec.type.trim();
+      if (!cleanType) continue;
+      nextManifestTypes.add(cleanType);
+      if (spec.uiEntry || spec.customElementTag) {
+        nextUITypes.add(cleanType);
+        activeUISpecs.push({ manifest: m, spec: { ...spec, type: cleanType } });
+      }
+    }
+  }
+
+  const removedUITypes: string[] = [];
+  if (externalRegisteredTypes) {
+    for (const prevType of Array.from(externalRegisteredTypes)) {
+      if (!nextUITypes.has(prevType)) {
+        externalRegisteredTypes.delete(prevType);
+        registry.unregister(prevType);
+        removedUITypes.push(prevType);
+      }
+    }
+  }
+
+  const removedDefTypes: string[] = [];
+  if (externalDefinitionTypes) {
+    for (const prevDefType of Array.from(externalDefinitionTypes)) {
+      if (!nextManifestTypes.has(prevDefType) && !(prevDefType in BUILTIN_CARD_DEFINITIONS)) {
+        externalDefinitionTypes.delete(prevDefType);
+        registry.unregister(prevDefType);
+        removedDefTypes.push(prevDefType);
+      }
+    }
+  }
+
+  for (const m of manifestList) {
+    if (!m?.cardTypes || !Array.isArray(m.cardTypes)) continue;
+    for (const spec of m.cardTypes) {
+      if (!spec?.type || typeof spec.type !== 'string') continue;
+      const cleanType = spec.type.trim();
+      if (!cleanType) continue;
+      const existing = registry.hasDefinition(cleanType) ? registry.getDefinition(cleanType) : undefined;
+      const def = buildCardTypeDefinitionFromSpec({ ...spec, type: cleanType }, m, existing);
+      registry.registerDefinition(def);
+      if (!(cleanType in BUILTIN_CARD_DEFINITIONS)) {
+        externalDefinitionTypes?.add(cleanType);
+      }
+    }
+  }
+
+  return { removedUITypes, removedDefTypes, activeUISpecs };
 }

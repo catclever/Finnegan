@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/url"
 	"os"
 	"os/exec"
@@ -12,11 +13,12 @@ import (
 	"sort"
 	"strings"
 	"time"
-	"Finnegan/modules/diary"
 
+	"Finnegan/core/config"
 	"Finnegan/core/module"
 	"Finnegan/core/search"
 	"Finnegan/core/watcher"
+	"Finnegan/modules/diary"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -309,13 +311,32 @@ func (a *App) SearchLocalCards(query string) []Card {
 
 	sCards := make([]search.Card, len(uniqueCards))
 	for i, c := range uniqueCards {
+		var kw map[string][]string
+		if len(c.Keywords) > 0 {
+			kw = make(map[string][]string, len(c.Keywords)+1)
+			for k, v := range c.Keywords {
+				kw[k] = append([]string(nil), v...)
+			}
+		}
+		if c.BookTitle != "" || c.BookAuthor != "" {
+			if kw == nil {
+				kw = make(map[string][]string)
+			}
+			if c.BookTitle != "" {
+				kw["object"] = append(kw["object"], c.BookTitle)
+			}
+			if c.BookAuthor != "" {
+				kw["object"] = append(kw["object"], c.BookAuthor)
+			}
+		}
+
 		sCards[i] = search.Card{
 			ID:             c.ID,
 			Type:           string(c.Type),
 			Title:          c.Title,
 			Content:        c.Content,
 			Tags:           c.Tags,
-			Keywords:       c.Keywords,
+			Keywords:       kw,
 			SourceURL:      c.SourceURL,
 			OriginalText:   c.OriginalText,
 			TranslatedText: c.TranslatedText,
@@ -371,7 +392,16 @@ func (a *App) SearchLocalCards(query string) []Card {
 
 // GetRegisteredCommands iterates module.GetRegistry, finds modules implementing CommandProvider, and collects all CommandDefs.
 func (a *App) GetRegisteredCommands() []module.CommandDef {
-	commands := make([]module.CommandDef, 0)
+	commands := []module.CommandDef{
+		{
+			ID:          "system:reload_plugins",
+			Name:        "热重载外部插件",
+			Trigger:     "reload",
+			Description: "重新扫描 ~/.finnegan/plugins 并热刷新命令与卡片组件",
+			Namespace:   "system",
+			IsPrimary:   true,
+		},
+	}
 	for _, m := range module.GetRegistry() {
 		if cp, ok := m.(module.CommandProvider); ok {
 			commands = append(commands, cp.GetCommands()...)
@@ -379,6 +409,62 @@ func (a *App) GetRegisteredCommands() []module.CommandDef {
 	}
 
 	return commands
+}
+
+// ReloadExternalPlugins resets external plugins, rescans <home>/.finnegan/plugins,
+// initializes newly loaded external modules, emits "modules:reloaded", and returns the updated manifests.
+func (a *App) ReloadExternalPlugins() ([]module.ModuleManifest, error) {
+	a.reloadMu.Lock()
+	defer a.reloadMu.Unlock()
+
+	module.ResetExternalPlugins()
+
+	home := a.Home
+	var cfg *config.Config
+	if loadedCfg, h, err := config.LoadConfig(); err == nil {
+		cfg = loadedCfg
+		if home == "" {
+			home = h
+			a.Home = h
+		}
+	}
+
+	if home != "" {
+		pluginsDir := filepath.Join(home, ".finnegan", "plugins")
+		loaded, err := module.LoadExternalPlugins(pluginsDir)
+		if err != nil {
+			log.Printf("Warning: Failed to reload external plugins from %s: %v", pluginsDir, err)
+		} else {
+			var llms map[string]module.LLMConfig
+			if cfg != nil {
+				llms = cfg.LLMs
+			}
+			hostAPI := &appHostAPI{app: a}
+			for _, m := range loaded {
+				if cfg != nil && cfg.RawModules != nil {
+					if node, exists := cfg.RawModules[m.Name()]; exists {
+						if target := m.ConfigTarget(); target != nil {
+							_ = node.Decode(target)
+						}
+					}
+				}
+				mCtx := &module.Context{
+					HomeDir: home,
+					LLMs:    llms,
+					Host:    hostAPI,
+				}
+				if err := m.Init(mCtx); err != nil {
+					log.Printf("[%s] external module init failed on reload: %v", m.Name(), err)
+				}
+			}
+		}
+	}
+
+	manifests := a.GetModuleManifests()
+	if a.ctx != nil {
+		runtime.EventsEmit(a.ctx, "modules:reloaded", manifests)
+	}
+	return manifests, nil
 }
 
 // GetModuleManifests returns the normalized ModuleManifest for all registered built-in and external modules.
@@ -413,6 +499,18 @@ func (a *App) ExecuteModuleAction(moduleName string, actionID string, payload ma
 
 // ExecuteModuleCommand dispatches a command to the module that owns cmdID.
 func (a *App) ExecuteModuleCommand(cmdID string, params map[string]interface{}) (interface{}, error) {
+	if cmdID == "system:reload_plugins" {
+		manifests, err := a.ReloadExternalPlugins()
+		if err != nil {
+			return nil, err
+		}
+		return map[string]interface{}{
+			"status":    "reloaded",
+			"manifests": manifests,
+			"count":     len(manifests),
+		}, nil
+	}
+
 	if cmdID == "core:note" {
 		text := ""
 		if t, ok := params["text"].(string); ok {

@@ -28,18 +28,23 @@ export function toCosmicCard(
   ttl?: number
 ): CosmicCard {
   const rawContent = c.content || c.Content || c.translatedText || c.TranslatedText || c.translated_text || c.originalText || '';
+  const bookTitle = c.bookTitle || c.BookTitle || c.book_title || '';
+  const bookAuthor = c.bookAuthor || c.BookAuthor || c.book_author || '';
+  const resolvedType = c.type || c.Type || type;
   let title = c.title || c.Title;
   if (!title || title === 'Thought') {
     const firstLine = rawContent.split('\n')[0].replace(/^[#\s\-*]+/, '').trim();
-    title = firstLine ? (firstLine.length > 20 ? firstLine.slice(0, 20) + '...' : firstLine) : (type === 'babel' ? 'Babel Echo' : 'Thought');
+    title = firstLine ? (firstLine.length > 20 ? firstLine.slice(0, 20) + '...' : firstLine) : (resolvedType === 'babel' ? 'Babel Echo' : (resolvedType === 'book' ? (bookTitle || 'Reading Note') : 'Thought'));
   }
   const rawImages = c.images || c.Images;
   const images = rawImages ? (Array.isArray(rawImages) ? rawImages : [rawImages]) : undefined;
   return {
     id: c.id || c.ID || (type + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)),
-    type: c.type || c.Type || type,
+    type: resolvedType,
     title,
     content: rawContent,
+    bookTitle,
+    bookAuthor,
     originalText: c.originalText || c.OriginalText || c.original_text || '',
     translatedText: c.translatedText || c.TranslatedText || c.translated_text || '',
     sourceUrl: c.sourceUrl || c.SourceURL || c.source_url || '',
@@ -62,6 +67,7 @@ export function toCosmicCard(
     threads: c.threads || c.Threads || undefined,
     isEnriching: c.isEnriching !== undefined ? c.isEnriching : false,
     filePath: c.filePath || c.FilePath || '',
+    meta: c.meta ?? c.Meta ?? undefined,
     x: 0, y: 0, rotation: 0, z: 50,
     spawnTime: Date.now(), decayDuration: BASE_STAGE_DECAY_MS, isFresh: true, isVIP: false, origin: c.origin || origin,
     macroExpiresAt: ttl ? Date.now() + ttl : undefined

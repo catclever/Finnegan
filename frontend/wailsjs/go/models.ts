@@ -96,11 +96,33 @@ export namespace chatlog {
 
 }
 
+export namespace config {
+	
+	export class JinaConfig {
+	    api_key: string;
+	    base_url: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new JinaConfig(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.api_key = source["api_key"];
+	        this.base_url = source["base_url"];
+	    }
+	}
+
+}
+
 export namespace keywords {
 	
 	export class Config {
+	    llm_id: string;
 	    enabled_dimensions: string[];
 	    jina_api_key: string;
+	    jina_base_url: string;
+	    jina: config.JinaConfig;
 	
 	    static createFrom(source: any = {}) {
 	        return new Config(source);
@@ -108,13 +130,35 @@ export namespace keywords {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.llm_id = source["llm_id"];
 	        this.enabled_dimensions = source["enabled_dimensions"];
 	        this.jina_api_key = source["jina_api_key"];
+	        this.jina_base_url = source["jina_base_url"];
+	        this.jina = this.convertValues(source["jina"], config.JinaConfig);
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class KeywordEngine {
 	    LLMConfig: module.LLMConfig;
 	    Config: Config;
+	    JinaConfig: config.JinaConfig;
 	    HomeDir: string;
 	
 	    static createFrom(source: any = {}) {
@@ -125,6 +169,7 @@ export namespace keywords {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.LLMConfig = this.convertValues(source["LLMConfig"], module.LLMConfig);
 	        this.Config = this.convertValues(source["Config"], Config);
+	        this.JinaConfig = this.convertValues(source["JinaConfig"], config.JinaConfig);
 	        this.HomeDir = source["HomeDir"];
 	    }
 	
@@ -151,6 +196,48 @@ export namespace keywords {
 
 export namespace main {
 	
+	export class DiaryWeather {
+	    condition?: string;
+	    wmoCode?: number;
+	    icon?: string;
+	    tempC?: number;
+	    observedHour?: string;
+	    isDay?: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new DiaryWeather(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.condition = source["condition"];
+	        this.wmoCode = source["wmoCode"];
+	        this.icon = source["icon"];
+	        this.tempC = source["tempC"];
+	        this.observedHour = source["observedHour"];
+	        this.isDay = source["isDay"];
+	    }
+	}
+	export class DiaryLocation {
+	    placeId?: string;
+	    name?: string;
+	    landmark?: string;
+	    lat?: number;
+	    lng?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new DiaryLocation(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.placeId = source["placeId"];
+	        this.name = source["name"];
+	        this.landmark = source["landmark"];
+	        this.lat = source["lat"];
+	        this.lng = source["lng"];
+	    }
+	}
 	export class ThreadRef {
 	    id: string;
 	    title: string;
@@ -198,6 +285,10 @@ export namespace main {
 	    threads?: ThreadRef[];
 	    visualSummary?: string;
 	    linkSummary?: string;
+	    location?: DiaryLocation;
+	    weather?: DiaryWeather;
+	    bookTitle?: string;
+	    bookAuthor?: string;
 	    brand?: string;
 	    platform?: string;
 	    price?: string;
@@ -205,6 +296,7 @@ export namespace main {
 	    availability?: string;
 	    snapshotPath?: string;
 	    screenshotPath?: string;
+	    meta?: Record<string, any>;
 	
 	    static createFrom(source: any = {}) {
 	        return new Card(source);
@@ -241,6 +333,10 @@ export namespace main {
 	        this.threads = this.convertValues(source["threads"], ThreadRef);
 	        this.visualSummary = source["visualSummary"];
 	        this.linkSummary = source["linkSummary"];
+	        this.location = this.convertValues(source["location"], DiaryLocation);
+	        this.weather = this.convertValues(source["weather"], DiaryWeather);
+	        this.bookTitle = source["bookTitle"];
+	        this.bookAuthor = source["bookAuthor"];
 	        this.brand = source["brand"];
 	        this.platform = source["platform"];
 	        this.price = source["price"];
@@ -248,6 +344,7 @@ export namespace main {
 	        this.availability = source["availability"];
 	        this.snapshotPath = source["snapshotPath"];
 	        this.screenshotPath = source["screenshotPath"];
+	        this.meta = source["meta"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -310,6 +407,8 @@ export namespace main {
 		    return a;
 		}
 	}
+	
+	
 	export class ImagePayload {
 	    data: string;
 	    name?: string;
@@ -333,6 +432,15 @@ export namespace module {
 	
 	export class CardTypeSpec {
 	    type: string;
+	    name?: string;
+	    description?: string;
+	    icon?: string;
+	    prefix?: string;
+	    submitLabel?: string;
+	    badgeColor?: string;
+	    selectable?: boolean;
+	    customElementTag?: string;
+	    shellStyle?: Record<string, string>;
 	    uiEntry?: string;
 	
 	    static createFrom(source: any = {}) {
@@ -342,6 +450,15 @@ export namespace module {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.type = source["type"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.icon = source["icon"];
+	        this.prefix = source["prefix"];
+	        this.submitLabel = source["submitLabel"];
+	        this.badgeColor = source["badgeColor"];
+	        this.selectable = source["selectable"];
+	        this.customElementTag = source["customElementTag"];
+	        this.shellStyle = source["shellStyle"];
 	        this.uiEntry = source["uiEntry"];
 	    }
 	}

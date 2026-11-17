@@ -20,9 +20,9 @@ import (
 	"Finnegan/core/config"
 	"Finnegan/core/keywords"
 	"Finnegan/core/watcher"
-	"Finnegan/modules/curio"
 
 	"github.com/oklog/ulid/v2"
+	"gopkg.in/yaml.v3"
 )
 
 // StripThreadMentions strips leading @<th.Title> mentions from card body
@@ -179,173 +179,7 @@ func (a *App) CaptureCurio(text string, images []ImagePayload) (string, error) {
 	if text == "" && len(images) == 0 {
 		return "", errors.New("empty text and images")
 	}
-
-	home := a.Home
-	if home == "" {
-		_, h, err := config.LoadConfig()
-		if err == nil {
-			home = h
-			a.Home = h
-		}
-	}
-	if home == "" {
-		return "", errors.New("home directory not configured")
-	}
-
-	docID := ulid.Make().String()
-	now := time.Now()
-	cleanBody, tags := StripAndExtractHashtags(text)
-
-	if len(images) > 0 {
-		img := images[0]
-		raw := strings.TrimSpace(img.Data)
-		if raw != "" {
-			ext := ""
-			if strings.HasPrefix(raw, "data:") {
-				idx := strings.Index(raw, ",")
-				if idx != -1 {
-					header := raw[:idx]
-					raw = raw[idx+1:]
-					if strings.HasPrefix(header, "data:image/") {
-						mimeType := strings.TrimPrefix(header, "data:image/")
-						if semi := strings.Index(mimeType, ";"); semi != -1 {
-							mimeType = mimeType[:semi]
-						}
-						switch strings.ToLower(mimeType) {
-						case "jpeg", "jpg":
-							ext = ".jpg"
-						case "png":
-							ext = ".png"
-						case "gif":
-							ext = ".gif"
-						case "webp":
-							ext = ".webp"
-						case "svg+xml", "svg":
-							ext = ".svg"
-						case "bmp":
-							ext = ".bmp"
-						case "avif":
-							ext = ".avif"
-						default:
-							ext = "." + mimeType
-						}
-					}
-				}
-			}
-			if ext == "" {
-				if img.Ext != "" {
-					ext = img.Ext
-					if !strings.HasPrefix(ext, ".") {
-						ext = "." + ext
-					}
-				} else if img.Name != "" {
-					ext = filepath.Ext(img.Name)
-				}
-				if ext == "" {
-					ext = ".png"
-				}
-			}
-
-			cleanB64 := strings.Map(func(r rune) rune {
-				if r == '\n' || r == '\r' || r == ' ' || r == '\t' {
-					return -1
-				}
-				return r
-			}, raw)
-
-			decoded, err := base64.StdEncoding.DecodeString(cleanB64)
-			if err != nil {
-				decoded, err = base64.RawStdEncoding.DecodeString(cleanB64)
-				if err != nil {
-					decoded, err = base64.URLEncoding.DecodeString(cleanB64)
-					if err != nil {
-						return "", fmt.Errorf("failed to decode base64 image: %w", err)
-					}
-				}
-			}
-
-			llmCfg := a.getLLMConfig()
-			return curio.IngestCurioPayload(a.ctx, llmCfg, decoded, ext, cleanBody, tags)
-		}
-	}
-
-	// Text-only
-	title := ""
-	lines := strings.Split(cleanBody, "\n")
-	if len(lines) > 0 {
-		title = strings.TrimSpace(lines[0])
-	}
-	if len(title) > 50 {
-		title = title[:50]
-	}
-
-	slugSrc := sanitizeSlug(title)
-	if slugSrc == "" {
-		slugSrc = docID
-	}
-	targetDir := filepath.Join(home, "Scattering")
-	baseName := fmt.Sprintf("%s-%s", now.Format("20060102-1504"), slugSrc)
-	var targetPath string
-
-	for i := 1; i <= 100; i++ {
-		suffix := ""
-		if i > 1 {
-			suffix = fmt.Sprintf("-%d", i)
-		}
-		candidate := filepath.Join(targetDir, fmt.Sprintf("%s%s.curio.md", baseName, suffix))
-		if _, err := os.Stat(candidate); os.IsNotExist(err) {
-			targetPath = candidate
-			break
-		}
-	}
-
-	if targetPath == "" {
-		return "", errors.New("could not find a unique filename")
-	}
-
-	var sb strings.Builder
-	sb.WriteString("---\n")
-	sb.WriteString(fmt.Sprintf("id: %s\n", docID))
-	sb.WriteString("type: curio\n")
-	if title != "" {
-		sb.WriteString(fmt.Sprintf("title: %s\n", title))
-	}
-	sb.WriteString("intent: wish\n")
-	sb.WriteString("availability: available\n")
-	if len(tags) > 0 {
-		sb.WriteString("tags:\n")
-		for _, t := range tags {
-			sb.WriteString(fmt.Sprintf("  - %s\n", t))
-		}
-	}
-	sb.WriteString(fmt.Sprintf("created: %s\n", now.Format(time.RFC3339)))
-	sb.WriteString(fmt.Sprintf("updated: %s\n", now.Format(time.RFC3339)))
-	sb.WriteString("source: local\n")
-	sb.WriteString("publish: false\n")
-	sb.WriteString("---\n\n")
-	if cleanBody != "" {
-		sb.WriteString(cleanBody)
-		sb.WriteString("\n")
-	}
-
-	err := watcher.GetWatcher().WriteFile(targetPath, []byte(sb.String()), "curio")
-	if err != nil {
-		return "", err
-	}
-
-	bus.GetBus().Publish(bus.Event{
-		Type: bus.EventThoughtCaptured,
-		Data: bus.EventThoughtCapturedData{
-			DocID:      docID,
-			FilePath:   targetPath,
-			Title:      title,
-			Type:       "curio",
-			CapturedAt: now,
-			Tags:       tags,
-		},
-	})
-
-	return docID, nil
+	return a.CaptureModuleCard("curio", text, images, nil)
 }
 
 func (a *App) CaptureThought(text string) (string, error) {
@@ -846,4 +680,431 @@ func (a *App) CaptureDiary(text string, images []ImagePayload, meta map[string]i
 	})
 
 	return id, nil
+}
+
+// CaptureBook saves a reading note / book card with book metadata, 4D object anchors, threads, and optional images.
+func (a *App) CaptureBook(text string, images []ImagePayload, bookTitle string, bookAuthor string) (string, error) {
+	text = strings.TrimSpace(text)
+	bookTitle = strings.TrimSpace(bookTitle)
+	bookAuthor = strings.TrimSpace(bookAuthor)
+	if text == "" && len(images) == 0 {
+		return "", errors.New("empty text and images")
+	}
+
+	savedImageNames, err := a.saveAssetImages(images)
+	if err != nil {
+		return "", err
+	}
+
+	home := a.Home
+	if home == "" {
+		_, h, err := config.LoadConfig()
+		if err == nil {
+			home = h
+			a.Home = h
+		}
+	}
+	if home == "" {
+		return "", errors.New("home directory not configured")
+	}
+
+	title, cleanText := chatlog.ExtractHashTitle(text)
+	body := text
+	if title != "" {
+		if strings.TrimSpace(cleanText) != "" {
+			body = strings.TrimSpace(cleanText)
+		} else if len(savedImageNames) > 0 {
+			body = ""
+		}
+	}
+
+	cleanBody, tags := StripAndExtractHashtags(body)
+	kwProfile := keywords.RouteTagsToKeywords(tags)
+
+	appendObjectAnchor := func(val string) {
+		if val == "" {
+			return
+		}
+		normVal := strings.ToLower(strings.TrimSuffix(val, "*"))
+		for _, existing := range kwProfile["object"] {
+			if strings.ToLower(strings.TrimSuffix(strings.TrimSpace(existing), "*")) == normVal {
+				return
+			}
+		}
+		kwProfile["object"] = append(kwProfile["object"], val)
+	}
+	appendObjectAnchor(bookTitle)
+	appendObjectAnchor(bookAuthor)
+
+	threads := a.ExtractThreadRefs(text)
+	cleanBody = StripThreadMentions(cleanBody, threads)
+
+	slugSrc := deriveCaptureSlugSource(cleanBody, threads, bookTitle)
+	slug := sanitizeSlug(slugSrc)
+	if slug == "" {
+		slug = "book"
+	}
+
+	targetDir := filepath.Join(home, "Scattering")
+	now := time.Now()
+	baseName := fmt.Sprintf("%s-%s", now.Format("20060102-1504"), slug)
+	var targetPath string
+
+	for i := 1; i <= 100; i++ {
+		suffix := ""
+		if i > 1 {
+			suffix = fmt.Sprintf("-%d", i)
+		}
+		candidate := filepath.Join(targetDir, fmt.Sprintf("%s%s.book.md", baseName, suffix))
+		if _, err := os.Stat(candidate); os.IsNotExist(err) {
+			targetPath = candidate
+			break
+		}
+	}
+
+	if targetPath == "" {
+		return "", errors.New("could not find a unique filename")
+	}
+
+	docID := ulid.Make().String()
+
+	var sb strings.Builder
+	sb.WriteString("---\n")
+	sb.WriteString(fmt.Sprintf("id: %s\n", docID))
+	sb.WriteString("type: book\n")
+	if title != "" {
+		sb.WriteString(fmt.Sprintf("title: %q\n", title))
+	}
+	if bookTitle != "" {
+		sb.WriteString(fmt.Sprintf("book_title: %q\n", bookTitle))
+	}
+	if bookAuthor != "" {
+		sb.WriteString(fmt.Sprintf("book_author: %q\n", bookAuthor))
+	}
+	sb.WriteString(fmt.Sprintf("created: %s\n", now.Format(time.RFC3339)))
+	sb.WriteString(fmt.Sprintf("updated: %s\n", now.Format(time.RFC3339)))
+	sb.WriteString("source: local\n")
+	if kwYAML := keywords.FormatKeywordsYAML(kwProfile); kwYAML != "" {
+		sb.WriteString(kwYAML)
+	}
+	if len(threads) > 0 {
+		sb.WriteString("threads:\n")
+		for _, th := range threads {
+			sb.WriteString(fmt.Sprintf("  - id: %q\n    title: %q\n", th.ID, th.Title))
+		}
+	}
+	sb.WriteString("publish: false\n")
+	if len(savedImageNames) > 0 {
+		sb.WriteString("images:\n")
+		for _, imgName := range savedImageNames {
+			sb.WriteString(fmt.Sprintf("  - %s\n", imgName))
+		}
+	}
+	sb.WriteString("---\n\n")
+	if cleanBody != "" {
+		sb.WriteString(cleanBody)
+		sb.WriteString("\n")
+	}
+
+	contentStr := sb.String()
+	if err := watcher.GetWatcher().WriteFile(targetPath, []byte(contentStr), "capture"); err != nil {
+		return "", err
+	}
+
+	bus.GetBus().Publish(bus.Event{
+		Type: bus.EventThoughtCaptured,
+		Data: bus.EventThoughtCapturedData{
+			DocID:      docID,
+			FilePath:   targetPath,
+			Title:      title,
+			Type:       "book",
+			Text:       cleanBody,
+			BookTitle:  bookTitle,
+			BookAuthor: bookAuthor,
+			CapturedAt: now,
+			Images:     savedImageNames,
+			Tags:       tags,
+			Keywords:   kwProfile,
+			Threads:    threads,
+		},
+	})
+
+	return docID, nil
+}
+
+// CaptureModuleCard routes a capture request to the registered CaptureProvider module
+// declaring the target cardType in its CardTypes manifest, and materializes the card if needed.
+func (a *App) CaptureModuleCard(cardType string, text string, images []ImagePayload, extraMeta map[string]interface{}) (string, error) {
+	cardType = strings.TrimSpace(cardType)
+	cardType = strings.TrimPrefix(cardType, ":")
+	cardType = strings.TrimSpace(cardType)
+	if cardType == "" {
+		return "", errors.New("empty card type")
+	}
+
+	home := a.Home
+	if home == "" {
+		_, h, err := config.LoadConfig()
+		if err == nil {
+			home = h
+			a.Home = h
+		}
+	}
+	if home == "" {
+		return "", errors.New("home directory not configured")
+	}
+
+	reg := module.GetRegistry()
+	modNames := make([]string, 0, len(reg))
+	for name := range reg {
+		modNames = append(modNames, name)
+	}
+	sort.Strings(modNames)
+
+	var targetProvider module.CaptureProvider
+	for _, name := range modNames {
+		m := reg[name]
+		cp, ok := m.(module.CaptureProvider)
+		if !ok {
+			continue
+		}
+		manifest := module.BuildModuleManifest(m)
+		matched := false
+		for _, ct := range manifest.CardTypes {
+			if ct.Type == cardType || ct.Name == cardType {
+				matched = true
+				break
+			}
+		}
+		if matched {
+			targetProvider = cp
+			break
+		}
+	}
+	if targetProvider == nil {
+		return "", fmt.Errorf("no CaptureProvider module registered for card type %q", cardType)
+	}
+
+	cleanBody, tags := StripAndExtractHashtags(text)
+	threads := a.ExtractThreadRefs(text)
+	cleanBody = StripThreadMentions(cleanBody, threads)
+
+	capImages := make([]module.CaptureImageInput, len(images))
+	for i, img := range images {
+		capImages[i] = module.CaptureImageInput{
+			Data: img.Data,
+			Name: img.Name,
+			Ext:  img.Ext,
+		}
+	}
+	capThreads := make([]module.CaptureThreadRef, len(threads))
+	for i, th := range threads {
+		capThreads[i] = module.CaptureThreadRef{
+			ID:    th.ID,
+			Title: th.Title,
+		}
+	}
+
+	ctx := a.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	req := module.CaptureRequest{
+		CardType:  cardType,
+		Text:      text,
+		CleanText: cleanBody,
+		Images:    capImages,
+		Tags:      tags,
+		Threads:   capThreads,
+		ExtraMeta: extraMeta,
+		HomeDir:   home,
+	}
+
+	res, err := targetProvider.CaptureCard(ctx, req)
+	if err != nil {
+		return "", err
+	}
+	if res == nil {
+		res = &module.CaptureResult{}
+	}
+
+	docID := res.DocID
+	if docID == "" {
+		docID = ulid.Make().String()
+	}
+	now := time.Now()
+
+	tagSeen := make(map[string]bool)
+	var finalTags []string
+	for _, t := range append(append([]string(nil), tags...), res.Tags...) {
+		t = strings.TrimSpace(t)
+		if t != "" && !tagSeen[t] {
+			tagSeen[t] = true
+			finalTags = append(finalTags, t)
+		}
+	}
+
+	body := res.Body
+	if body == "" {
+		body = res.Content
+	}
+	if body == "" {
+		body = cleanBody
+	}
+	title := strings.TrimSpace(res.Title)
+
+	if res.FilePath != "" {
+		bus.GetBus().Publish(bus.Event{
+			Type: bus.EventThoughtCaptured,
+			Data: bus.EventThoughtCapturedData{
+				DocID:      docID,
+				FilePath:   res.FilePath,
+				Title:      title,
+				Text:       body,
+				Type:       cardType,
+				CapturedAt: now,
+				Images:     res.Images,
+				Tags:       finalTags,
+				Threads:    threads,
+				Meta:       res.Meta,
+			},
+		})
+		return docID, nil
+	}
+
+	savedImages := res.Images
+	if len(savedImages) == 0 && len(images) > 0 {
+		if imgs, err := a.saveAssetImages(images); err == nil {
+			savedImages = imgs
+		}
+	}
+
+	fileExt := strings.TrimSpace(res.FileExt)
+	if fileExt == "" {
+		fileExt = ".md"
+	}
+	if !strings.HasPrefix(fileExt, ".") {
+		fileExt = "." + fileExt
+	}
+
+	slugSrc := strings.TrimSpace(res.Slug)
+	if slugSrc == "" {
+		slugSrc = title
+	}
+	if slugSrc == "" {
+		slugSrc = deriveCaptureSlugSource(body, threads, cardType)
+	}
+	slug := sanitizeSlug(slugSrc)
+	if slug == "" {
+		slug = sanitizeSlug(cardType)
+	}
+	if slug == "" {
+		slug = docID
+	}
+
+	targetDir := filepath.Join(home, "Scattering")
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		return "", err
+	}
+	baseName := fmt.Sprintf("%s-%s", now.Format("20060102-1504"), slug)
+	var targetPath string
+	for i := 1; i <= 100; i++ {
+		suffix := ""
+		if i > 1 {
+			suffix = fmt.Sprintf("-%d", i)
+		}
+		candidate := filepath.Join(targetDir, fmt.Sprintf("%s%s%s", baseName, suffix, fileExt))
+		if _, err := os.Stat(candidate); os.IsNotExist(err) {
+			targetPath = candidate
+			break
+		}
+	}
+	if targetPath == "" {
+		return "", errors.New("could not find a unique filename")
+	}
+
+	var sb strings.Builder
+	sb.WriteString("---\n")
+	sb.WriteString(fmt.Sprintf("id: %s\n", docID))
+	sb.WriteString(fmt.Sprintf("type: %s\n", cardType))
+	if title != "" {
+		if titleBytes, err := yaml.Marshal(map[string]string{"title": title}); err == nil {
+			sb.Write(titleBytes)
+		} else {
+			sb.WriteString(fmt.Sprintf("title: %q\n", title))
+		}
+	}
+	sb.WriteString(fmt.Sprintf("created: %s\n", now.Format(time.RFC3339)))
+	sb.WriteString(fmt.Sprintf("updated: %s\n", now.Format(time.RFC3339)))
+	sb.WriteString("source: local\n")
+	sb.WriteString("publish: false\n")
+
+	if len(finalTags) > 0 {
+		if tagsBytes, err := yaml.Marshal(map[string][]string{"tags": finalTags}); err == nil {
+			sb.Write(tagsBytes)
+		}
+	}
+	if len(threads) > 0 {
+		if thBytes, err := yaml.Marshal(map[string][]ThreadRef{"threads": threads}); err == nil {
+			sb.Write(thBytes)
+		}
+	}
+	if len(savedImages) > 0 {
+		if imgBytes, err := yaml.Marshal(map[string][]string{"images": savedImages}); err == nil {
+			sb.Write(imgBytes)
+		}
+	}
+
+	if len(res.Meta) > 0 {
+		reservedKeys := map[string]bool{
+			"id": true, "type": true, "title": true,
+			"created": true, "updated": true, "source": true,
+			"publish": true, "tags": true, "threads": true, "images": true,
+		}
+		inlineMeta := make(map[string]interface{})
+		for k, v := range res.Meta {
+			trimmedK := strings.TrimSpace(k)
+			if trimmedK == "" || v == nil || reservedKeys[trimmedK] {
+				continue
+			}
+			inlineMeta[trimmedK] = v
+		}
+		if len(inlineMeta) > 0 {
+			if metaBytes, err := yaml.Marshal(inlineMeta); err == nil {
+				sb.Write(metaBytes)
+				if !strings.HasSuffix(string(metaBytes), "\n") {
+					sb.WriteString("\n")
+				}
+			}
+		}
+	}
+
+	sb.WriteString("---\n\n")
+	if body != "" {
+		sb.WriteString(body)
+		sb.WriteString("\n")
+	}
+
+	if err := watcher.GetWatcher().WriteFile(targetPath, []byte(sb.String()), cardType); err != nil {
+		return "", err
+	}
+
+	bus.GetBus().Publish(bus.Event{
+		Type: bus.EventThoughtCaptured,
+		Data: bus.EventThoughtCapturedData{
+			DocID:      docID,
+			FilePath:   targetPath,
+			Title:      title,
+			Text:       body,
+			Type:       cardType,
+			CapturedAt: now,
+			Images:     savedImages,
+			Tags:       finalTags,
+			Threads:    threads,
+			Meta:       res.Meta,
+		},
+	})
+
+	return docID, nil
 }

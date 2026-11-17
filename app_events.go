@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"sync"
@@ -16,6 +18,7 @@ import (
 	"Finnegan/core/module"
 	"Finnegan/core/watcher"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/oklog/ulid/v2"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -64,34 +67,38 @@ func normalizeBabelCardData(raw interface{}) (coremodels.BabelCard, bool) {
 	}
 
 	var flex struct {
-		ID             string `json:"id"`
-		Origin         string `json:"origin"`
-		Title          string `json:"title"`
-		Content        string `json:"content"`
-		SourceURL      string `json:"source_url"`
-		SourceURLAlt   string `json:"sourceUrl"`
-		OriginalText   string `json:"original_text"`
-		OriginalAlt    string `json:"originalText"`
-		TranslatedText string `json:"translated_text"`
-		TranslatedAlt  string `json:"translatedText"`
-		PublishedAt    string `json:"published_at"`
-		PublishedAlt   string `json:"publishedAt"`
-		AuthorName     string `json:"author_name"`
-		AuthorNameAlt  string `json:"authorName"`
-		AuthorAvatar   string `json:"author_avatar"`
-		AuthorAvAlt    string `json:"authorAvatar"`
-		EchoOf         string `json:"echo_of"`
-		EchoOfAlt      string `json:"echoOf"`
-		MatchedAnchor  string `json:"matched_anchor"`
-		MatchedAlt     string `json:"matchedAnchor"`
-		EchoReason     string `json:"echo_reason"`
-		EchoReasonAlt  string `json:"echoReason"`
-		ReplyCount     int    `json:"reply_count"`
-		ReplyCountAlt  int    `json:"replyCount"`
-		RepostCount    int    `json:"repost_count"`
-		RepostCountAlt int    `json:"repostCount"`
-		LikeCount      int    `json:"like_count"`
-		LikeCountAlt   int    `json:"likeCount"`
+		ID             string                 `json:"id"`
+		Type           string                 `json:"type"`
+		Origin         string                 `json:"origin"`
+		Title          string                 `json:"title"`
+		Content        string                 `json:"content"`
+		Images         []string               `json:"images"`
+		Tags           []string               `json:"tags"`
+		Meta           map[string]interface{} `json:"meta"`
+		SourceURL      string                 `json:"source_url"`
+		SourceURLAlt   string                 `json:"sourceUrl"`
+		OriginalText   string                 `json:"original_text"`
+		OriginalAlt    string                 `json:"originalText"`
+		TranslatedText string                 `json:"translated_text"`
+		TranslatedAlt  string                 `json:"translatedText"`
+		PublishedAt    string                 `json:"published_at"`
+		PublishedAlt   string                 `json:"publishedAt"`
+		AuthorName     string                 `json:"author_name"`
+		AuthorNameAlt  string                 `json:"authorName"`
+		AuthorAvatar   string                 `json:"author_avatar"`
+		AuthorAvAlt    string                 `json:"authorAvatar"`
+		EchoOf         string                 `json:"echo_of"`
+		EchoOfAlt      string                 `json:"echoOf"`
+		MatchedAnchor  string                 `json:"matched_anchor"`
+		MatchedAlt     string                 `json:"matchedAnchor"`
+		EchoReason     string                 `json:"echo_reason"`
+		EchoReasonAlt  string                 `json:"echoReason"`
+		ReplyCount     int                    `json:"reply_count"`
+		ReplyCountAlt  int                    `json:"replyCount"`
+		RepostCount    int                    `json:"repost_count"`
+		RepostCountAlt int                    `json:"repostCount"`
+		LikeCount      int                    `json:"like_count"`
+		LikeCountAlt   int                    `json:"likeCount"`
 	}
 	if err := json.Unmarshal(rawBytes, &flex); err != nil {
 		return coremodels.BabelCard{}, false
@@ -129,9 +136,13 @@ func normalizeBabelCardData(raw interface{}) (coremodels.BabelCard, bool) {
 
 	return coremodels.BabelCard{
 		ID:             flex.ID,
+		Type:           flex.Type,
 		Origin:         origin,
 		Title:          title,
 		Content:        flex.Content,
+		Images:         flex.Images,
+		Tags:           flex.Tags,
+		Meta:           flex.Meta,
 		SourceURL:      pickStr(flex.SourceURL, flex.SourceURLAlt),
 		OriginalText:   pickStr(flex.OriginalText, flex.OriginalAlt),
 		TranslatedText: pickStr(flex.TranslatedText, flex.TranslatedAlt),
@@ -188,17 +199,23 @@ func (a *App) onThoughtCapturedEvent(msg bus.Message) {
 // onBabelCardSpawned handles external/distilled card spawning from Bugu, ATProto, or Babel streams.
 func (a *App) onBabelCardSpawned(event bus.Message) {
 	var cardID string
+	var cardType CardType = CardTypeBabel
 	var title, content, origText, transText, srcURL, echoOf string
 	var publishedAt, authorName, authorAvatar string
 	var matchedAnchor, echoReason string
 	var origin string = "bugu"
 	var replyCount, repostCount, likeCount int
+	var images, tags []string
+	var meta map[string]interface{}
 
 	if bc, ok := normalizeBabelCardData(event.Data); ok {
 		if bc.ID != "" {
 			cardID = bc.ID
 		} else {
 			cardID = fmt.Sprintf("babel_%s", ulid.Make().String())
+		}
+		if strings.TrimSpace(bc.Type) != "" {
+			cardType = CardType(strings.TrimSpace(bc.Type))
 		}
 		origin = bc.Origin
 		if origin == "" {
@@ -231,6 +248,9 @@ func (a *App) onBabelCardSpawned(event bus.Message) {
 		replyCount = bc.ReplyCount
 		repostCount = bc.RepostCount
 		likeCount = bc.LikeCount
+		images = bc.Images
+		tags = bc.Tags
+		meta = bc.Meta
 	}
 
 	// Filter out empty cards completely: if there is no substantive text, do not inject or emit
@@ -243,10 +263,13 @@ func (a *App) onBabelCardSpawned(event bus.Message) {
 			a.CardManager.InjectBabelCards([]Card{
 				{
 					ID:             cardID,
-					Type:           CardTypeBabel,
+					Type:           cardType,
 					Origin:         origin,
 					Title:          title,
 					Content:        content,
+					Images:         images,
+					Tags:           tags,
+					Meta:           meta,
 					SourceURL:      srcURL,
 					OriginalText:   origText,
 					TranslatedText: transText,
@@ -265,10 +288,13 @@ func (a *App) onBabelCardSpawned(event bus.Message) {
 		}
 		payload := map[string]interface{}{
 			"id":              cardID,
-			"type":            "babel",
+			"type":            string(cardType),
 			"origin":          origin,
 			"title":           title,
 			"content":         content,
+			"images":          images,
+			"tags":            tags,
+			"meta":            meta,
 			"sourceUrl":       srcURL,
 			"originalText":    origText,
 			"translatedText":  transText,
@@ -488,4 +514,108 @@ func (a *App) setupEventSubscriptions() {
 			a.onFileDeleted(event)
 		}
 	}()
+}
+
+// startPluginWatcher monitors <home>/.finnegan/plugins with a 400ms debounce and triggers ReloadExternalPlugins.
+func (a *App) startPluginWatcher(pluginsDir string) {
+	if strings.TrimSpace(pluginsDir) == "" {
+		return
+	}
+	a.stopPluginWatcher()
+
+	if err := os.MkdirAll(pluginsDir, 0755); err != nil {
+		log.Printf("[PluginWatcher] failed to create plugins dir %s: %v", pluginsDir, err)
+		return
+	}
+
+	w, err := fsnotify.NewWatcher()
+	if err != nil {
+		log.Printf("[PluginWatcher] failed to initialize fsnotify watcher: %v", err)
+		return
+	}
+	if err := w.Add(pluginsDir); err != nil {
+		_ = w.Close()
+		log.Printf("[PluginWatcher] failed to watch %s: %v", pluginsDir, err)
+		return
+	}
+
+	// Watch immediate non-hidden plugin subdirectories so edits to plugin.yml / ui.js also trigger hot-reload
+	if entries, err := os.ReadDir(pluginsDir); err == nil {
+		for _, e := range entries {
+			if e.IsDir() && !strings.HasPrefix(e.Name(), ".") {
+				_ = w.Add(filepath.Join(pluginsDir, e.Name()))
+			}
+		}
+	}
+
+	stopCh := make(chan struct{})
+	a.pluginWatcherMu.Lock()
+	a.pluginWatcherStop = stopCh
+	a.pluginWatcherMu.Unlock()
+
+	go func() {
+		defer w.Close()
+		const debounceDelay = 400 * time.Millisecond
+		var timer *time.Timer
+		var timerCh <-chan time.Time
+
+		for {
+			select {
+			case <-stopCh:
+				if timer != nil {
+					timer.Stop()
+				}
+				return
+			case event, ok := <-w.Events:
+				if !ok {
+					return
+				}
+				if event.Has(fsnotify.Create) || event.Has(fsnotify.Write) || event.Has(fsnotify.Remove) || event.Has(fsnotify.Rename) {
+					if event.Has(fsnotify.Create) {
+						if fi, err := os.Stat(event.Name); err == nil && fi.IsDir() {
+							base := filepath.Base(event.Name)
+							if !strings.HasPrefix(base, ".") && filepath.Dir(event.Name) == pluginsDir {
+								_ = w.Add(event.Name)
+							}
+						}
+					}
+					if timer == nil {
+						timer = time.NewTimer(debounceDelay)
+						timerCh = timer.C
+					} else {
+						if !timer.Stop() {
+							select {
+							case <-timer.C:
+							default:
+							}
+						}
+						timer.Reset(debounceDelay)
+					}
+				}
+			case err, ok := <-w.Errors:
+				if !ok {
+					return
+				}
+				log.Printf("[PluginWatcher] error: %v", err)
+			case <-timerCh:
+				timer = nil
+				timerCh = nil
+				if _, err := a.ReloadExternalPlugins(); err != nil {
+					log.Printf("[PluginWatcher] ReloadExternalPlugins failed: %v", err)
+				}
+			}
+		}
+	}()
+}
+
+// stopPluginWatcher stops the external plugins directory watcher cleanly.
+func (a *App) stopPluginWatcher() {
+	a.pluginWatcherMu.Lock()
+	stopCh := a.pluginWatcherStop
+	a.pluginWatcherStop = nil
+	a.pluginWatcherMu.Unlock()
+
+	if stopCh != nil {
+		close(stopCh)
+	}
 }

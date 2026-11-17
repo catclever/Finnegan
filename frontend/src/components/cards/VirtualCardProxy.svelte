@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { CosmicCard } from '../../types/card';
-  import { getCardComponent } from './cardRegistry';
+  import { cardRegistryVersion, getCardComponent } from './cardRegistry';
+  import ThoughtCardBody from './ThoughtCardBody.svelte';
   import { getCardDisplayTime, stageTime } from '../../lib/time';
   import { createEventDispatcher } from 'svelte';
 
@@ -87,7 +88,7 @@
           </div>
         {/if}
         <svelte:component
-          this={getCardComponent(card.type)}
+          this={($cardRegistryVersion >= 0) ? getCardComponent(card.type) : ThoughtCardBody}
           {card}
           isFocused={true}
           isHovered={false}

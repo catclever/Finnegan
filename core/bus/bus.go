@@ -43,12 +43,15 @@ type EventThoughtCapturedData struct {
 	Images       []string            `json:"Images,omitempty"`
 	Title        string              `json:"Title,omitempty"`
 	Type         string              `json:"Type,omitempty"`
+	BookTitle    string              `json:"BookTitle,omitempty"`
+	BookAuthor   string              `json:"BookAuthor,omitempty"`
 	Participants []string            `json:"Participants,omitempty"`
 	StartedAt    *time.Time          `json:"StartedAt,omitempty"`
 	EndedAt      *time.Time          `json:"EndedAt,omitempty"`
-	Tags         []string            `json:"Tags,omitempty"`
-	Keywords     map[string][]string `json:"Keywords,omitempty"`
-	Threads      any                 `json:"Threads,omitempty"`
+	Tags         []string               `json:"Tags,omitempty"`
+	Keywords     map[string][]string    `json:"Keywords,omitempty"`
+	Threads      any                    `json:"Threads,omitempty"`
+	Meta         map[string]interface{} `json:"Meta,omitempty"`
 }
 
 type Event struct {

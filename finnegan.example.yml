@@ -1,0 +1,155 @@
+# ==============================================================================
+# Finnegan 全局配置示例文件 (finnegan.example.yml)
+# ==============================================================================
+# 默认加载路径 (macOS):
+#   ~/Library/Application Support/Finnegan/finnegan.yml
+#
+# 使用方式:
+#   方式 A (直接配置): 将本文件复制为上述路径的 finnegan.yml 并按需填入配置。
+#   方式 B (指针覆盖): 在上述路径的 finnegan.yml 中仅写一行:
+#                      override_config: "~/Documents/Finnegan/.finnegan/config.yml"
+#                      然后将本完整配置放在 override_config 指向的路径中维护。
+# ==============================================================================
+
+# [可选] 外部配置文件覆盖指针（若使用方式 B 可取消注释）
+# override_config: "~/Documents/Finnegan/.finnegan/config.yml"
+
+# 核心数据主目录（自动维护 Scattering/ 散落卡片、Weaving/ 编织长文、assets/ 图片资源）
+data_dir: "~/Documents/Finnegan"
+
+# 文件监听器防抖间隔（毫秒）
+debounce_ms: 300
+
+# [可选] 外部联动项目目录列表（目录内需包含 .finnegan-project 标记文件）
+external_projects: []
+  # - "~/Projects/MyNotes"
+
+
+# ==============================================================================
+# 1. 全局大模型配置池 (LLMs)
+# ==============================================================================
+# 支持配置多个命名模型实例（如 default, router, distiller），供核心层与各模块按需引用。
+# 若 api_key 留空，default 实例会自动回退读取环境变量 GEMINI_API_KEY。
+llms:
+  default:
+    provider: "gemini"                  # 支持 "gemini" 或 "openai" (兼容 OpenAI 接口协议)
+    api_key: ""                         # 填入 Gemini API Key 或 OpenAI API Key
+    base_url: ""                        # 可选：自定义代理或兼容端点 URL
+    default_model: "gemini-3.8-flash"   # 默认模型名称
+
+  # [可选] 独立路由或提纯模型实例示例：
+  # fast_router:
+  #   provider: "gemini"
+  #   api_key: ""
+  #   default_model: "gemini-3.8-flash"
+
+
+# ==============================================================================
+# 2. 全局 Jina Reader 网页正文提取配置 (Jina)
+# ==============================================================================
+# 供网页卡片捕获 (WebCapture)、四维锚点链接解析与 Bugu 深网打捞共享使用。
+# 若 api_key 留空，将自动回退读取环境变量 JINA_API_KEY 或使用免费匿名配额。
+jina:
+  api_key: ""
+  base_url: "https://r.jina.ai/"
+
+
+# ==============================================================================
+# 3. 四维认知锚点提取引擎 (Keywords Engine)
+# ==============================================================================
+# 负责从卡片正文中提炼四大认知维度：
+#   - object  (名物与通用指涉)
+#   - motif   (处境与母题)
+#   - mood    (心境与心绪)
+#   - concept (观念与议题)
+keywords:
+  enabled_dimensions:
+    - object
+    - motif
+    - mood
+    - concept
+  # [可选] 模块级 Jina 覆盖配置（留空则自动继承上方全局 jina 配置）
+  jina_api_key: ""
+  jina_base_url: "https://r.jina.ai/"
+
+
+# ==============================================================================
+# 4. 地理位置与逐小时气象中心 (Module: geo)
+# ==============================================================================
+# 提供经纬度定位（含国内 WGS-84 <-> GCJ-02 自动纠偏）、周边地标 (POI) 发现、
+# 本地位置记忆库（~/.finnegan/places.yml，支持近距自动推荐与同坐标多名称共存）、
+# 以及精确到小时的实况/历史天气查询（基于 Open-Meteo，严格拦截未来时间）。
+geo:
+  # 模块总开关：设为 false 时全局禁用定位与气象查询
+  enabled: true
+
+  # 【核心权限】统一声明允许访问地理位置与天气信息的模块白名单
+  # 仅在此列表中的模块才会触发自动定位、展示时空栏与注入地理/气象元数据
+  allowed_modules:
+    - diary
+    # - curio   # 如需允许奇物标本等其他模块使用地理信息，在此追加模块名即可
+
+  # 邻近已知位置自动推荐半径（单位：米，默认 100.0）
+  # 当处于已保存位置 <= 100 米范围内时，自动推荐已有位置命名（支持极近距离多个不同命名并列选择）
+  recommend_radius_m: 100.0
+
+  # 周边地图地标 (POI) 发现引擎：
+  #   - "auto"   (推荐)：国内且配置了 amap_api_key 时优先用高德；配置了 google_api_key 时用 Google；否则用免 Key 的 osm
+  #   - "amap"   ：强制使用高德地图逆地理编码 POI 接口（国内街道、商铺、咖啡馆颗粒度最细）
+  #   - "google" ：强制使用 Google Maps Places Nearby Search API
+  #   - "osm"    ：强制使用免 Key 的 OpenStreetMap Nominatim 逆地理编码
+  provider: "auto"
+
+  # [可选] 高德开放平台 Web 服务 API Key（个人开发者免费配额充足，国内推荐）
+  amap_api_key: ""
+
+  # [可选] Google Maps Platform API Key（需启用 Places API，享每月 $200 免费额度）
+  google_api_key: ""
+
+  # [可选] 自定义位置库存储目录（留空则默认保存在 ~/.finnegan/places.yml）
+  data_dir: ""
+
+
+# ==============================================================================
+# 5. 羊皮卷日记模块 (Module: diary)
+# ==============================================================================
+# 注册 :diary 卡片类型与 /diary 时间检索引擎（支持按精确到小时或时间范围搜索日记）。
+# 散落态以单张微缩羊皮卷展示；聚焦态自动将同一天的所有日记按时间正序合卷展示，并在左上角提供日期选择器。
+diary: {}
+
+
+# ==============================================================================
+# 6. 不孤 · 全球深网意识流雷达 (Module: bugu)
+# ==============================================================================
+# 基于 SearxNG 与认知锚点的跨语言深网回声探测器（触发命令：/bugu）。
+bugu:
+  searxng_url: "http://127.0.0.1:8080"  # SearxNG 实例地址
+  max_concurrency: 5                    # 并发抓取工作协程数
+  target_language: "zh-CN"              # 外语内容自动翻译目标语言
+  llm_id: "default"                     # 引用上方 llms 池中的实例名
+  router_llm_id: "default"              # 搜索路由规划使用的 LLM 实例名
+  distiller_llm_id: "default"           # 网页内容提纯使用的 LLM 实例名
+  default_model: "gemini-3.8-flash"     # 默认模型
+  router_model: "gemini-3.8-flash"      # 路由模型覆盖
+  distiller_model: "gemini-3.8-flash"   # 提纯模型覆盖
+  jina_api_key: ""                      # 可选：模块独立 Jina Key（留空继承全局 jina）
+
+
+# ==============================================================================
+# 7. AT Protocol / Bluesky 联邦宇宙桥接器 (Module: atproto)
+# ==============================================================================
+# 支持从 Bluesky 捕获共鸣回声（/bsky）以及将本地卡片推流发布至联邦网络（/bsky-push）。
+atproto:
+  pds_url: "https://bsky.social"        # PDS 节点地址
+  handle: ""                            # 例如: "yourname.bsky.social"
+  did: ""                               # 可选：DID 标识（留空可通过 handle 解析）
+  app_password: ""                      # Bluesky 应用专用密码 (App Password)
+  inbox_dir: ""                         # 可选：自定义外部捕获流入目录
+  notes_dir: ""                         # 可选：自定义笔记同步目录
+
+
+# ==============================================================================
+# 8. 奇物标本馆模块 (Module: curio)
+# ==============================================================================
+# 注册 :curio 卡片类型，支持结合多模态视觉提取商品/藏品标本元数据。
+curio: {}

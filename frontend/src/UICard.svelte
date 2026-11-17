@@ -8,7 +8,8 @@
   import { createEventDispatcher } from 'svelte';
   import { spring } from 'svelte/motion';
   import { getCardDisplayTime, stageTime } from './lib/time';
-  import { getCardComponent } from './components/cards/cardRegistry';
+  import { cardRegistryVersion, getCardComponent, getCardTypeDefinition } from './components/cards/cardRegistry';
+  import ThoughtCardBody from './components/cards/ThoughtCardBody.svelte';
   import CardAuraGlow from './components/cards/CardAuraGlow.svelte';
   import CardCollectControl from './components/cards/CardCollectControl.svelte';
   import { OpenCardInEditor } from '../wailsjs/go/main/App.js';
@@ -312,6 +313,22 @@
   $: babelTime = displayTime;
   $: thoughtTime = displayTime;
 
+  function formatShellStyle(shellStyle?: Record<string, string>): string {
+    if (!shellStyle || typeof shellStyle !== 'object') return '';
+    return Object.entries(shellStyle)
+      .filter(([k, v]) => Boolean(k) && v !== undefined && v !== null && String(v).trim() !== '')
+      .map(([k, v]) => {
+        const cssKey = k.startsWith('--') ? k : k.replace(/[A-Z]/g, m => '-' + m.toLowerCase());
+        const safeVal = String(v).replace(/[;{}]/g, '').trim();
+        return `${cssKey}: ${safeVal};`;
+      })
+      .join(' ');
+  }
+
+  $: resolvedCardComponent = ($cardRegistryVersion >= 0) ? getCardComponent(card.type) : ThoughtCardBody;
+  $: activeCardTypeDef = ($cardRegistryVersion >= 0) ? getCardTypeDefinition(card.type) : null;
+  $: shellStyleString = formatShellStyle(activeCardTypeDef?.shellStyle);
+
   let focusedAt = 0;
   $: if (isFocused) {
     if (focusedAt === 0) focusedAt = Date.now();
@@ -380,6 +397,7 @@
   class:aura-stage-3={auraStage === 3}
   class:theme-peek={themePeekRole !== null}
   class:diary-parchment={card.type === 'diary'}
+  class:book-exlibris={card.type === 'book'}
   title={isTemporary ? '需先收集卡片才能编辑' : (isFocused ? '双击进行编辑' : '⌥ + 单击在外部编辑')}
   on:click={handleClick}
   on:dblclick={handleDoubleClick}
@@ -396,6 +414,7 @@
     opacity: {$animSpring.opacity};
     filter: blur({$animSpring.blur}px) saturate({$animSpring.saturation});
     z-index: {isFocused ? 1000 : (themePeekRole ? 850 : (isHovered && !hasAnyFocused ? 999 : (hasAura ? 300 : Math.round(50 - (card.z || 0) * 0.3))))};
+    {shellStyleString}
     {dynamicBoxShadow ? `box-shadow: ${dynamicBoxShadow};` : ''}
     {hasAura ? `border: 1.5px solid ${toHsla(latestColor, auraStage === 1 ? 0.95 : (auraStage === 2 ? 0.8 : 0.65))} !important;` : ''}
     --card-text-color: rgba({Math.round($animSpring.textGray || 38)}, {Math.round($animSpring.textGray || 38)}, {Math.round($animSpring.textGray || 38)}, {($animSpring.textOpacity ?? 0.95).toFixed(2)});
@@ -419,7 +438,7 @@
   {/if}
 
   <svelte:component
-    this={getCardComponent(card.type)}
+    this={resolvedCardComponent}
     {card}
     {allCards}
     z={card.z}
@@ -627,5 +646,17 @@
     box-shadow: 0 40px 100px rgba(62, 39, 35, 0.3), inset 0 2px 8px rgba(255, 255, 255, 0.6) !important;
     border-top: 8px solid #8b5a2b !important;
     border-bottom: 8px solid #8b5a2b !important;
+  }
+
+  .card.book-exlibris {
+    background: linear-gradient(175deg, #faf7f0 0%, #f3ede0 100%) !important;
+    border: 1px solid rgba(154, 118, 78, 0.35) !important;
+    padding: 8px !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 8px 24px rgba(62, 39, 35, 0.1) !important;
+  }
+
+  .card.book-exlibris.focused {
+    padding: 14px !important;
+    box-shadow: 0 40px 100px rgba(62, 39, 35, 0.25), 0 0 0 1px rgba(154, 118, 78, 0.35) !important;
   }
 </style>

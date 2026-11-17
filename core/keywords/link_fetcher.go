@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 	"unicode"
+
+	"Finnegan/core/config"
 )
 
 var (
@@ -71,17 +73,45 @@ type DefaultLinkFetcher struct {
 }
 
 // NewDefaultLinkFetcher creates a new DefaultLinkFetcher instance.
-func NewDefaultLinkFetcher(apiKey string) *DefaultLinkFetcher {
+// If apiKey or baseURL is empty, it inherits from global JinaConfig or environment variables.
+func NewDefaultLinkFetcher(apiKey string, baseURL ...string) *DefaultLinkFetcher {
+	bURL := ""
+	if len(baseURL) > 0 {
+		bURL = strings.TrimSpace(baseURL[0])
+	}
+	apiKey = strings.TrimSpace(apiKey)
+
+	if apiKey == "" || bURL == "" {
+		cfg, _, err := config.LoadConfig()
+		if err == nil && cfg != nil {
+			if apiKey == "" && cfg.Jina.APIKey != "" {
+				apiKey = cfg.Jina.APIKey
+			}
+			if bURL == "" && cfg.Jina.BaseURL != "" {
+				bURL = cfg.Jina.BaseURL
+			}
+		}
+	}
+
 	if apiKey == "" {
 		apiKey = os.Getenv("JINA_API_KEY")
 	}
+	if bURL == "" {
+		bURL = "https://r.jina.ai/"
+	}
+
 	return &DefaultLinkFetcher{
 		JinaAPIKey: apiKey,
-		BaseURL:    "https://r.jina.ai/",
+		BaseURL:    bURL,
 		Client: &http.Client{
 			Timeout: 4 * time.Second,
 		},
 	}
+}
+
+// NewDefaultLinkFetcherWithConfig creates a DefaultLinkFetcher directly from global JinaConfig.
+func NewDefaultLinkFetcherWithConfig(jinaCfg config.JinaConfig) *DefaultLinkFetcher {
+	return NewDefaultLinkFetcher(jinaCfg.APIKey, jinaCfg.BaseURL)
 }
 
 // Fetch fetches lightweight content for targetURL, capping timeout strictly at 3 seconds per attempt.

@@ -35,17 +35,22 @@ export interface CardResurgenceState {
   searchId: string;
 }
 
-export type CardType = 'thought' | 'babel' | 'chat_log' | 'local' | 'note' | 'curio' | 'diary' | string;
+export type CardType = 'thought' | 'babel' | 'chat_log' | 'local' | 'note' | 'curio' | 'diary' | 'book' | string;
 
 export interface CardTypeDefinition {
   type: string;
-  name: string;
+  name?: string;
   description?: string;
   isDefault?: boolean;
   defaultTitle?: string;
   icon?: string;
   prefix?: string;
+  submitLabel?: string;
+  badgeColor?: string;
   selectable?: boolean;
+  customElementTag?: string;
+  shellStyle?: Record<string, string>;
+  moduleName?: string;
 }
 
 export interface DialogueTurn {
@@ -112,6 +117,11 @@ export interface CosmicCard {
 
   location?: DiaryLocation;
   weather?: DiaryWeather;
+
+  bookTitle?: string;
+  bookAuthor?: string;
+
+  meta?: Record<string, any>;
 }
 
 export interface ThreadRef {
@@ -174,6 +184,16 @@ export interface PromotionStrategySpec {
 
 export interface CardTypeSpec {
   type: string;
+  name?: string;
+  description?: string;
+  icon?: string;
+  prefix?: string;
+  submitLabel?: string;
+  badgeColor?: string;
+  selectable?: boolean;
+  customElementTag?: string;
+  shellStyle?: Record<string, string>;
+  moduleName?: string;
   uiEntry?: string;
 }
 

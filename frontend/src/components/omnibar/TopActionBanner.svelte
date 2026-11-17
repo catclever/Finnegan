@@ -7,6 +7,7 @@
 -->
 <script lang="ts">
   import type { CosmicCard, SearchSession } from '../../types/card';
+  import type { CardTypeOption } from '../../lib/cardType';
 
   export let showTopBanner: boolean = false;
   export let commandParamMode: boolean = false;
@@ -14,11 +15,13 @@
   export let commandSelectMode: boolean = false;
   export let searchSession: SearchSession;
   export let isNoteFormat: boolean = false;
-  export let isCurioFormat: boolean = false;
+  export let isBookFormat: boolean = false;
+  export let activePluginCardOption: CardTypeOption | null = null;
   export let isTypeSelectMode: boolean = false;
   export let explicitNoteTitle: string = '';
   export let isDialogueFormat: boolean = false;
   export let explicitUserTitle: string = '';
+  export let isSingleURL: boolean = false;
 
   export let onExecuteCommand: () => void = () => {};
   export let onUnlockCard: () => void = () => {};
@@ -91,13 +94,25 @@
       <span class="banner-sep">·</span>
       <span class="banner-key">Esc</span>
       <span class="banner-action">取消</span>
-    {:else if isCurioFormat}
-      <span class="banner-badge curio-badge">🏺 奇物标本</span>
+    {:else if activePluginCardOption}
+      <span
+        class="banner-badge plugin-badge"
+        style={activePluginCardOption.badgeColor ? `--plugin-badge-color: ${activePluginCardOption.badgeColor};` : ''}
+      >
+        {activePluginCardOption.icon || '🧩'} {activePluginCardOption.label}
+      </span>
       <span class="banner-key">↵</span>
       <span class="banner-action">换行</span>
       <span class="banner-sep">·</span>
       <span class="banner-key">Cmd+↵</span>
-      <span class="banner-action">标本入库</span>
+      <span class="banner-action">{activePluginCardOption.submitLabel || '入库'}</span>
+    {:else if isBookFormat}
+      <span class="banner-badge book-badge">📖 读书笔记</span>
+      <span class="banner-key">↵</span>
+      <span class="banner-action">换行</span>
+      <span class="banner-sep">·</span>
+      <span class="banner-key">Cmd+↵</span>
+      <span class="banner-action">收录书摘</span>
     {:else if isNoteFormat}
       <span class="banner-badge note-badge">📝 {explicitNoteTitle ? `备忘「${explicitNoteTitle}」` : '备忘'}</span>
       <span class="banner-key">↵</span>
@@ -114,6 +129,15 @@
       <span class="banner-sep">·</span>
       <span class="banner-key">/</span>
       <span class="banner-action">命令</span>
+    {:else if isSingleURL}
+      <span class="banner-badge note-badge">🌐 网页链接</span>
+      <span class="banner-key">⌘↵</span>
+      <span class="banner-action">解析为卡片</span>
+      <span class="banner-sep">·</span>
+      <span class="banner-key">↵</span>
+      <span class="banner-action">换行续写</span>
+      <span class="banner-sep">·</span>
+      <span class="banner-action">点右侧羽毛笔直接存为灵感</span>
     {:else}
       <span class="banner-key">↵</span>
       <span class="banner-action">换行</span>
@@ -177,9 +201,15 @@
     color: #0284c7;
   }
 
-  .banner-badge.curio-badge {
+  .banner-badge.plugin-badge {
     background: rgba(217, 119, 6, 0.12);
-    color: #d97706;
+    background: color-mix(in srgb, var(--plugin-badge-color, #d97706) 14%, transparent);
+    color: var(--plugin-badge-color, #d97706);
+  }
+
+  .banner-badge.book-badge {
+    background: rgba(154, 107, 59, 0.14);
+    color: #8c5222;
   }
 
   .banner-badge.note-badge {

@@ -11,14 +11,63 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type JinaConfig struct {
+	APIKey  string `yaml:"api_key" json:"api_key"`
+	BaseURL string `yaml:"base_url" json:"base_url"`
+}
+
+func (j *JinaConfig) UnmarshalYAML(value *yaml.Node) error {
+	type rawJina JinaConfig
+	var raw rawJina
+	if err := value.Decode(&raw); err != nil {
+		return err
+	}
+	j.APIKey = raw.APIKey
+	j.BaseURL = raw.BaseURL
+	if j.BaseURL == "" {
+		j.BaseURL = "https://r.jina.ai/"
+	}
+	return nil
+}
+
 type Config struct {
 	OverrideConfig   string                          `yaml:"override_config"`
 	DataDir          string                          `yaml:"data_dir"`
 	ExternalProjects []string                        `yaml:"external_projects"`
 	DebounceMs       int                             `yaml:"debounce_ms"`
+	DefaultLLMID     string                          `yaml:"default_llm_id" json:"default_llm_id"`
+	DefaultLLMAlias  string                          `yaml:"default_llm" json:"default_llm,omitempty"`
 	LLMs             map[string]module.LLMConfig     `yaml:"llms"`
 	SingleLLM        *module.LLMConfig               `yaml:"llm"`
+	Jina             JinaConfig                      `yaml:"jina" json:"jina"`
 	RawModules       map[string]yaml.Node            `yaml:",inline"`
+}
+
+// GetDefaultLLMID returns the explicitly configured default LLM key (from default_llm_id or default_llm).
+func (c *Config) GetDefaultLLMID() string {
+	if c == nil {
+		return ""
+	}
+	if c.DefaultLLMID != "" {
+		return c.DefaultLLMID
+	}
+	return c.DefaultLLMAlias
+}
+
+// GetDefaultLLM retrieves the explicitly configured global default LLM, or the "default" entry.
+func (c *Config) GetDefaultLLM() (module.LLMConfig, bool) {
+	if c == nil || c.LLMs == nil {
+		return module.LLMConfig{}, false
+	}
+	if defID := c.GetDefaultLLMID(); defID != "" {
+		if llm, ok := c.LLMs[defID]; ok {
+			return llm, true
+		}
+	}
+	if def, ok := c.LLMs["default"]; ok {
+		return def, true
+	}
+	return module.LLMConfig{}, false
 }
 
 func GetPointerConfigPath() string {
@@ -66,6 +115,9 @@ func LoadConfig() (*Config, string, error) {
 					DefaultModel: "gemini-3.8-flash",
 				},
 			},
+			Jina: JinaConfig{
+				BaseURL: "https://r.jina.ai/",
+			},
 		}
 		data, _ = yaml.Marshal(cfg)
 		_ = os.WriteFile(appSupportPath, data, 0644)
@@ -96,6 +148,11 @@ func LoadConfig() (*Config, string, error) {
 	if cfg.LLMs == nil {
 		cfg.LLMs = make(map[string]module.LLMConfig)
 	}
+	if defID := cfg.GetDefaultLLMID(); defID != "" {
+		if targetLLM, exists := cfg.LLMs[defID]; exists {
+			cfg.LLMs["default"] = targetLLM
+		}
+	}
 	if cfg.SingleLLM != nil {
 		def, exists := cfg.LLMs["default"]
 		if !exists || def.APIKey == "" {
@@ -107,6 +164,16 @@ func LoadConfig() (*Config, string, error) {
 		if envKey := os.Getenv("GEMINI_API_KEY"); envKey != "" {
 			def.APIKey = envKey
 			cfg.LLMs["default"] = def
+		}
+	}
+
+	// Jina configuration defaults & fallback
+	if cfg.Jina.BaseURL == "" {
+		cfg.Jina.BaseURL = "https://r.jina.ai/"
+	}
+	if cfg.Jina.APIKey == "" {
+		if envKey := os.Getenv("JINA_API_KEY"); envKey != "" {
+			cfg.Jina.APIKey = envKey
 		}
 	}
 

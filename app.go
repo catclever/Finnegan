@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
+	"strings"
+	"sync"
 	"time"
 
 	"Finnegan/core/bus"
@@ -14,10 +17,8 @@ import (
 	"Finnegan/core/watcher"
 	_ "Finnegan/modules/atproto"
 	_ "Finnegan/modules/bugu"
-	_ "Finnegan/modules/curio"
 	_ "Finnegan/modules/diary"
 	_ "Finnegan/modules/geo"
-	"path/filepath"
 )
 
 type ImagePayload struct {
@@ -36,10 +37,13 @@ type ChatLogCaptureResult struct {
 }
 
 type App struct {
-	ctx           context.Context
-	CardManager   *CardManager
-	KeywordEngine *keywords.KeywordEngine
-	Home          string
+	ctx               context.Context
+	CardManager       *CardManager
+	KeywordEngine     *keywords.KeywordEngine
+	Home              string
+	reloadMu          sync.Mutex
+	pluginWatcherMu   sync.Mutex
+	pluginWatcherStop chan struct{}
 }
 
 func NewApp() *App {
@@ -47,12 +51,14 @@ func NewApp() *App {
 	cfg, home, err := config.LoadConfig()
 	if err == nil {
 		a.Home = home
-		llmCfg := a.getLLMConfig()
 		kwCfg := keywords.DefaultConfig()
 		if cfg != nil {
 			if node, exists := cfg.RawModules["keywords"]; exists {
 				_ = node.Decode(&kwCfg)
 			}
+		}
+		llmCfg := a.getLLMConfig(kwCfg.LLMID)
+		if cfg != nil {
 			a.KeywordEngine = keywords.NewKeywordEngine(llmCfg, kwCfg, cfg.Jina)
 		} else {
 			a.KeywordEngine = keywords.NewKeywordEngine(llmCfg, kwCfg)
@@ -90,6 +96,7 @@ func (a *App) startup(ctx context.Context) {
 			}
 		}
 		mCtx := &module.Context{
+			HomeDir: home,
 			LLMs:    cfg.LLMs,
 			Storage: nil,
 			Watcher: nil,
@@ -114,13 +121,13 @@ func (a *App) startup(ctx context.Context) {
 	}
 
 	// Initialize / refresh KeywordEngine
-	llmCfg := a.getLLMConfig()
 	kwCfg := keywords.DefaultConfig()
 	if cfg != nil {
 		if node, exists := cfg.RawModules["keywords"]; exists {
 			_ = node.Decode(&kwCfg)
 		}
 	}
+	llmCfg := a.getLLMConfig(kwCfg.LLMID)
 	if a.KeywordEngine == nil {
 		if cfg != nil {
 			a.KeywordEngine = keywords.NewKeywordEngine(llmCfg, kwCfg, cfg.Jina)
@@ -136,6 +143,9 @@ func (a *App) startup(ctx context.Context) {
 	}
 
 	a.setupEventSubscriptions()
+	if home != "" {
+		a.startPluginWatcher(filepath.Join(home, ".finnegan", "plugins"))
+	}
 }
 
 func (a *App) GetKeywordEngine() *keywords.KeywordEngine {
@@ -149,6 +159,7 @@ func (a *App) ExtractCardKeywords(filePath string, docID string, text string) {
 }
 
 func (a *App) shutdown(ctx context.Context) {
+	a.stopPluginWatcher()
 	if a.CardManager != nil {
 		a.CardManager.Close()
 	}
@@ -160,9 +171,55 @@ func (a *App) Greet(name string) string {
 	return fmt.Sprintf("Hello %s, It's show time!", name)
 }
 
-func (a *App) getLLMConfig() module.LLMConfig {
+func (a *App) getLLMConfig(preferredID ...string) module.LLMConfig {
 	cfg, _, err := config.LoadConfig()
 	if err == nil && cfg != nil {
+		// 1. Explicit preferred ID
+		if len(preferredID) > 0 && preferredID[0] != "" {
+			if llm, ok := cfg.LLMs[preferredID[0]]; ok && llm.APIKey != "" {
+				return llm
+			}
+		}
+
+		// 2. Explicit keywords module config if present in raw config
+		if node, exists := cfg.RawModules["keywords"]; exists {
+			var kCfg struct {
+				LLMID string `yaml:"llm_id"`
+			}
+			if err := node.Decode(&kCfg); err == nil && kCfg.LLMID != "" {
+				if llm, ok := cfg.LLMs[kCfg.LLMID]; ok && llm.APIKey != "" {
+					return llm
+				}
+			}
+		}
+
+		// 3. Global explicit default model (e.g. default_llm / default_llm_id)
+		if defID := cfg.GetDefaultLLMID(); defID != "" {
+			if llm, ok := cfg.LLMs[defID]; ok && llm.APIKey != "" {
+				return llm
+			}
+		}
+
+		// 4. "default" LLM if present and configured
+		if def, ok := cfg.LLMs["default"]; ok && def.APIKey != "" {
+			return def
+		}
+
+		// 4. Smart fallback: find any Gemini provider with a valid API key
+		for _, llm := range cfg.LLMs {
+			if strings.EqualFold(llm.Provider, "gemini") && llm.APIKey != "" {
+				return llm
+			}
+		}
+
+		// 5. Smart fallback: find ANY configured LLM with a valid API key
+		for _, llm := range cfg.LLMs {
+			if llm.APIKey != "" {
+				return llm
+			}
+		}
+
+		// 6. If default entry exists (even with empty API key, might be patched later)
 		if def, ok := cfg.LLMs["default"]; ok {
 			return def
 		}

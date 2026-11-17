@@ -22,6 +22,10 @@ export interface CardTypeOption {
   description: string;
   icon: string;
   isCore?: boolean;
+  submitLabel?: string;
+  badgeColor?: string;
+  isExternal?: boolean;
+  moduleName?: string;
 }
 
 export interface CardTypeTrigger {
@@ -73,14 +77,36 @@ export function detectCardTypeTrigger(text: string): CardTypeTrigger {
  * Converts a CardTypeDefinition into a UI CardTypeOption for dropdown display.
  */
 export function definitionToCardTypeOption(def: CardTypeDefinition): CardTypeOption {
+  const rawPrefix = def.prefix || `:${def.type}`;
   return {
     type: def.type,
-    prefix: def.prefix || `:${def.type}`,
+    prefix: rawPrefix.startsWith(':') ? rawPrefix : `:${rawPrefix}`,
     label: def.name || def.type,
     description: def.description || '',
     icon: def.icon || '📄',
     isCore: isCoreCardType(def.type),
+    submitLabel: def.submitLabel,
+    badgeColor: def.badgeColor,
+    moduleName: def.moduleName,
   };
+}
+
+const BUILTIN_MODULE_CARD_DEFAULTS: Record<string, CardTypeOption> = {
+  diary: {
+    type: 'diary',
+    prefix: ':diary',
+    label: '羊皮卷日记',
+    description: '流年手账：时辰天象与地理印记',
+    icon: '📜',
+    isCore: false,
+    submitLabel: '封存手账',
+    moduleName: 'diary',
+  },
+};
+
+function normalizePrefix(prefix: string | undefined, type: string): string {
+  const raw = (prefix || '').trim() || `:${type}`;
+  return raw.startsWith(':') ? raw : `:${raw}`;
 }
 
 /**
@@ -102,40 +128,61 @@ export function getAvailableCardTypeOptions(
   const options: CardTypeOption[] = Object.values(BUILTIN_CARD_DEFINITIONS)
     .filter(def => def.selectable === true)
     .map(definitionToCardTypeOption);
+  const seenTypes = new Set<string>(options.map(o => o.type));
 
-  // Modular extension: curio
-  const hasCurio = Array.isArray(activeManifests)
-    ? activeManifests.some(
-        m => m?.name === 'curio' || (m?.cardTypes && m.cardTypes.some(ct => ct?.type === 'curio'))
-      )
-    : true; // Default fallback before manifests load
-
-  if (hasCurio) {
-    options.push({
-      type: 'curio',
-      prefix: ':curio',
-      label: '奇物标本',
-      description: '商品网页快照与恋物藏品 (Curio 模块驱动)',
-      icon: '🏺',
-      isCore: false,
-    });
+  // Default fallback before manifests load
+  if (!Array.isArray(activeManifests)) {
+    for (const key of ['diary']) {
+      if (!seenTypes.has(key)) {
+        seenTypes.add(key);
+        options.push({ ...BUILTIN_MODULE_CARD_DEFAULTS[key] });
+      }
+    }
+    return options;
   }
 
-  const hasDiary = Array.isArray(activeManifests)
-    ? activeManifests.some(
-        m => m?.name === 'diary' || (m?.cardTypes && m.cardTypes.some(ct => ct?.type === 'diary'))
-      )
-    : true; // Default fallback before manifests load
+  // Dynamically discover selectable card types from all active module manifests
+  for (const m of activeManifests) {
+    if (!m) continue;
+    const specs = Array.isArray(m.cardTypes) ? m.cardTypes : [];
 
-  if (hasDiary) {
-    options.push({
-      type: 'diary',
-      label: '羊皮卷日记',
-      icon: '📜',
-      description: '流年手账：时辰天象与地理印记',
-      prefix: ':diary',
-      isCore: false,
-    });
+    for (const spec of specs) {
+      if (!spec?.type || typeof spec.type !== 'string') continue;
+      const cleanType = spec.type.trim();
+      if (!cleanType || seenTypes.has(cleanType)) continue;
+
+      const builtinPreset = BUILTIN_MODULE_CARD_DEFAULTS[cleanType] || (m.name ? BUILTIN_MODULE_CARD_DEFAULTS[m.name] : undefined);
+      const isBuiltinModuleMatch = Boolean(builtinPreset) && spec.selectable !== false;
+      const isSelectable = spec.selectable === true || Boolean(spec.prefix) || isBuiltinModuleMatch;
+      if (!isSelectable) continue;
+
+      seenTypes.add(cleanType);
+      options.push({
+        type: cleanType,
+        prefix: normalizePrefix(spec.prefix || builtinPreset?.prefix, cleanType),
+        label: spec.name || builtinPreset?.label || cleanType,
+        description: spec.description || m.description || builtinPreset?.description || '',
+        icon: spec.icon || builtinPreset?.icon || '🧩',
+        isCore: isCoreCardType(cleanType),
+        submitLabel: spec.submitLabel || builtinPreset?.submitLabel || '入库',
+        badgeColor: spec.badgeColor || m.themeColor || builtinPreset?.badgeColor,
+        isExternal: Boolean(m.isExternal),
+        moduleName: m.name,
+      });
+    }
+
+    // Legacy fallback: manifest matches 'diary' by module name with empty cardTypes
+    if (specs.length === 0 && m.name === 'diary' && !seenTypes.has(m.name)) {
+      const preset = BUILTIN_MODULE_CARD_DEFAULTS[m.name];
+      seenTypes.add(m.name);
+      options.push({
+        ...preset,
+        description: m.description || preset.description,
+        badgeColor: m.themeColor || preset.badgeColor,
+        isExternal: Boolean(m.isExternal),
+        moduleName: m.name,
+      });
+    }
   }
 
   return options;

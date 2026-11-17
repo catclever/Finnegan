@@ -13,8 +13,63 @@ type PromotionStrategySpec struct {
 
 // CardTypeSpec declares a custom card type and optional frontend UI bundle entry for a module.
 type CardTypeSpec struct {
-	Type    string `json:"type" yaml:"type"`                           // e.g. "curio", "taohuo"
-	UIEntry string `json:"uiEntry,omitempty" yaml:"ui_entry,omitempty"` // e.g. "/api/plugins/taohuo/ui.js"
+	Type             string            `json:"type" yaml:"type"` // e.g. "curio", "taohuo"
+	Name             string            `json:"name,omitempty" yaml:"name,omitempty"`
+	Description      string            `json:"description,omitempty" yaml:"description,omitempty"`
+	Icon             string            `json:"icon,omitempty" yaml:"icon,omitempty"`
+	Prefix           string            `json:"prefix,omitempty" yaml:"prefix,omitempty"`
+	SubmitLabel      string            `json:"submitLabel,omitempty" yaml:"submit_label,omitempty"`
+	BadgeColor       string            `json:"badgeColor,omitempty" yaml:"badge_color,omitempty"`
+	Selectable       bool              `json:"selectable,omitempty" yaml:"selectable,omitempty"`
+	CustomElementTag string            `json:"customElementTag,omitempty" yaml:"custom_element_tag,omitempty"`
+	ShellStyle       map[string]string `json:"shellStyle,omitempty" yaml:"shell_style,omitempty"`
+	UIEntry          string            `json:"uiEntry,omitempty" yaml:"ui_entry,omitempty"` // e.g. "/api/plugins/taohuo/ui.js"
+}
+
+// CaptureImageInput represents an image attachment passed into CaptureProvider.CaptureCard.
+type CaptureImageInput struct {
+	Data string `json:"data"`
+	Name string `json:"name,omitempty"`
+	Ext  string `json:"ext,omitempty"`
+}
+
+// CaptureThreadRef represents a resolved @thread reference passed into CaptureProvider.CaptureCard.
+type CaptureThreadRef struct {
+	ID    string `json:"id"`
+	Title string `json:"title"`
+}
+
+// CaptureRequest encapsulates user capture input forwarded by the host to a CaptureProvider module.
+type CaptureRequest struct {
+	CardType  string                 `json:"cardType"`
+	Text      string                 `json:"text"`
+	CleanText string                 `json:"cleanText,omitempty"`
+	Images    []CaptureImageInput    `json:"images,omitempty"`
+	Tags      []string               `json:"tags,omitempty"`
+	Threads   []CaptureThreadRef     `json:"threads,omitempty"`
+	ExtraMeta map[string]interface{} `json:"extraMeta,omitempty"`
+	HomeDir   string                 `json:"homeDir,omitempty"`
+}
+
+// CaptureResult represents the output returned by a CaptureProvider module.
+// If FilePath is non-empty, the host treats the file as already written by the plugin;
+// otherwise the host materializes the card markdown file in Scattering using the returned fields.
+type CaptureResult struct {
+	DocID    string                 `json:"docId,omitempty"`
+	FilePath string                 `json:"filePath,omitempty"`
+	FileExt  string                 `json:"fileExt,omitempty"`
+	Slug     string                 `json:"slug,omitempty"`
+	Title    string                 `json:"title,omitempty"`
+	Body     string                 `json:"body,omitempty"`
+	Content  string                 `json:"content,omitempty"`
+	Tags     []string               `json:"tags,omitempty"`
+	Images   []string               `json:"images,omitempty"`
+	Meta     map[string]interface{} `json:"meta,omitempty"`
+}
+
+// CaptureProvider can be implemented by any Module to handle direct capture of its declared CardTypes.
+type CaptureProvider interface {
+	CaptureCard(ctx context.Context, req CaptureRequest) (*CaptureResult, error)
 }
 
 // ModuleManifest declares the full metadata, UI theme, beacon, promotion strategy, card types, and commands for a module.
@@ -99,10 +154,6 @@ func BuildModuleManifest(m Module) ModuleManifest {
 				Placeholder:      "留下附着批注（回车直接收录）...",
 				BindMotherCard:   true,
 			}
-		}
-	case "curio":
-		if len(manifest.CardTypes) == 0 {
-			manifest.CardTypes = []CardTypeSpec{{Type: "curio"}}
 		}
 	}
 

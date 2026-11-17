@@ -121,22 +121,47 @@ test('Card Type Dropdown Trigger Detection', async (t) => {
 });
 
 test('Card Type Options & Filtering Engine', async (t) => {
-  await t.test('provides selectable types (note and curio) by default, excluding default thought and parser-driven chat_log', () => {
+  await t.test('provides built-in selectable types (note, book, diary) by default without hardcoded curio, excluding thought and chat_log', () => {
     const opts = getAvailableCardTypeOptions();
     const types = opts.map(o => o.type);
     assert.ok(types.includes('note'));
-    assert.ok(types.includes('curio'));
+    assert.ok(types.includes('book'));
+    assert.ok(types.includes('diary'));
+    assert.equal(types.includes('curio'), false);
     assert.equal(types.includes('thought'), false);
     assert.equal(types.includes('chat_log'), false);
     assert.equal(types.includes('babel'), false);
   });
 
-  await t.test('includes curio when module manifest includes curio', () => {
+  await t.test('discovers curio dynamically when external curio manifest is present', () => {
     const manifests: any[] = [
-      { name: 'curio', cardTypes: [{ type: 'curio' }] }
+      {
+        name: 'curio',
+        description: '商品网页快照与恋物藏品 (Curio 外部插件驱动)',
+        themeColor: '#10b981',
+        isExternal: true,
+        cardTypes: [
+          {
+            type: 'curio',
+            name: '奇物标本',
+            icon: '🏺',
+            prefix: ':curio',
+            submitLabel: '标本入库',
+            badgeColor: '#10b981',
+            selectable: true,
+            uiEntry: '/api/plugins/curio/ui.js',
+          },
+        ],
+      },
     ];
     const opts = getAvailableCardTypeOptions(manifests);
-    assert.ok(opts.some(o => o.type === 'curio'));
+    const curio = opts.find(o => o.type === 'curio');
+    assert.ok(curio);
+    assert.equal(curio.prefix, ':curio');
+    assert.equal(curio.label, '奇物标本');
+    assert.equal(curio.submitLabel, '标本入库');
+    assert.equal(curio.badgeColor, '#10b981');
+    assert.equal(curio.isExternal, true);
   });
 
   await t.test('excludes curio when module manifests do not include curio', () => {
@@ -145,13 +170,15 @@ test('Card Type Options & Filtering Engine', async (t) => {
     ];
     const opts = getAvailableCardTypeOptions(manifests);
     assert.equal(opts.some(o => o.type === 'curio'), false);
-    assert.deepEqual(opts.map(o => o.type), ['note']);
+    assert.deepEqual(opts.map(o => o.type), ['note', 'book']);
   });
 
-  await t.test('note is always present as the selectable core type with empty/null manifests', () => {
+  await t.test('note and book are always present as built-in selectable types with empty/null manifests', () => {
     for (const m of [[], null, undefined] as any[]) {
       const types = getAvailableCardTypeOptions(m).map(o => o.type);
       assert.ok(types.includes('note'));
+      assert.ok(types.includes('book'));
+      assert.equal(types.includes('curio'), false);
       assert.equal(types.includes('thought'), false);
       assert.equal(types.includes('chat_log'), false);
     }
@@ -170,7 +197,13 @@ test('Card Type Options & Filtering Engine', async (t) => {
   });
 
   await t.test('filters options by query correctly', () => {
-    const opts = getAvailableCardTypeOptions();
+    const opts = getAvailableCardTypeOptions([
+      {
+        name: 'curio',
+        isExternal: true,
+        cardTypes: [{ type: 'curio', name: '奇物标本', prefix: ':curio', selectable: true }],
+      },
+    ]);
     const filteredCu = filterCardTypeOptions(opts, 'cu');
     assert.equal(filteredCu.length, 1);
     assert.equal(filteredCu[0].type, 'curio');
@@ -178,5 +211,86 @@ test('Card Type Options & Filtering Engine', async (t) => {
     const filteredNote = filterCardTypeOptions(opts, '长文');
     assert.equal(filteredNote.length, 1);
     assert.equal(filteredNote[0].type, 'note');
+  });
+
+  await t.test('dynamically discovers external CardTypeSpec :prefix options with display metadata and deduplication', () => {
+    const manifests: any[] = [
+      {
+        name: 'taohuo',
+        description: '淘货发现',
+        themeColor: '#ec4899',
+        isExternal: true,
+        cardTypes: [
+          {
+            type: 'taohuo',
+            name: '淘货',
+            description: '好物与二手情报',
+            icon: '🛍️',
+            prefix: ':taohuo',
+            submitLabel: '淘货入库',
+            badgeColor: '#db2777',
+            selectable: true,
+          },
+          {
+            type: 'taohuo',
+            name: 'Duplicate Taohuo',
+            prefix: ':taohuo',
+            selectable: true,
+          },
+          {
+            type: 'internal_hidden',
+            name: 'Hidden Type',
+            selectable: false,
+          },
+        ],
+      },
+      {
+        name: 'recipe',
+        description: '食谱记录',
+        themeColor: '#10b981',
+        isExternal: true,
+        cardTypes: [
+          {
+            type: 'recipe',
+            prefix: 'recipe',
+          },
+        ],
+      },
+      {
+        name: 'diary',
+        cardTypes: [{ type: 'diary' }],
+      },
+    ];
+
+    const opts = getAvailableCardTypeOptions(manifests);
+    const taohuo = opts.find(o => o.type === 'taohuo');
+    assert.ok(taohuo);
+    assert.equal(taohuo.prefix, ':taohuo');
+    assert.equal(taohuo.label, '淘货');
+    assert.equal(taohuo.description, '好物与二手情报');
+    assert.equal(taohuo.icon, '🛍️');
+    assert.equal(taohuo.submitLabel, '淘货入库');
+    assert.equal(taohuo.badgeColor, '#db2777');
+    assert.equal(taohuo.isExternal, true);
+    assert.equal(taohuo.moduleName, 'taohuo');
+
+    assert.equal(opts.filter(o => o.type === 'taohuo').length, 1);
+    assert.equal(opts.some(o => o.type === 'internal_hidden'), false);
+
+    const recipe = opts.find(o => o.type === 'recipe');
+    assert.ok(recipe);
+    assert.equal(recipe.prefix, ':recipe');
+    assert.equal(recipe.label, 'recipe');
+    assert.equal(recipe.description, '食谱记录');
+    assert.equal(recipe.icon, '🧩');
+    assert.equal(recipe.submitLabel, '入库');
+    assert.equal(recipe.badgeColor, '#10b981');
+    assert.equal(recipe.moduleName, 'recipe');
+
+    const diary = opts.find(o => o.type === 'diary');
+    assert.ok(diary);
+    assert.equal(diary.label, '羊皮卷日记');
+    assert.equal(diary.icon, '📜');
+    assert.equal(diary.prefix, ':diary');
   });
 });

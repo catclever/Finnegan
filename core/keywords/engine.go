@@ -86,6 +86,7 @@ func (c *GeminiLLMClient) GenerateJSON(ctx context.Context, modelName string, pr
 type KeywordEngine struct {
 	LLMConfig   module.LLMConfig
 	Config      Config
+	JinaConfig  config.JinaConfig
 	HomeDir     string
 	client      LLMClient
 	linkFetcher LinkFetcher
@@ -94,12 +95,32 @@ type KeywordEngine struct {
 }
 
 // NewKeywordEngine creates a new KeywordEngine instance.
-func NewKeywordEngine(llmCfg module.LLMConfig, cfg Config) *KeywordEngine {
-	return &KeywordEngine{
-		LLMConfig: llmCfg,
-		Config:    cfg,
-		client:    &GeminiLLMClient{APIKey: llmCfg.APIKey},
+func NewKeywordEngine(llmCfg module.LLMConfig, cfg Config, jinaCfg ...config.JinaConfig) *KeywordEngine {
+	var jina config.JinaConfig
+	if len(jinaCfg) > 0 {
+		jina = jinaCfg[0]
+	} else if cfg.Jina.BaseURL != "" || cfg.Jina.APIKey != "" {
+		jina = cfg.Jina
 	}
+	if jina.APIKey == "" && cfg.JinaAPIKey != "" {
+		jina.APIKey = cfg.JinaAPIKey
+	}
+	if jina.BaseURL == "" && cfg.JinaBaseURL != "" {
+		jina.BaseURL = cfg.JinaBaseURL
+	}
+
+	return &KeywordEngine{
+		LLMConfig:  llmCfg,
+		Config:     cfg,
+		JinaConfig: jina,
+		client:     &GeminiLLMClient{APIKey: llmCfg.APIKey},
+	}
+}
+
+// WithJinaConfig overrides or configures the JinaConfig.
+func (e *KeywordEngine) WithJinaConfig(jinaCfg config.JinaConfig) *KeywordEngine {
+	e.JinaConfig = jinaCfg
+	return e
 }
 
 // WithClient overrides the LLMClient (primarily for unit testing and mocking).
@@ -136,6 +157,12 @@ func (e *KeywordEngine) getHomeDir() string {
 }
 
 func (e *KeywordEngine) getJinaAPIKey() string {
+	if e.JinaConfig.APIKey != "" {
+		return e.JinaConfig.APIKey
+	}
+	if e.Config.Jina.APIKey != "" {
+		return e.Config.Jina.APIKey
+	}
 	if e.Config.JinaAPIKey != "" {
 		return e.Config.JinaAPIKey
 	}
@@ -144,6 +171,9 @@ func (e *KeywordEngine) getJinaAPIKey() string {
 	}
 	cfg, _, err := config.LoadConfig()
 	if err == nil && cfg != nil {
+		if cfg.Jina.APIKey != "" {
+			return cfg.Jina.APIKey
+		}
 		if node, exists := cfg.RawModules["bugu"]; exists {
 			var buguMeta struct {
 				JinaAPIKey string `yaml:"jina_api_key"`
@@ -154,6 +184,23 @@ func (e *KeywordEngine) getJinaAPIKey() string {
 		}
 	}
 	return ""
+}
+
+func (e *KeywordEngine) getJinaBaseURL() string {
+	if e.JinaConfig.BaseURL != "" {
+		return e.JinaConfig.BaseURL
+	}
+	if e.Config.Jina.BaseURL != "" {
+		return e.Config.Jina.BaseURL
+	}
+	if e.Config.JinaBaseURL != "" {
+		return e.Config.JinaBaseURL
+	}
+	cfg, _, err := config.LoadConfig()
+	if err == nil && cfg != nil && cfg.Jina.BaseURL != "" {
+		return cfg.Jina.BaseURL
+	}
+	return "https://r.jina.ai/"
 }
 
 // BuildPrompt constructs the 4-anchor Salience Gating prompt for active dimensions.
@@ -480,7 +527,7 @@ func (e *KeywordEngine) ProcessCardSync(ctx context.Context, filePath string, do
 	if len(urls) > 0 {
 		fetcher := e.linkFetcher
 		if fetcher == nil {
-			fetcher = NewDefaultLinkFetcher(e.getJinaAPIKey())
+			fetcher = NewDefaultLinkFetcher(e.getJinaAPIKey(), e.getJinaBaseURL())
 		}
 		webContext = fetcher.FetchAll(ctxTimeout, urls)
 	}

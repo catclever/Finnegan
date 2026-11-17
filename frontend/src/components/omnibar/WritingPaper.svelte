@@ -18,7 +18,10 @@
 
   export let omniText: string = '';
   export let isNoteFormat: boolean = false;
+  export let isBookFormat: boolean = false;
+  export let isSingleURL: boolean = false;
   export let noteContent: string = '';
+  export let bookContent: string = '';
   export let explicitNoteTitle: string = '';
   export let attachedImages: string[] = [];
   export let deleteHighlightIndex: number = -1;
@@ -34,7 +37,7 @@
 
   let paperTextareaEl: HTMLTextAreaElement | null = null;
 
-  $: activeText = isNoteFormat ? noteContent : omniText;
+  $: activeText = isNoteFormat ? noteContent : (isBookFormat ? bookContent : omniText);
   $: charCount = activeText.trim().length;
   $: lineCount = activeText ? activeText.split('\n').length : 1;
 
@@ -59,7 +62,7 @@
   }
 </script>
 
-<div class="writing-paper-box" class:note-theme={isNoteFormat}>
+<div class="writing-paper-box" class:note-theme={isNoteFormat} class:book-theme={isBookFormat}>
   <!-- Right-top Dog-Ear Corner (Folded Paper) -->
   <div class="dog-ear-cutout">
     <div class="dog-ear-shadow"></div>
@@ -87,7 +90,7 @@
       on:keydown={onKeydown}
       on:paste={onPaste}
       on:wheel={onWheel}
-      placeholder={isNoteFormat ? "记录确定性备忘..." : "尽情倾注您的长篇思绪..."}
+      placeholder={isNoteFormat ? "记录确定性备忘..." : (isBookFormat ? "使用 > 摘录原文或章节引文，直接换行写下个人批注（支持 @ 关联卡片与 # 标签）..." : "尽情倾注您的长篇思绪...")}
       disabled={capturePending}
       rows="6"
     ></textarea>
@@ -123,10 +126,11 @@
         class="omnibar-submit-btn paper-quill-btn" 
         class:active={canSubmit && !capturePending}
         class:note-mode={isNoteFormat}
+        class:book-mode={isBookFormat}
         disabled={!canSubmit || capturePending}
         on:mousedown|preventDefault
         on:click|stopPropagation={onSubmit}
-        title={isNoteFormat ? "保存备忘 (⌘↵)" : "录入思绪 (⌘↵)"}
+        title={isNoteFormat ? "保存备忘 (⌘↵)" : (isBookFormat ? "收录读书笔记 (⌘↵)" : (isSingleURL ? "直接存为灵感卡片 (⌘↵ 解析网页)" : "录入思绪 (⌘↵)"))}
       >
         <svg class="quill-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
           <!-- Feather Plume: Soft rounded organic feather vane with subtle translucent fill -->
@@ -185,6 +189,11 @@
   .writing-paper-box.note-theme {
     background: linear-gradient(178deg, #ffffff 0%, #fdfbfe 32%, #f7f3fb 100%);
     border-color: rgba(220, 210, 242, 0.8);
+  }
+
+  .writing-paper-box.book-theme {
+    background: linear-gradient(175deg, #faf7f0 0%, #f7f2e7 40%, #f3ede0 100%);
+    border-color: rgba(154, 118, 78, 0.35);
   }
 
   /* Right-top Dog-Ear Corner (Folded Paper) */
@@ -436,6 +445,13 @@
     box-shadow: 0 2px 12px rgba(91, 33, 182, 0.35);
   }
 
+  .paper-quill-btn.active.book-mode {
+    background: #8c5222;
+    color: #faf7f0;
+    border-color: rgba(180, 130, 80, 0.35);
+    box-shadow: 0 2px 12px rgba(140, 82, 34, 0.32);
+  }
+
   .paper-quill-btn.active:hover {
     background: #09090b;
     transform: translateY(-1.5px) scale(1.06);
@@ -445,6 +461,11 @@
   .paper-quill-btn.active.note-mode:hover {
     background: #4c1d95;
     box-shadow: 0 4px 18px rgba(91, 33, 182, 0.45);
+  }
+
+  .paper-quill-btn.active.book-mode:hover {
+    background: #734018;
+    box-shadow: 0 4px 18px rgba(140, 82, 34, 0.42);
   }
 
   .paper-quill-btn.active:hover .quill-icon {

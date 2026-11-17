@@ -310,10 +310,27 @@ func (m *AtProtoModule) ExecuteCommand(ctx context.Context, cmdID string, params
 			} else {
 				var llmCfg module.LLMConfig
 				if m.ctx != nil && m.ctx.LLMs != nil {
-					if c, ok := m.ctx.LLMs["distiller"]; ok {
+					if c, ok := m.ctx.LLMs["distiller"]; ok && c.APIKey != "" {
 						llmCfg = c
-					} else if c, ok := m.ctx.LLMs["default"]; ok {
+					} else if c, ok := m.ctx.LLMs["default"]; ok && c.APIKey != "" {
 						llmCfg = c
+					} else {
+						// Smart fallback: find any Gemini provider with a valid API key
+						for _, c := range m.ctx.LLMs {
+							if strings.EqualFold(c.Provider, "gemini") && c.APIKey != "" {
+								llmCfg = c
+								break
+							}
+						}
+						// If still not found, find any LLM with a valid API key
+						if llmCfg.APIKey == "" {
+							for _, c := range m.ctx.LLMs {
+								if c.APIKey != "" {
+									llmCfg = c
+									break
+								}
+							}
+						}
 					}
 				}
 				translator := babel.NewUniversalTranslator(llmCfg, "gemini-3.8-flash", corellm.GenerateCompletion)

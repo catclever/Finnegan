@@ -23,7 +23,9 @@
   import CardTypeDropdown from './omnibar/CardTypeDropdown.svelte';
   import WritingPaper from './omnibar/WritingPaper.svelte';
   import DiarySpatiotemporalBar from './omnibar/DiarySpatiotemporalBar.svelte';
+  import BookMetaBar from './omnibar/BookMetaBar.svelte';
   import { isChatLogFormat, extractHashTitle } from '../lib/chatlog';
+  import { isSingleWebURL, prependCapturedCardRef } from '../lib/webcapture';
   import { getCardDisplayTitle } from '../lib/cardTitle';
   import {
     parseCardTypePrefix,
@@ -42,7 +44,7 @@
     detectAtTriggerAtCursor,
     applyAtSelectionToText,
   } from '../lib/tagAutocomplete';
-  import { CaptureChatLog, CaptureChatLogWithImages, SearchLocalCards } from '../../wailsjs/go/main/App.js';
+  import { CaptureChatLog, CaptureChatLogWithImages, CaptureURL, SearchLocalCards } from '../../wailsjs/go/main/App.js';
 
   // Props
   export let availableCommands: CommandDef[] = [];
@@ -60,8 +62,10 @@
   export let onCaptureThought: ((text: string, images?: string[]) => Promise<void> | void) | undefined = undefined;
   export let onCaptureChatLog: ((text: string, images?: string[]) => Promise<void> | void) | undefined = undefined;
   export let onCaptureNote: ((text: string) => Promise<void> | void) | undefined = undefined;
-  export let onCaptureCurio: ((text: string, images?: string[]) => Promise<void> | void) | undefined = undefined;
+  export let onCaptureModuleCard: ((cardType: string, text: string, images?: string[]) => Promise<void> | void) | undefined = undefined;
   export let onCaptureDiary: ((text: string, images?: string[], options?: any) => Promise<void> | void) | undefined = undefined;
+  export let onCaptureBook: ((text: string, images?: string[], options?: { bookTitle: string; bookAuthor: string }) => Promise<void> | void) | undefined = undefined;
+  export let onCaptureURL: ((url: string) => Promise<any> | any) | undefined = undefined;
   export let onFreeSearch: ((text: string) => void) | undefined = undefined;
   export let onRevertSearch: (() => void) | undefined = undefined;
   export let onCommitSearch: (() => void) | undefined = undefined;
@@ -337,9 +341,15 @@
   let diaryLocation: any = undefined;
   let diaryWeather: any = undefined;
 
+  let bookTitle: string = "";
+  let bookAuthor: string = "";
+  let bookMetaBarRef: BookMetaBar | null = null;
+
   // Toast feedback state
   let toastMessage: string | null = null;
   let toastTimer: any = null;
+  let urlCapturePending: boolean = false;
+  let capturedWebCard: { id: string; title: string; type: string } | null = null;
 
   export function showToast(msg: string, durationMs: number = 3200) {
     toastMessage = msg;
@@ -355,25 +365,34 @@
   let highlightedTypeIndex: number = 0;
 
   // Reactive expressions
+  $: cardTypeOptions = getAvailableCardTypeOptions(availableModuleManifests);
+  $: matchedCardTypes = filterCardTypeOptions(cardTypeOptions, typeQuery);
+
   $: parsedCardType = parseCardTypePrefix(omniText);
   $: isNoteFormat = parsedCardType.hasTypePrefix && parsedCardType.type === 'note';
-  $: isCurioFormat = parsedCardType.hasTypePrefix && parsedCardType.type === 'curio';
   $: isDiaryFormat = parsedCardType.hasTypePrefix && parsedCardType.type === 'diary';
+  $: isBookFormat = parsedCardType.hasTypePrefix && parsedCardType.type === 'book';
+  $: activePluginCardOption = (
+    parsedCardType.hasTypePrefix &&
+    parsedCardType.type &&
+    parsedCardType.type !== 'note' &&
+    parsedCardType.type !== 'diary' &&
+    parsedCardType.type !== 'book'
+  ) ? (cardTypeOptions.find(o => o.type === parsedCardType.type) || null) : null;
   $: noteContent = isNoteFormat ? parsedCardType.content : '';
-  $: curioContent = isCurioFormat ? parsedCardType.content : '';
   $: diaryContent = isDiaryFormat ? parsedCardType.content : '';
+  $: bookContent = isBookFormat ? parsedCardType.content : '';
+  $: pluginCardContent = activePluginCardOption ? parsedCardType.content : '';
   $: noteHashInfo = extractHashTitle(noteContent);
   $: explicitNoteTitle = noteHashInfo.title;
   $: hashTitleInfo = extractHashTitle(omniText);
   $: explicitUserTitle = hashTitleInfo.title;
-  $: isDialogueFormat = !isNoteFormat && !isCurioFormat && !isDiaryFormat && isChatLogFormat(omniText);
-  $: writingText = isNoteFormat ? noteContent : (isCurioFormat ? curioContent : (isDiaryFormat ? diaryContent : omniText));
-  $: isWritingMode = !commandSelectMode && !commandParamMode && !typeSelectMode && (writingText.trim().length >= 80 || (writingText.split('\n').length >= 4 && writingText.trim().length > 10) || isDiaryFormat);
-  $: showTopBanner = !isWritingMode && ((omniText.trim().length > 0) || (attachedImages.length > 0) || commandParamMode || commandSelectMode || typeSelectMode || (searchSession.isActive && !searchSession.isConfirmed) || isNoteFormat || isCurioFormat || isDiaryFormat);
-  $: canSubmit = (isNoteFormat ? noteContent.trim().length > 0 : (isCurioFormat ? (curioContent.trim().length > 0 || attachedImages.length > 0) : (isDiaryFormat ? (diaryContent.trim().length > 0 || attachedImages.length > 0) : omniText.trim().length > 0))) || attachedImages.length > 0;
-
-  $: cardTypeOptions = getAvailableCardTypeOptions(availableModuleManifests);
-  $: matchedCardTypes = filterCardTypeOptions(cardTypeOptions, typeQuery);
+  $: isDialogueFormat = !isNoteFormat && !isDiaryFormat && !isBookFormat && !activePluginCardOption && isChatLogFormat(omniText);
+  $: isSingleURL = !isNoteFormat && !isDiaryFormat && !isBookFormat && !activePluginCardOption && !commandSelectMode && !commandParamMode && !typeSelectMode && isSingleWebURL(omniText, attachedImages.length);
+  $: writingText = isNoteFormat ? noteContent : (isDiaryFormat ? diaryContent : (isBookFormat ? bookContent : (activePluginCardOption ? pluginCardContent : omniText)));
+  $: isWritingMode = !commandSelectMode && !commandParamMode && !typeSelectMode && !isSingleURL && (writingText.trim().length >= 80 || (writingText.split('\n').length >= 4 && writingText.trim().length > 10) || isDiaryFormat || isBookFormat);
+  $: showTopBanner = !isWritingMode && ((omniText.trim().length > 0) || (attachedImages.length > 0) || commandParamMode || commandSelectMode || typeSelectMode || (searchSession.isActive && !searchSession.isConfirmed) || isNoteFormat || isDiaryFormat || isBookFormat || Boolean(activePluginCardOption));
+  $: canSubmit = (isNoteFormat ? noteContent.trim().length > 0 : (isDiaryFormat ? (diaryContent.trim().length > 0 || attachedImages.length > 0) : (isBookFormat ? (bookContent.trim().length > 0 || attachedImages.length > 0) : (activePluginCardOption ? (pluginCardContent.trim().length > 0 || attachedImages.length > 0) : omniText.trim().length > 0)))) || attachedImages.length > 0;
 
   $: omnibarPlaceholder = commandParamMode
     ? (selectedCommand?.params?.[0]?.description || "吾道不孤")
@@ -504,6 +523,10 @@
       if (omnibarInputEl) {
         omnibarInputEl.style.height = 'auto';
       }
+      return true;
+    }
+    if (capturedWebCard) {
+      capturedWebCard = null;
       return true;
     }
     return false;
@@ -643,10 +666,20 @@
     }, 250);
   }
 
-  async function captureCurrentThought() {
-    const text = omniText.trim();
+  async function captureCurrentThought(skipUrlParse: boolean = false) {
+    let text = omniText.trim();
     const imgs = [...attachedImages];
     if ((!text && imgs.length === 0) || capturePending) return;
+
+    if (!skipUrlParse && isSingleWebURL(text, imgs.length)) {
+      await captureCurrentURL(text);
+      return;
+    }
+
+    if (capturedWebCard) {
+      text = prependCapturedCardRef(text, capturedWebCard);
+      capturedWebCard = null;
+    }
 
     omniText = "";
     attachedImages = [];
@@ -718,7 +751,7 @@
     }
   }
 
-  async function captureCurrentCurio(text: string) {
+  async function captureCurrentPluginCard(opt: CardTypeOption, text: string) {
     const trimmed = text.trim();
     const imgs = [...attachedImages];
     if (!trimmed && imgs.length === 0) return;
@@ -737,21 +770,19 @@
     }
 
     try {
-      if (onCaptureCurio) {
-        await onCaptureCurio(trimmed, imgs);
-      } else {
-        if (onCaptureThought) {
-          await onCaptureThought(`:curio ${trimmed}`, imgs);
-        }
+      if (onCaptureModuleCard) {
+        await onCaptureModuleCard(opt.type, trimmed, imgs);
+      } else if (onCaptureThought) {
+        await onCaptureThought(`${opt.prefix} ${trimmed}`, imgs);
       }
-      showToast("已存入奇物标本库");
+      showToast(`已存入${opt.label || opt.type}`);
       if (searchSession.isActive) {
         if (onCommitSearch) onCommitSearch();
         dispatch('commitSearch');
       }
     } catch (err: any) {
-      console.error("CaptureCurio error:", err);
-      showToast(`标本保存失败: ${err?.message || err}`);
+      console.error(`CaptureModuleCard(${opt.type}) error:`, err);
+      showToast(`${opt.label || opt.type}保存失败: ${err?.message || err}`);
     }
   }
 
@@ -795,14 +826,101 @@
     }
   }
 
-  async function handleSubmit() {
+  async function captureCurrentBook(text: string) {
+    const trimmed = text.trim();
+    const imgs = [...attachedImages];
+    if (!trimmed && imgs.length === 0) return;
+    if (capturePending) return;
+
+    const currentBookTitle = bookTitle.trim();
+    const currentBookAuthor = bookAuthor.trim();
+
+    omniText = "";
+    attachedImages = [];
+    commandSelectMode = false;
+    typeSelectMode = false;
+    atSelectMode = false;
+    tagSelectMode = false;
+    trackedThreads = [];
+    deleteHighlightIndex = -1;
+    if (omnibarInputEl) {
+      omnibarInputEl.style.height = 'auto';
+    }
+
+    try {
+      if (currentBookTitle) {
+        bookMetaBarRef?.saveToHistory(currentBookTitle, currentBookAuthor);
+      }
+      if (onCaptureBook) {
+        await onCaptureBook(trimmed, imgs, {
+          bookTitle: currentBookTitle,
+          bookAuthor: currentBookAuthor,
+        });
+      } else if (onCaptureThought) {
+        await onCaptureThought(`:book ${trimmed}`, imgs);
+      }
+      showToast("已收录读书笔记");
+      if (searchSession.isActive) {
+        if (onCommitSearch) onCommitSearch();
+        dispatch('commitSearch');
+      }
+    } catch (err: any) {
+      console.error("CaptureBook error:", err);
+      showToast(`读书笔记保存失败: ${err?.message || err}`);
+    }
+  }
+
+  async function captureCurrentURL(url: string) {
+    if (urlCapturePending) return;
+    urlCapturePending = true;
+    omniText = "";
+    attachedImages = [];
+    deleteHighlightIndex = -1;
+    atSelectMode = false;
+    tagSelectMode = false;
+    typeSelectMode = false;
+    trackedThreads = [];
+    if (omnibarInputEl) {
+      omnibarInputEl.style.height = 'auto';
+      omnibarInputEl.focus();
+    }
+
+    showToast("正在解析网页内容...", 35000);
+
+    try {
+      const res = onCaptureURL ? await onCaptureURL(url) : await CaptureURL(url);
+      const id = res?.id || res?.ID || '';
+      const title = res?.title || res?.Title || '网页卡片';
+      const type = res?.type || res?.Type || 'note';
+      capturedWebCard = { id, title, type };
+      showToast(`已生成${type === 'chat_log' ? '对话' : '笔记'}卡片「${title}」`, 4000);
+      dispatch('captureURL', { url, card: capturedWebCard });
+      if (searchSession.isActive) {
+        if (onCommitSearch) onCommitSearch();
+        dispatch('commitSearch');
+      }
+    } catch (err: any) {
+      console.error("CaptureURL error:", err);
+      capturedWebCard = null;
+      showToast(`解析失败: ${err?.message || err}`, 5000);
+    } finally {
+      urlCapturePending = false;
+      setTimeout(() => omnibarInputEl?.focus(), 50);
+    }
+  }
+
+  async function handleSubmit(skipUrlParse: boolean = false) {
     if (!canSubmit || capturePending) return;
-    if (isCurioFormat) {
-      await captureCurrentCurio(curioContent);
+    if (activePluginCardOption) {
+      await captureCurrentPluginCard(activePluginCardOption, pluginCardContent);
       return;
     }
     if (isDiaryFormat) {
       await captureCurrentDiary(diaryContent);
+      return;
+    }
+    if (isBookFormat) {
+      await captureCurrentBook(bookContent);
       return;
     }
     if (isNoteFormat) {
@@ -811,7 +929,12 @@
       }
       return;
     }
-    await captureCurrentThought();
+    const trimmed = omniText.trim();
+    if (!skipUrlParse && isSingleWebURL(trimmed, attachedImages.length)) {
+      await captureCurrentURL(trimmed);
+      return;
+    }
+    await captureCurrentThought(skipUrlParse);
   }
 
   async function handleOmnibarKeydown(e: KeyboardEvent) {
@@ -843,8 +966,8 @@
       }
     }
 
-    // Curio Capture Mode: :curio <content>
-    if (isCurioFormat) {
+    // Dynamic Plugin Card Capture Mode: :<cardType> <content>
+    if (activePluginCardOption) {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault();
         await handleSubmit();
@@ -862,6 +985,23 @@
     }
 
     if (isDiaryFormat) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        await handleSubmit();
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        omniText = "";
+        commandSelectMode = false;
+        commandParamMode = false;
+        typeSelectMode = false;
+        if (omnibarInputEl) omnibarInputEl.style.height = 'auto';
+        return;
+      }
+    }
+
+    if (isBookFormat) {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault();
         await handleSubmit();
@@ -1123,10 +1263,16 @@
       return;
     }
 
+    if (e.key === 'Backspace' && omniText === '' && attachedImages.length === 0 && !commandParamMode && capturedWebCard) {
+      e.preventDefault();
+      capturedWebCard = null;
+      return;
+    }
+
     // Mode 3: Normal Mode Thought Capture vs Search Solidify
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
       e.preventDefault();
-      await handleSubmit();
+      await handleSubmit(false);
       return;
     }
 
@@ -1145,6 +1291,11 @@
         if (omnibarInputEl) {
           omnibarInputEl.style.height = 'auto';
         }
+        return;
+      }
+      if (capturedWebCard) {
+        e.preventDefault();
+        capturedWebCard = null;
         return;
       }
     }
@@ -1218,7 +1369,7 @@
         if (onRevertSearch) onRevertSearch();
         dispatch('revertSearch');
       }
-    } else if (isNoteFormat || omniText.startsWith(':') || atSelectMode) {
+    } else if (isNoteFormat || isBookFormat || Boolean(activePluginCardOption) || omniText.startsWith(':') || atSelectMode || isSingleWebURL(omniText, attachedImages.length)) {
       commandSelectMode = false;
       if (searchSession.isActive) {
         if (onRevertSearch) onRevertSearch();
@@ -1278,11 +1429,13 @@
     {commandSelectMode}
     {searchSession}
     {isNoteFormat}
-    {isCurioFormat}
+    {activePluginCardOption}
+    {isBookFormat}
     isTypeSelectMode={typeSelectMode}
     {explicitNoteTitle}
     {isDialogueFormat}
     {explicitUserTitle}
+    {isSingleURL}
     onExecuteCommand={executeCurrentCommand}
     onUnlockCard={unlockCard}
     onSolidifySearch={handleSolidifySearch}
@@ -1298,17 +1451,30 @@
     />
   {/if}
 
+  {#if isBookFormat}
+    <BookMetaBar
+      bind:this={bookMetaBarRef}
+      bind:bookTitle
+      bind:bookAuthor
+      {cards}
+      {localVaultPool}
+    />
+  {/if}
+
   {#if isWritingMode}
     <WritingPaper
       bind:omniText
       {isNoteFormat}
+      {isBookFormat}
+      {isSingleURL}
       {noteContent}
+      {bookContent}
       {explicitNoteTitle}
       {attachedImages}
       {deleteHighlightIndex}
       {canSubmit}
       {capturePending}
-      onSubmit={handleSubmit}
+      onSubmit={() => handleSubmit(true)}
       onRemoveImage={removeImage}
       onKeydown={handleOmnibarKeydown}
       onPaste={handlePaste}
@@ -1352,6 +1518,21 @@
           </div>
         {/if}
 
+        {#if !commandParamMode}
+          {#if urlCapturePending}
+            <div class="omnibar-chip card-chip">
+              <span class="chip-icon">⏳</span>
+              <span class="chip-label">正在解析网页...</span>
+            </div>
+          {:else if capturedWebCard}
+            <div class="omnibar-chip card-chip">
+              <span class="chip-icon">{capturedWebCard.type === 'chat_log' ? '💬' : '🌐'}</span>
+              <span class="chip-label">{capturedWebCard.title}</span>
+              <button class="chip-close" on:click={() => { capturedWebCard = null; omnibarInputEl?.focus(); }} title="移除关联卡片">✕</button>
+            </div>
+          {/if}
+        {/if}
+
         <!-- Omnibar Input: Always mounted to preserve DOM focus and keydown events -->
         <textarea 
           bind:this={omnibarInputEl}
@@ -1378,8 +1559,8 @@
             class:note-mode={isNoteFormat}
             disabled={!canSubmit || capturePending}
             on:mousedown|preventDefault
-            on:click|stopPropagation={handleSubmit}
-            title={isNoteFormat ? "保存备忘 (⌘↵)" : "录入思绪 (⌘↵)"}
+            on:click|stopPropagation={() => handleSubmit(true)}
+            title={isNoteFormat ? "保存备忘 (⌘↵)" : (activePluginCardOption ? `${activePluginCardOption.submitLabel || '入库'} (⌘↵)` : (isSingleURL ? "直接存为灵感卡片 (⌘↵ 解析网页)" : "录入思绪 (⌘↵)"))}
           >
             <svg class="quill-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
               <!-- Feather Plume: Soft, rounded organic feather vane with subtle translucent fill -->

@@ -5,17 +5,25 @@ import {chatlog} from '../models';
 import {keywords} from '../models';
 import {module} from '../models';
 
+export function CaptureBook(arg1:string,arg2:Array<main.ImagePayload>,arg3:string,arg4:string):Promise<string>;
+
 export function CaptureChatLog(arg1:string):Promise<main.ChatLogCaptureResult>;
 
 export function CaptureChatLogWithImages(arg1:string,arg2:Array<main.ImagePayload>):Promise<main.ChatLogCaptureResult>;
 
 export function CaptureCurio(arg1:string,arg2:Array<main.ImagePayload>):Promise<string>;
 
+export function CaptureDiary(arg1:string,arg2:Array<main.ImagePayload>,arg3:Record<string, any>):Promise<string>;
+
+export function CaptureModuleCard(arg1:string,arg2:string,arg3:Array<main.ImagePayload>,arg4:Record<string, any>):Promise<string>;
+
 export function CaptureNote(arg1:string):Promise<string>;
 
 export function CaptureThought(arg1:string):Promise<string>;
 
 export function CaptureThoughtWithImages(arg1:string,arg2:Array<main.ImagePayload>):Promise<string>;
+
+export function CaptureURL(arg1:string):Promise<main.Card>;
 
 export function ClearTempCards():Promise<void>;
 
@@ -59,6 +67,10 @@ export function PromoteTempCard(arg1:string,arg2:string,arg3:string):Promise<mai
 
 export function ReloadCard(arg1:string):Promise<main.Card>;
 
+export function ReloadExternalPlugins():Promise<Array<module.ModuleManifest>>;
+
 export function RunRadar(arg1:string):Promise<any>;
+
+export function SearchDiaryCards(arg1:string):Promise<Array<main.Card>>;
 
 export function SearchLocalCards(arg1:string):Promise<Array<main.Card>>;

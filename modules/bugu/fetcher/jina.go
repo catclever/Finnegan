@@ -4,7 +4,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"strings"
 	"time"
+
+	coreConfig "Finnegan/core/config"
 )
 
 type JinaClient struct {
@@ -13,9 +17,34 @@ type JinaClient struct {
 	Client  *http.Client
 }
 
-func NewJinaClient(apiKey string) *JinaClient {
+func NewJinaClient(apiKey string, baseURL ...string) *JinaClient {
+	bURL := ""
+	if len(baseURL) > 0 {
+		bURL = strings.TrimSpace(baseURL[0])
+	}
+	apiKey = strings.TrimSpace(apiKey)
+
+	if apiKey == "" || bURL == "" {
+		cfg, _, err := coreConfig.LoadConfig()
+		if err == nil && cfg != nil {
+			if apiKey == "" && cfg.Jina.APIKey != "" {
+				apiKey = cfg.Jina.APIKey
+			}
+			if bURL == "" && cfg.Jina.BaseURL != "" {
+				bURL = cfg.Jina.BaseURL
+			}
+		}
+	}
+
+	if apiKey == "" {
+		apiKey = os.Getenv("JINA_API_KEY")
+	}
+	if bURL == "" {
+		bURL = "https://r.jina.ai/"
+	}
+
 	return &JinaClient{
-		BaseURL: "https://r.jina.ai/",
+		BaseURL: bURL,
 		APIKey:  apiKey,
 		Client: &http.Client{
 			Timeout: 30 * time.Second, // Jina can be slow to render JS

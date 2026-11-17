@@ -25,6 +25,7 @@ const (
 	CardTypeNote    CardType = "note"
 	CardTypeCurio   CardType = "curio"
 	CardTypeDiary   CardType = "diary"
+	CardTypeBook    CardType = "book"
 )
 
 // ThreadRef defines a reference to another card in a theme thread
@@ -85,14 +86,21 @@ type Card struct {
 	Location *DiaryLocation `json:"location,omitempty"`
 	Weather  *DiaryWeather  `json:"weather,omitempty"`
 
+	// Book Fields
+	BookTitle  string `json:"bookTitle,omitempty" yaml:"book_title,omitempty"`
+	BookAuthor string `json:"bookAuthor,omitempty" yaml:"book_author,omitempty"`
+
 	// Curio Fields
-	Brand          string              `json:"brand,omitempty"`
-	Platform       string              `json:"platform,omitempty"`
-	Price          string              `json:"price,omitempty"`
-	Intent         string              `json:"intent,omitempty"`
-	Availability   string              `json:"availability,omitempty"`
-	SnapshotPath   string              `json:"snapshotPath,omitempty"`
-	ScreenshotPath string              `json:"screenshotPath,omitempty"`
+	Brand          string `json:"brand,omitempty"`
+	Platform       string `json:"platform,omitempty"`
+	Price          string `json:"price,omitempty"`
+	Intent         string `json:"intent,omitempty"`
+	Availability   string `json:"availability,omitempty"`
+	SnapshotPath   string `json:"snapshotPath,omitempty"`
+	ScreenshotPath string `json:"screenshotPath,omitempty"`
+
+	// Extensible plugin metadata pass-through
+	Meta map[string]interface{} `json:"meta,omitempty" yaml:"-"`
 }
 
 // TempCardTTL defines the maximum macro in-memory lifetime for temporary network cards (24 hours).
@@ -179,7 +187,9 @@ func (m *CardManager) InjectBabelCards(cards []Card) {
 
 	now := time.Now()
 	for _, c := range cards {
-		c.Type = CardTypeBabel // Force type for safety
+		if c.Type == "" {
+			c.Type = CardTypeBabel
+		}
 		if c.CreatedAt.IsZero() {
 			c.CreatedAt = now
 		}
@@ -296,6 +306,12 @@ func (m *CardManager) PromoteToLocalWithOpts(cardID string, home string, comment
 	if card.Title != "" {
 		sb.WriteString(fmt.Sprintf("title: %q\n", card.Title))
 	}
+	if card.BookTitle != "" {
+		sb.WriteString(fmt.Sprintf("book_title: %q\n", card.BookTitle))
+	}
+	if card.BookAuthor != "" {
+		sb.WriteString(fmt.Sprintf("book_author: %q\n", card.BookAuthor))
+	}
 	sb.WriteString(fmt.Sprintf("created: %s\n", now.Format(time.RFC3339)))
 	sb.WriteString(fmt.Sprintf("updated: %s\n", now.Format(time.RFC3339)))
 
@@ -383,6 +399,60 @@ func (m *CardManager) PromoteToLocalWithOpts(cardID string, home string, comment
 		sb.WriteString(fmt.Sprintf("screenshotPath: %s\n", card.ScreenshotPath))
 	}
 
+	// Extensible plugin metadata pass-through
+	if len(card.Meta) > 0 {
+		reservedMetaKeys := map[string]bool{
+			"id": true, "type": true, "title": true, "source": true,
+			"source_url": true, "original_text": true, "translated_text": true,
+			"published_at": true, "author_name": true, "author_avatar": true,
+			"echo_of": true, "matched_anchor": true, "echo_reason": true,
+			"user_comment": true, "reply_count": true, "repost_count": true,
+			"like_count": true, "participants": true, "started_at": true,
+			"ended_at": true, "created_at": true, "created": true,
+			"updated": true, "publish": true, "images": true,
+			"keywords": true, "tags": true, "threads": true,
+			"book_title": true, "book_author": true,
+		}
+		if card.Brand != "" {
+			reservedMetaKeys["brand"] = true
+		}
+		if card.Platform != "" {
+			reservedMetaKeys["platform"] = true
+		}
+		if card.Price != "" {
+			reservedMetaKeys["price"] = true
+		}
+		if card.Intent != "" {
+			reservedMetaKeys["intent"] = true
+		}
+		if card.Availability != "" {
+			reservedMetaKeys["availability"] = true
+		}
+		if card.SnapshotPath != "" {
+			reservedMetaKeys["snapshotPath"] = true
+		}
+		if card.ScreenshotPath != "" {
+			reservedMetaKeys["screenshotPath"] = true
+		}
+
+		extraMeta := make(map[string]interface{})
+		for k, v := range card.Meta {
+			trimmedK := strings.TrimSpace(k)
+			if trimmedK == "" || v == nil || reservedMetaKeys[trimmedK] {
+				continue
+			}
+			extraMeta[trimmedK] = v
+		}
+		if len(extraMeta) > 0 {
+			if metaBytes, err := yaml.Marshal(extraMeta); err == nil {
+				sb.Write(metaBytes)
+				if !strings.HasSuffix(string(metaBytes), "\n") {
+					sb.WriteString("\n")
+				}
+			}
+		}
+	}
+
 	// Tags & Keywords
 	if len(card.Tags) > 0 {
 		sb.WriteString("tags:\n")
@@ -448,6 +518,8 @@ func (m *CardManager) PromoteToLocalWithOpts(cardID string, home string, comment
 			Images:       card.Images,
 			Title:        card.Title,
 			Type:         string(card.Type),
+			BookTitle:    card.BookTitle,
+			BookAuthor:   card.BookAuthor,
 			Participants: card.Participants,
 			StartedAt:    card.StartedAt,
 			EndedAt:      card.EndedAt,

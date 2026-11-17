@@ -3,10 +3,10 @@ package config
 import (
 	"fmt"
 	"os"
-
 	"path/filepath"
 	"strings"
 
+	coreConfig "Finnegan/core/config"
 	"Finnegan/modules/bugu/models"
 	"gopkg.in/yaml.v3"
 )
@@ -70,6 +70,36 @@ func (c *BuguConfig) GetDistillerModel() string {
 		return strings.TrimSpace(c.DefaultModel)
 	}
 	return "gemini-3.8-flash"
+}
+
+// GetJinaAPIKey returns the Jina API key, falling back to global Jina config or JINA_API_KEY environment variable.
+func (c *BuguConfig) GetJinaAPIKey(global ...coreConfig.JinaConfig) string {
+	if c != nil && strings.TrimSpace(c.JinaAPIKey) != "" {
+		return strings.TrimSpace(c.JinaAPIKey)
+	}
+	if len(global) > 0 && strings.TrimSpace(global[0].APIKey) != "" {
+		return strings.TrimSpace(global[0].APIKey)
+	}
+	if envKey := os.Getenv("JINA_API_KEY"); envKey != "" {
+		return envKey
+	}
+	globalCfg, _, err := coreConfig.LoadConfig()
+	if err == nil && globalCfg != nil && strings.TrimSpace(globalCfg.Jina.APIKey) != "" {
+		return strings.TrimSpace(globalCfg.Jina.APIKey)
+	}
+	return ""
+}
+
+// GetJinaBaseURL returns the Jina Base URL, falling back to global Jina config or default "https://r.jina.ai/".
+func (c *BuguConfig) GetJinaBaseURL(global ...coreConfig.JinaConfig) string {
+	if len(global) > 0 && strings.TrimSpace(global[0].BaseURL) != "" {
+		return strings.TrimSpace(global[0].BaseURL)
+	}
+	globalCfg, _, err := coreConfig.LoadConfig()
+	if err == nil && globalCfg != nil && strings.TrimSpace(globalCfg.Jina.BaseURL) != "" {
+		return strings.TrimSpace(globalCfg.Jina.BaseURL)
+	}
+	return "https://r.jina.ai/"
 }
 
 type TagTranslator interface {

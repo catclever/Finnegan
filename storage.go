@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -72,6 +73,8 @@ func ParseCardFile(filePath string) (*Card, error) {
 				Availability   string              `yaml:"availability"`
 				SnapshotPath   string              `yaml:"snapshotPath"`
 				ScreenshotPath string              `yaml:"screenshotPath"`
+				BookTitle      string              `yaml:"book_title"`
+				BookAuthor     string              `yaml:"book_author"`
 				Location       *DiaryLocation      `yaml:"location,omitempty"`
 				Weather        *DiaryWeather       `yaml:"weather,omitempty"`
 			}
@@ -182,6 +185,12 @@ func ParseCardFile(filePath string) (*Card, error) {
 				if fm.ScreenshotPath != "" {
 					card.ScreenshotPath = fm.ScreenshotPath
 				}
+				if fm.BookTitle != "" {
+					card.BookTitle = fm.BookTitle
+				}
+				if fm.BookAuthor != "" {
+					card.BookAuthor = fm.BookAuthor
+				}
 				if fm.Location != nil {
 					card.Location = fm.Location
 				}
@@ -206,23 +215,81 @@ func ParseCardFile(filePath string) (*Card, error) {
 					card.Weather = fm.Weather
 				}
 			}
+
+			var rawMap map[string]interface{}
+			if err := yaml.Unmarshal([]byte(parts[1]), &rawMap); err == nil && len(rawMap) > 0 {
+				coreKeys := []string{
+					"id", "type", "title", "source", "source_url",
+					"original_text", "translated_text", "published_at",
+					"author_name", "author_avatar", "echo_of",
+					"matched_anchor", "echo_reason", "user_comment",
+					"reply_count", "repost_count", "like_count",
+					"participants", "started_at", "ended_at",
+					"created_at", "created", "updated", "publish",
+					"images", "keywords", "tags", "threads",
+				}
+				for _, k := range coreKeys {
+					delete(rawMap, k)
+				}
+				if len(rawMap) > 0 {
+					card.Meta = rawMap
+				}
+			}
 		}
 	}
 
 	// If no explicit title was in frontmatter, derive from first line
 	if card.Title == "Thought" || card.Title == "Note" || card.Title == "" {
-		lines := strings.Split(card.Content, "\n")
-		for _, l := range lines {
-			trimmed := strings.TrimSpace(l)
-			if trimmed != "" {
-				title := strings.TrimPrefix(trimmed, "# ")
-				runes := []rune(title)
+		if card.Type == CardTypeBook && card.BookTitle != "" {
+			derivedTitle := ""
+			lines := strings.Split(card.Content, "\n")
+			for _, l := range lines {
+				trimmed := strings.TrimSpace(l)
+				if strings.HasPrefix(trimmed, "# ") {
+					derivedTitle = strings.TrimSpace(strings.TrimPrefix(trimmed, "# "))
+					break
+				}
+			}
+			if derivedTitle == "" {
+				for _, l := range lines {
+					trimmed := strings.TrimSpace(l)
+					if trimmed == "" {
+						continue
+					}
+					clean := trimmed
+					for strings.HasPrefix(clean, ">") {
+						clean = strings.TrimSpace(strings.TrimPrefix(clean, ">"))
+					}
+					if clean != "" {
+						derivedTitle = clean
+						break
+					}
+				}
+			}
+			if derivedTitle == "" {
+				card.Title = fmt.Sprintf("《%s》读书笔记", card.BookTitle)
+			} else {
+				runes := []rune(derivedTitle)
 				if len(runes) > 24 {
 					card.Title = string(runes[:24]) + "..."
 				} else {
 					card.Title = string(runes)
 				}
-				break
+			}
+		} else {
+			lines := strings.Split(card.Content, "\n")
+			for _, l := range lines {
+				trimmed := strings.TrimSpace(l)
+				if trimmed != "" {
+					title := strings.TrimPrefix(trimmed, "# ")
+					runes := []rune(title)
+					if len(runes) > 24 {
+						card.Title = string(runes[:24]) + "..."
+					} else {
+						card.Title = string(runes)
+					}
+					break
+				}
 			}
 		}
 	}

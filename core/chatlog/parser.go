@@ -42,10 +42,39 @@ var (
 	reBracketTimeSuffix = regexp.MustCompile(`^(.+?)\s*\[(\d{4}[-/]\d{1,2}[-/]\d{1,2}\s+\d{1,2}:\d{2}(?::\d{2})?)\]:?$`)
 	// Simple colon speaker header: "巧先生:"
 	reColonSpeaker = regexp.MustCompile(`^([^\n:]{1,60}):\s*$`)
+	reListNumber   = regexp.MustCompile(`^\d+\.`)
 
-	// Standard Markdown H1 title prefix: "# <title>"
-	reHashTitle = regexp.MustCompile(`^\s*#\s*(.+)$`)
+	// Standard Markdown H1 title prefix: "# <title>" (single # only)
+	reHashTitle = regexp.MustCompile(`^\s*#\s*([^#\s].*)$`)
 )
+
+func isValidColonSpeaker(rawLine string, speaker string) bool {
+	if strings.HasPrefix(rawLine, " ") || strings.HasPrefix(rawLine, "\t") {
+		return false
+	}
+	s := strings.TrimSpace(speaker)
+	if s == "" {
+		return false
+	}
+	if strings.HasPrefix(s, "#") || strings.HasPrefix(s, "-") || strings.HasPrefix(s, "*") ||
+		strings.HasPrefix(s, "+") || strings.HasPrefix(s, ">") || strings.HasPrefix(s, "`") ||
+		strings.HasPrefix(s, "|") || reListNumber.MatchString(s) {
+		return false
+	}
+	if strings.ContainsAny(s, "(){}") {
+		return false
+	}
+	return true
+}
+
+func isAISpeakerName(speaker string) bool {
+	switch strings.ToLower(strings.TrimSpace(speaker)) {
+	case "gemini", "assistant", "claude", "ai", "chatgpt", "perplexity":
+		return true
+	default:
+		return false
+	}
+}
 
 // ExtractHashTitle scans the first or last non-empty line of text for standard
 // Markdown H1 syntax ("# <title>"). If found, it returns the extracted title and
@@ -175,9 +204,14 @@ func IsChatLog(text string) bool {
 
 	timestampMatches := 0
 	colonMatches := 0
+	inCodeFence := false
 	for i := 0; i < len(lines); i++ {
 		line := strings.TrimSpace(lines[i])
-		if line == "" {
+		if strings.HasPrefix(line, "```") {
+			inCodeFence = !inCodeFence
+			continue
+		}
+		if inCodeFence || line == "" {
 			continue
 		}
 
@@ -196,8 +230,10 @@ func IsChatLog(text string) bool {
 		}
 
 		// Check colon speaker pattern
-		if reColonSpeaker.MatchString(line) {
-			colonMatches++
+		if m := reColonSpeaker.FindStringSubmatch(line); len(m) > 1 {
+			if isValidColonSpeaker(lines[i], m[1]) {
+				colonMatches++
+			}
 		}
 	}
 
@@ -247,9 +283,14 @@ func Parse(text string) (*ParsedChatLog, error) {
 
 	// Pass 2: If no two-line headers found, check single-line headers
 	if len(headers) == 0 {
+		inCodeFence := false
 		for i := 0; i < len(lines); i++ {
 			line := strings.TrimSpace(lines[i])
-			if line == "" {
+			if strings.HasPrefix(line, "```") {
+				inCodeFence = !inCodeFence
+				continue
+			}
+			if inCodeFence || line == "" {
 				continue
 			}
 
@@ -298,13 +339,15 @@ func Parse(text string) (*ParsedChatLog, error) {
 			}
 
 			if m := reColonSpeaker.FindStringSubmatch(line); len(m) > 0 {
-				headers = append(headers, rawHeader{
-					speakerLineIdx: i,
-					speaker:        strings.TrimSpace(m[1]),
-					timestamp:      nil,
-					contentStart:   i + 1,
-				})
-				continue
+				if isValidColonSpeaker(lines[i], m[1]) {
+					headers = append(headers, rawHeader{
+						speakerLineIdx: i,
+						speaker:        strings.TrimSpace(m[1]),
+						timestamp:      nil,
+						contentStart:   i + 1,
+					})
+					continue
+				}
 			}
 		}
 	}
@@ -319,6 +362,19 @@ func Parse(text string) (*ParsedChatLog, error) {
 		if h.timestamp != nil {
 			hasTimestampHeader = true
 			break
+		}
+	}
+	if !hasTimestampHeader && len(headers) >= 2 {
+		if strings.EqualFold(headers[0].speaker, "User") && isAISpeakerName(headers[1].speaker) {
+			uSpeaker := headers[0].speaker
+			aiSpeaker := headers[1].speaker
+			filtered := make([]rawHeader, 0, len(headers))
+			for _, h := range headers {
+				if strings.EqualFold(h.speaker, uSpeaker) || strings.EqualFold(h.speaker, aiSpeaker) {
+					filtered = append(filtered, h)
+				}
+			}
+			headers = filtered
 		}
 	}
 	if !hasTimestampHeader && len(headers) < 2 {

@@ -1,7 +1,19 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 // @ts-ignore
-import { CardRegistry, createCardRegistry, normalizeCardType, isCoreCardType, getCardDefaultTitle, CORE_CARD_TYPES, SHARED_CARD_TYPES, BUILTIN_CARD_DEFINITIONS, DEFAULT_CARD_TYPE } from './cardRegistry.ts';
+import {
+  CardRegistry,
+  createCardRegistry,
+  normalizeCardType,
+  isCoreCardType,
+  getCardDefaultTitle,
+  CORE_CARD_TYPES,
+  SHARED_CARD_TYPES,
+  BUILTIN_CARD_DEFINITIONS,
+  DEFAULT_CARD_TYPE,
+  appendCacheBust,
+  reconcileExternalCardTypes,
+} from './cardRegistry.ts';
 import type { CardTypeDefinition } from '../types/card';
 
 describe('Card Type Registry & Morphology Decoupling Engine', () => {
@@ -33,6 +45,10 @@ describe('Card Type Registry & Morphology Decoupling Engine', () => {
       assert.equal(BUILTIN_CARD_DEFINITIONS.note.selectable, true);
       assert.equal(BUILTIN_CARD_DEFINITIONS.note.prefix, ':note');
       assert.equal(BUILTIN_CARD_DEFINITIONS.note.icon, '📝');
+      assert.equal(BUILTIN_CARD_DEFINITIONS.book.selectable, true);
+      assert.equal(BUILTIN_CARD_DEFINITIONS.book.prefix, ':book');
+      assert.equal(BUILTIN_CARD_DEFINITIONS.book.icon, '📖');
+      assert.equal(BUILTIN_CARD_DEFINITIONS.book.defaultTitle, 'Reading Note');
     });
   });
 
@@ -166,20 +182,21 @@ describe('Card Type Registry & Morphology Decoupling Engine', () => {
       registry.clear();
       assert.equal(registry.has('custom_temp'), false);
       assert.equal(registry.has('thought'), false); // components cleared
-      assert.equal(registry.getAllDefinitions().length, 4); // definitions restored
+      assert.equal(registry.getAllDefinitions().length, 5); // definitions restored
     });
 
     it('retrieves only selectable definitions and updates dynamically when extensions register/unregister', () => {
       const selectableBefore = registry.getSelectableDefinitions();
-      assert.equal(selectableBefore.length, 1);
-      assert.equal(selectableBefore[0].type, 'note');
+      assert.equal(selectableBefore.length, 2);
+      assert.ok(selectableBefore.some(d => d.type === 'note'));
+      assert.ok(selectableBefore.some(d => d.type === 'book'));
 
       // Register non-selectable extension
       registry.register('audit_log', { name: 'AuditLog' }, {
         name: '审计日志',
         selectable: false
       });
-      assert.equal(registry.getSelectableDefinitions().length, 1);
+      assert.equal(registry.getSelectableDefinitions().length, 2);
 
       // Register selectable extension (e.g. curio)
       registry.register('curio', MockCurioBody, {
@@ -188,15 +205,68 @@ describe('Card Type Registry & Morphology Decoupling Engine', () => {
         selectable: true
       });
       const selectableAfter = registry.getSelectableDefinitions();
-      assert.equal(selectableAfter.length, 2);
+      assert.equal(selectableAfter.length, 3);
       assert.ok(selectableAfter.some(d => d.type === 'note'));
+      assert.ok(selectableAfter.some(d => d.type === 'book'));
       assert.ok(selectableAfter.some(d => d.type === 'curio'));
 
       // Unregister curio
       registry.unregister('curio');
       const selectableAfterUnreg = registry.getSelectableDefinitions();
-      assert.equal(selectableAfterUnreg.length, 1);
-      assert.equal(selectableAfterUnreg[0].type, 'note');
+      assert.equal(selectableAfterUnreg.length, 2);
+      assert.ok(selectableAfterUnreg.some(d => d.type === 'note'));
+      assert.ok(selectableAfterUnreg.some(d => d.type === 'book'));
+    });
+
+    it('reconciles external card manifests, appends cache-busting params, and falls back to Thought on unregister', () => {
+      assert.equal(appendCacheBust('/api/plugins/taohuo/ui.js', 12345), '/api/plugins/taohuo/ui.js?t=12345');
+      assert.equal(appendCacheBust('/api/plugins/taohuo/ui.js?v=1', 12345), '/api/plugins/taohuo/ui.js?v=1&t=12345');
+      assert.equal(appendCacheBust('/api/plugins/taohuo/ui.js'), '/api/plugins/taohuo/ui.js');
+
+      const MockExternalHost = { name: 'ExternalCardHost' };
+      const trackedUITypes = new Set<string>();
+      const trackedDefTypes = new Set<string>();
+
+      const manifestsWithTaohuo: any[] = [
+        {
+          name: 'taohuo',
+          description: '淘货模块',
+          themeColor: '#ec4899',
+          isExternal: true,
+          cardTypes: [
+            {
+              type: 'taohuo',
+              name: '淘货',
+              icon: '🛍️',
+              prefix: ':taohuo',
+              submitLabel: '淘货入库',
+              badgeColor: '#db2777',
+              selectable: true,
+              customElementTag: 'finnegan-taohuo-card',
+              shellStyle: { borderColor: '#db2777' },
+              uiEntry: '/api/plugins/taohuo/ui.js',
+            },
+          ],
+        },
+      ];
+
+      const res1 = reconcileExternalCardTypes(registry, manifestsWithTaohuo, trackedUITypes, trackedDefTypes);
+      assert.equal(res1.activeUISpecs.length, 1);
+      assert.equal(res1.activeUISpecs[0].spec.type, 'taohuo');
+
+      // Simulate component registration by loadExternalPluginCardComponents
+      registry.register('taohuo', MockExternalHost, registry.getDefinition('taohuo'));
+      trackedUITypes.add('taohuo');
+      assert.equal(registry.get('taohuo'), MockExternalHost);
+      assert.equal(registry.getDefinition('taohuo').moduleName, 'taohuo');
+      assert.deepEqual(registry.getDefinition('taohuo').shellStyle, { borderColor: '#db2777' });
+      assert.equal(registry.getDefinition('taohuo').customElementTag, 'finnegan-taohuo-card');
+
+      // Delete plugin from manifests -> reconcile must unregister taohuo and fall back to MockThoughtBody
+      const res2 = reconcileExternalCardTypes(registry, [], trackedUITypes, trackedDefTypes);
+      assert.deepEqual(res2.removedUITypes, ['taohuo']);
+      assert.equal(registry.has('taohuo'), false);
+      assert.equal(registry.get('taohuo'), MockThoughtBody);
     });
   });
 });

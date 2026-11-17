@@ -8,6 +8,9 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"Finnegan/core/config"
+	"Finnegan/core/module"
 )
 
 type roundTripFunc func(req *http.Request) (*http.Response, error)
@@ -165,5 +168,66 @@ func TestDefaultLinkFetcher_TimeoutGracefulDegrade(t *testing.T) {
 	res := fetcher.FetchAll(context.Background(), []string{"https://example.com/slow"})
 	if res != "" {
 		t.Errorf("Expected empty string on error, got %q", res)
+	}
+}
+
+func TestDefaultLinkFetcher_InitFromGlobalConfig(t *testing.T) {
+	// 1. NewDefaultLinkFetcherWithConfig with explicit BaseURL
+	jCfg := config.JinaConfig{
+		APIKey:  "jina-test-custom-key",
+		BaseURL: "https://custom.reader.ai/",
+	}
+	fetcher := NewDefaultLinkFetcherWithConfig(jCfg)
+	if fetcher.JinaAPIKey != "jina-test-custom-key" {
+		t.Errorf("expected apiKey 'jina-test-custom-key', got '%s'", fetcher.JinaAPIKey)
+	}
+	if fetcher.BaseURL != "https://custom.reader.ai/" {
+		t.Errorf("expected baseURL 'https://custom.reader.ai/', got '%s'", fetcher.BaseURL)
+	}
+
+	// 2. NewDefaultLinkFetcher with empty baseURL should default to https://r.jina.ai/
+	fetcher2 := NewDefaultLinkFetcher("custom-key-2", "")
+	if fetcher2.JinaAPIKey != "custom-key-2" {
+		t.Errorf("expected apiKey 'custom-key-2', got '%s'", fetcher2.JinaAPIKey)
+	}
+	if fetcher2.BaseURL != "https://r.jina.ai/" {
+		t.Errorf("expected baseURL 'https://r.jina.ai/', got '%s'", fetcher2.BaseURL)
+	}
+}
+
+func TestKeywordEngine_InheritJinaConfig(t *testing.T) {
+	jCfg := config.JinaConfig{
+		APIKey:  "inherited-key-xyz",
+		BaseURL: "https://custom.jina.ai/",
+	}
+
+	// Test initialization via constructor
+	kwCfg := DefaultConfig()
+	engine := NewKeywordEngine(DefaultConfig_MockLLM(), kwCfg, jCfg)
+	if engine.getJinaAPIKey() != "inherited-key-xyz" {
+		t.Errorf("expected JinaAPIKey 'inherited-key-xyz', got '%s'", engine.getJinaAPIKey())
+	}
+	if engine.getJinaBaseURL() != "https://custom.jina.ai/" {
+		t.Errorf("expected JinaBaseURL 'https://custom.jina.ai/', got '%s'", engine.getJinaBaseURL())
+	}
+
+	// Test WithJinaConfig builder method
+	engine2 := NewKeywordEngine(DefaultConfig_MockLLM(), kwCfg).WithJinaConfig(config.JinaConfig{
+		APIKey:  "builder-key",
+		BaseURL: "https://builder.jina.ai/",
+	})
+	if engine2.getJinaAPIKey() != "builder-key" {
+		t.Errorf("expected JinaAPIKey 'builder-key', got '%s'", engine2.getJinaAPIKey())
+	}
+	if engine2.getJinaBaseURL() != "https://builder.jina.ai/" {
+		t.Errorf("expected JinaBaseURL 'https://builder.jina.ai/', got '%s'", engine2.getJinaBaseURL())
+	}
+}
+
+func DefaultConfig_MockLLM() module.LLMConfig {
+	return module.LLMConfig{
+		Provider:     "gemini",
+		APIKey:       "dummy",
+		DefaultModel: "gemini-3.8-flash",
 	}
 }

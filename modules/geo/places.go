@@ -148,9 +148,21 @@ func CreatePlace(dataDir string, name, landmark string, lat, lng float64) *Place
 }
 
 func FetchNearbyLandmarks(ctx context.Context, lat, lng float64, provider, googleAPIKey, amapAPIKey string) ([]LandmarkCandidate, error) {
-	if provider == "google" && googleAPIKey != "" {
+	p := provider
+	if p == "" || p == "auto" {
+		if IsInChina(lat, lng) && amapAPIKey != "" {
+			p = "amap"
+		} else if googleAPIKey != "" {
+			p = "google"
+		} else if amapAPIKey != "" {
+			p = "amap"
+		} else {
+			p = "osm"
+		}
+	}
+	if p == "google" && googleAPIKey != "" {
 		return fetchGoogleLandmarks(ctx, lat, lng, googleAPIKey)
-	} else if provider == "amap" && amapAPIKey != "" {
+	} else if p == "amap" && amapAPIKey != "" {
 		return fetchAMapLandmarks(ctx, lat, lng, amapAPIKey)
 	}
 	return fetchOSMLandmarks(ctx, lat, lng)

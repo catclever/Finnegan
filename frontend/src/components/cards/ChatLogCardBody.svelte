@@ -12,8 +12,9 @@
 -->
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
+  import { BrowserOpenURL } from '../../../wailsjs/runtime/runtime.js';
   import type { CosmicCard } from '../../types/card';
-  import { parseDialogue } from '../../lib/chatlog';
+  import { parseDialogue, createInlineDialogueParser, renderInlineDialogue } from '../../lib/chatlog';
   import { formatIntervalTime, formatPointTime, stageTime } from '../../lib/time';
   import { getCardTags, normalizeTag } from '../../lib/tagNetwork';
   import CardImageGallery from './CardImageGallery.svelte';
@@ -86,9 +87,9 @@
   }
 
   $: enriching = isEnriching || !!card?.isEnriching;
-  $: turns = parseDialogue(card?.content || '');
-  $: title = card?.title && card.title !== 'Thought' && card.title !== 'Card' && card.title !== 'Babel Echo' ? card.title : '';
   $: participants = Array.isArray(card?.participants) ? card.participants : [];
+  $: turns = parseDialogue(card?.content || '', participants);
+  $: title = card?.title && card.title !== 'Thought' && card.title !== 'Card' && card.title !== 'Babel Echo' ? card.title : '';
   $: timeStr = displayTime || formatIntervalTime(card?.startedAt, card?.endedAt, $stageTime) || thoughtTime || babelTime;
   $: scatterTime = displayTime || formatPointTime(card?.startedAt || card?.createdAt || card?.spawnTime, $stageTime) || thoughtTime || babelTime;
 
@@ -105,6 +106,30 @@
     .map(formatAssetUrl);
 
   $: hasImages = images.length > 0;
+
+  $: cardThreads = (card?.threads && Array.isArray(card.threads)) ? card.threads : [];
+  $: inlineParser = createInlineDialogueParser(cardThreads);
+
+  $: renderedTurns = turns.map(t => ({
+    speaker: renderInlineDialogue(t.speaker, inlineParser),
+    lines: t.lines.map(line => renderInlineDialogue(line, inlineParser))
+  }));
+
+  function handleDialogueClick(e: MouseEvent) {
+    const target = (e.target as HTMLElement)?.closest('a');
+    if (target && target.getAttribute('href')) {
+      const href = target.getAttribute('href');
+      if (href) {
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+          BrowserOpenURL(href);
+        } catch {
+          window.open(href, '_blank');
+        }
+      }
+    }
+  }
 </script>
 
 <div class="chat-log-card-body" class:focused={isFocused} class:hovered={isHovered} class:has-images={hasImages} class:enriching={enriching}>
@@ -125,19 +150,21 @@
       <div class="screenplay-divider" aria-hidden="true"></div>
     </header>
 
-    <div class="screenplay-stream">
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <!-- svelte-ignore a11y-no-static-element-interactions -->
+    <div class="screenplay-stream" on:click={handleDialogueClick}>
       {#if hasImages}
         <CardImageGallery {images} />
       {/if}
 
-      {#each turns as turn, i (turn.speaker + i)}
+      {#each renderedTurns as turn, i (turn.speaker + i)}
         <div class="screenplay-turn">
           {#if turn.speaker}
-            <div class="screenplay-character">{turn.speaker}</div>
+            <div class="screenplay-character">{@html turn.speaker}</div>
           {/if}
           <div class="screenplay-dialogue">
             {#each turn.lines as line}
-              <p class="dialogue-line">{line}</p>
+              <p class="dialogue-line">{@html line}</p>
             {/each}
           </div>
         </div>
@@ -188,13 +215,13 @@
         </div>
       {/if}
       <div class="preview-turns">
-        {#each turns.slice(0, 3) as turn, i (turn.speaker + i)}
+        {#each renderedTurns.slice(0, 3) as turn, i (turn.speaker + i)}
           <div class="preview-turn">
             {#if turn.speaker}
-              <span class="preview-character">{turn.speaker}</span>
+              <span class="preview-character">{@html turn.speaker}</span>
             {/if}
             {#each turn.lines.slice(0, 2) as line}
-              <p class="preview-line">{line}</p>
+              <p class="preview-line">{@html line}</p>
             {/each}
           </div>
         {/each}
@@ -407,6 +434,96 @@
 
   .dialogue-line:last-child {
     margin-bottom: 0;
+  }
+
+  /* Inline Markdown in screenplay dialogue */
+  :global(.dialogue-line strong),
+  :global(.preview-line strong),
+  :global(.screenplay-character strong),
+  :global(.preview-character strong) {
+    font-weight: 700;
+    color: var(--card-text-color, #0f172a);
+  }
+
+  :global(.screenplay-character code),
+  :global(.preview-character code) {
+    font-size: 0.9em;
+    padding: 1px 4px;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.06);
+    color: #0f172a;
+  }
+
+  :global(.dialogue-line em),
+  :global(.preview-line em) {
+    font-style: italic;
+  }
+
+  :global(.dialogue-line del),
+  :global(.preview-line del) {
+    text-decoration: line-through;
+    opacity: 0.75;
+  }
+
+  :global(.dialogue-line code) {
+    font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+    background: rgba(0, 0, 0, 0.06);
+    color: #0f172a;
+    padding: 1px 4px;
+    border-radius: 4px;
+    font-size: 0.88em;
+  }
+
+  :global(.dialogue-line a) {
+    color: #2563eb;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+    transition: color 0.15s ease;
+  }
+
+  :global(.dialogue-line a:hover) {
+    color: #1d4ed8;
+  }
+
+  :global(.preview-line code) {
+    font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+    background: rgba(0, 0, 0, 0.05);
+    padding: 0 3px;
+    border-radius: 3px;
+    font-size: 0.88em;
+  }
+
+  :global(.preview-line a) {
+    color: #2563eb;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    pointer-events: none;
+  }
+
+  :global(.chat-log-card-body .theme-mention) {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 1px 6px 1px 5px;
+    margin: 0 2px;
+    font-size: 0.88em;
+    font-weight: 600;
+    line-height: 1.3;
+    vertical-align: baseline;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.15), rgba(168, 85, 247, 0.18));
+    border: 1px solid rgba(168, 85, 247, 0.32);
+    color: #0284c7;
+    box-shadow: 0 1px 4px rgba(56, 189, 248, 0.12);
+    user-select: text;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  :global(.chat-log-card-body .theme-mention:hover) {
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(168, 85, 247, 0.28));
+    border-color: rgba(168, 85, 247, 0.5);
+    color: #0369a1;
   }
 
   /* --- Scattering Screenplay Typography (200x190) --- */
